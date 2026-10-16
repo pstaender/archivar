@@ -64,6 +64,11 @@ function sendWithProgress<T>(path: string, body: FormData, onProgress?: (loaded:
 
 const jsonBody = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
 
+async function download(res: Response, fallbackName: string): Promise<{ blob: Blob; filename: string }> {
+  const encoded = res.headers.get("content-disposition")?.match(/filename\*=UTF-8''([^;]+)/)?.[1];
+  return { blob: await res.blob(), filename: encoded ? decodeURIComponent(encoded) : fallbackName };
+}
+
 function query(params: Record<string, string | undefined>): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) if (value) search.set(key, value);
@@ -96,12 +101,10 @@ export const api = {
   autoBw: (id: number, editSettings: EditSettings) =>
     request<BwVariant[]>(`/api/documents/${id}/auto-bw`, jsonBody("POST", { editSettings })),
   /** Searchable PDF of the edited image with `text` (default: the stored text) as its text layer. */
-  exportPdf: async (id: number, text?: string) => {
-    const res = await send(`/api/documents/${id}/pdf`, jsonBody("POST", { text }));
-    const disposition = res.headers.get("content-disposition") ?? "";
-    const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
-    return { blob: await res.blob(), filename: encoded ? decodeURIComponent(encoded) : `dokument-${id}.pdf` };
-  },
+  exportPdf: async (id: number, text?: string) => download(await send(`/api/documents/${id}/pdf`, jsonBody("POST", { text })), `dokument-${id}.pdf`),
+  /** One PDF of the documents in order: images as searchable pages, PDFs with all pages; other files are left out. */
+  exportCombinedPdf: async (documentIds: number[], title?: string) =>
+    download(await send("/api/export/pdf", jsonBody("POST", { documentIds, title })), "Dokumente.pdf"),
   renderPreview: async (id: number, editSettings: EditSettings, signal?: AbortSignal) =>
     (await send(`/api/documents/${id}/render`, { ...jsonBody("POST", { editSettings }), signal })).blob(),
   runOcr: (id: number, options: { allText?: boolean } = {}) =>

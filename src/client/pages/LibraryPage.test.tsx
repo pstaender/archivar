@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { docItem, makeDocument, makeStack, mockFetch, renderApp, stackItem, type FetchMock } from "../../../test/client";
+import { docItem, folder, makeDocument, makeStack, mockFetch, renderApp, stackItem, type FetchMock } from "../../../test/client";
 import { LibraryPage } from "./LibraryPage";
 
 let fetchMock: FetchMock;
@@ -73,10 +73,13 @@ describe("LibraryPage", () => {
     expect(screen.queryByRole("toolbar")).toBeNull();
   });
 
-  test("assigns folders to the selection, keeping existing ones", async () => {
+  const folders = () => [folder(1, "privat"), folder(2, "wichtig"), folder(3, "wichtig/2026")];
+  const patches = () => fetchMock.calls.filter((c) => c.method === "PATCH").map((c) => [c.path, c.body]);
+
+  test("adds the selection to existing folders, keeping its other folders", async () => {
     const a = makeDocument({ title: "Brief", folders: ["privat"] });
     fetchMock = mockFetch({
-      "GET /api/folders": () => [],
+      "GET /api/folders": folders,
       "GET /api/library": () => [docItem(a)],
       [`PATCH /api/documents/${a.id}`]: () => a,
     });
@@ -84,13 +87,102 @@ describe("LibraryPage", () => {
 
     fireEvent.click(screen.getByLabelText("Brief auswählen"));
     fireEvent.click(screen.getByRole("button", { name: /Ordner/ }));
-    const input = screen.getByLabelText("Ordner hinzufügen");
-    fireEvent.change(input, { target: { value: "wichtig/2026" } });
-    fireEvent.keyDown(input, { key: "Enter" });
-    fireEvent.click(screen.getByRole("button", { name: "Zuweisen" }));
+    expect(screen.getAllByRole("checkbox").map((c) => c.getAttribute("aria-label"))).toEqual(["privat", "wichtig", "wichtig/2026"]);
+    fireEvent.click(screen.getByLabelText("wichtig/2026"));
+    fireEvent.click(screen.getByRole("button", { name: "Hinzufügen" }));
 
-    await waitFor(() => expect(fetchMock.calls.some((c) => c.method === "PATCH")).toBe(true));
-    expect(fetchMock.calls.find((c) => c.method === "PATCH")?.body).toEqual({ folders: ["privat", "wichtig/2026"] });
+    await waitFor(() => expect(patches()).toEqual([[`/api/documents/${a.id}`, { folders: ["privat", "wichtig/2026"] }]]));
+    await waitFor(() => expect(screen.getByText("Zu „wichtig/2026“ hinzugefügt")).toBeTruthy());
+  });
+
+  test("moves the selection out of the current folder into another one", async () => {
+    const a = makeDocument({ title: "Brief", folders: ["privat/alt", "steuer"] });
+    const stack = makeStack({ title: "Mappe", folders: ["privat"], documentIds: [70] });
+    fetchMock = mockFetch({
+      "GET /api/folders": folders,
+      "GET /api/library": () => [docItem(a), stackItem(stack)],
+      [`PATCH /api/documents/${a.id}`]: () => a,
+      [`PATCH /api/stacks/${stack.id}`]: () => stack,
+    });
+    await renderApp(<LibraryPage />, { path: "/folders/privat" });
+
+    fireEvent.click(screen.getByLabelText("Brief auswählen"));
+    fireEvent.click(screen.getByLabelText("Mappe auswählen"));
+    fireEvent.click(screen.getByRole("button", { name: /Ordner/ }));
+    expect(screen.getByText(/nimmt die Auswahl aus „privat“ heraus/)).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("wichtig"));
+    fireEvent.click(screen.getByRole("button", { name: "Verschieben" }));
+
+    await waitFor(() =>
+      expect(patches()).toEqual([
+        [`/api/documents/${a.id}`, { folders: ["steuer", "wichtig"] }],
+        [`/api/stacks/${stack.id}`, { folders: ["wichtig"] }],
+      ]),
+    );
+  });
+
+  test("creates a new folder in the dialog and moves the selection there from the overview", async () => {
+    const a = makeDocument({ title: "Brief", folders: ["privat", "wichtig"] });
+    fetchMock = mockFetch({
+      "GET /api/folders": folders,
+      "GET /api/library": () => [docItem(a)],
+      [`PATCH /api/documents/${a.id}`]: () => a,
+    });
+    await renderApp(<LibraryPage />);
+
+    fireEvent.click(screen.getByLabelText("Brief auswählen"));
+    fireEvent.click(screen.getByRole("button", { name: /Ordner/ }));
+    const verschieben = screen.getByRole("button", { name: "Verschieben" }) as HTMLButtonElement;
+    expect(verschieben.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Neuer Ordner"), { target: { value: " steuer / 2026 " } });
+    fireEvent.click(screen.getByRole("button", { name: /Anlegen/ }));
+    expect((screen.getByLabelText("steuer/2026") as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByText("neu")).toBeTruthy();
+    fireEvent.click(verschieben);
+
+    await waitFor(() => expect(patches()).toEqual([[`/api/documents/${a.id}`, { folders: ["steuer/2026"] }]]));
+  });
+
+  test("downloads the selected documents and stacks as one PDF", async () => {
+    const a = makeDocument({ title: "Seite A" });
+    const stack = makeStack({ title: "Alt", documentIds: [50, 51] });
+    fetchMock = mockFetch({
+      "GET /api/folders": () => [],
+      "GET /api/library": () => [docItem(a), stackItem(stack)],
+      "POST /api/export/pdf": () =>
+        new Response(new Blob(["%PDF"]), { headers: { "Content-Disposition": "attachment; filename*=UTF-8''Dokumente.pdf" } }),
+    });
+    const createObjectURL = spyOn(URL, "createObjectURL").mockReturnValue("blob:pdf");
+    const downloads: string[] = [];
+    const click = spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      downloads.push(this.download);
+    });
+    try {
+      await renderApp(<LibraryPage />);
+      fireEvent.click(screen.getByLabelText("Seite A auswählen"));
+      fireEvent.click(screen.getByLabelText("Alt auswählen"));
+      fireEvent.click(screen.getByRole("button", { name: /PDF/ }));
+      await waitFor(() => expect(downloads).toEqual(["Dokumente.pdf"]));
+      expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toEqual({ documentIds: [a.id, 50, 51] });
+    } finally {
+      createObjectURL.mockRestore();
+      click.mockRestore();
+    }
+  });
+
+  test("names the PDF after a single selected item and is disabled for other files only", async () => {
+    const photo = makeDocument({ title: "Urlaub" });
+    const other = makeDocument({ title: "Notiz", kind: "file" });
+    fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [docItem(photo), docItem(other)] });
+    await renderApp(<LibraryPage />);
+
+    fireEvent.click(screen.getByLabelText("Notiz auswählen"));
+    expect((screen.getByRole("button", { name: /PDF/ }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText("Notiz abwählen"));
+    fireEvent.click(screen.getByLabelText("Urlaub auswählen"));
+    fireEvent.click(screen.getByRole("button", { name: /PDF/ }));
+    await waitFor(() => expect(fetchMock.calls.some((c) => c.method === "POST")).toBe(true));
+    expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toEqual({ documentIds: [photo.id], title: "Urlaub" });
   });
 
   test("shows API errors", async () => {

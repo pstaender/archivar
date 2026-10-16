@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { buildFolderTree, isWithinFolder, normalizeFolderPath, parentPaths } from "./folders";
+import { buildFolderTree, isWithinFolder, moveToFolders, normalizeFolderPath, parentPaths } from "./folders";
 
 test("normalizeFolderPath trims segments and slashes", () => {
   expect(normalizeFolderPath(" wichtig /  2026/ ")).toBe("wichtig/2026");
@@ -27,4 +27,16 @@ test("buildFolderTree creates implicit parents", () => {
   const wichtig = tree[1]!;
   expect(wichtig.id).toBeNull();
   expect(wichtig.children[0]).toMatchObject({ name: "2026", path: "wichtig/2026", id: 2, count: 3 });
+});
+
+test("moving leaves the folder it was moved out of, including its sub-folders", () => {
+  const current = ["privat", "wichtig", "wichtig/2026"];
+  expect(moveToFolders(current, "wichtig", ["steuer/2025"])).toEqual(["privat", "steuer/2025"]);
+  expect(moveToFolders(current, "wichtig/2026", ["wichtig/2025"])).toEqual(["privat", "wichtig", "wichtig/2025"]);
+  expect(moveToFolders(current, "wichtig", ["wichtig/archiv"])).toEqual(["privat", "wichtig/archiv"]);
+});
+
+test("moving from the overview replaces all folders", () => {
+  expect(moveToFolders(["privat", "wichtig"], null, ["steuer", "privat"])).toEqual(["privat", "steuer"]);
+  expect(moveToFolders(["privat"], null, [])).toEqual([]);
 });

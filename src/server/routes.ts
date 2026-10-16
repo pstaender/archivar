@@ -17,6 +17,16 @@ function parseFolderList(value: FormDataEntryValue | null): string[] {
   }
 }
 
+function pdfResponse({ pdf, filename }: { pdf: Uint8Array<ArrayBuffer>; filename: string }): Response {
+  return new Response(pdf, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 async function serveFile(file: Bun.BunFile, type: string, filename?: string): Promise<Response> {
   if (!(await file.exists())) throw new HttpError(404, "File not found");
   const headers: Record<string, string> = { "Content-Type": type, "Cache-Control": "private, max-age=31536000, immutable" };
@@ -140,18 +150,21 @@ export function createApiRoutes(ctx: AppContext) {
       }),
     },
 
+    "/api/export/pdf": {
+      POST: handle(async (req: Req) => {
+        const body = await readJson<{ documentIds?: unknown; title?: unknown }>(req);
+        if (!Array.isArray(body.documentIds) || body.documentIds.length === 0) throw new HttpError(400, "documentIds required");
+        const ids = body.documentIds.map((id) => parseId(String(id)));
+        const title = typeof body.title === "string" ? body.title : undefined;
+        return pdfResponse(await archive.exportCombinedPdf(userId(req), ids, title));
+      }),
+    },
+
     "/api/documents/:id/pdf": {
       POST: handle(async (req: Req) => {
         const body = await readJson<{ text?: unknown }>(req).catch(() => ({ text: undefined }));
         const text = typeof body.text === "string" ? body.text : undefined;
-        const { pdf, filename } = await archive.exportPdf(userId(req), parseId(req.params.id), text);
-        return new Response(pdf, {
-          headers: {
-            "Content-Type": "application/pdf",
-            "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
-            "Cache-Control": "no-store",
-          },
-        });
+        return pdfResponse(await archive.exportPdf(userId(req), parseId(req.params.id), text));
       }),
     },
 

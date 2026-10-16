@@ -43,3 +43,12 @@ export function buildFolderTree(folders: { id: number; path: string; count: numb
   }
   return root.children;
 }
+
+/**
+ * Folders of a document or stack after moving it into `targets`: it leaves the folder it was moved out of (with its
+ * sub-folders), or all folders when it was moved from the overview (`from` null).
+ */
+export function moveToFolders(current: string[], from: string | null, targets: string[]): string[] {
+  const kept = from ? current.filter((path) => !isWithinFolder(path, from)) : [];
+  return [...new Set([...kept, ...targets])].sort();
+}

@@ -1,17 +1,19 @@
-import { FolderPlus, Layers, Trash, Upload, X } from "../icons";
+import { Download, FolderPlus, Layers, Loader, Trash, Upload, X } from "../icons";
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
+import { moveToFolders } from "../../shared/folders";
 import type { LibraryItem } from "../../shared/types";
 import { api } from "../api";
-import { ConfirmDialog, Dialog } from "../components/Dialog";
-import { FolderPicker } from "../components/FolderPicker";
+import { ConfirmDialog } from "../components/Dialog";
+import { FolderTargetDialog } from "../components/FolderTargetDialog";
 import { ItemCard, itemKey } from "../components/ItemCard";
 import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
 import { useUpload } from "../hooks/upload";
 import { usePolling } from "../hooks/usePolling";
 import { useResource } from "../hooks/useResource";
-import { isOcrBusy } from "../format";
+import { saveBlob } from "../download";
+import { documentLabel, isOcrBusy } from "../format";
 import { folderHref, useCurrentFolder } from "../routes";
 
 const POLL_INTERVAL = 2500;
@@ -133,15 +135,18 @@ export function SelectionBar({ items, onClear, onDone }: SelectionBarProps) {
   const toast = useToast();
   const navigate = useNavigate();
   const { reload: reloadFolders } = useFolders();
+  const from = useCurrentFolder();
   const [folderDialog, setFolderDialog] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [folders, setFolders] = useState<string[]>([]);
   const [working, setWorking] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const documentIds = useMemo(
     () => items.flatMap((item) => (item.type === "document" ? [item.document.id] : item.stack.documentIds)),
     [items],
   );
+
+  const exportable = items.some((item) => item.type === "stack" || item.document.kind !== "file");
 
   const run = async (action: () => Promise<void>) => {
     setWorking(true);
@@ -162,20 +167,30 @@ export function SelectionBar({ items, onClear, onDone }: SelectionBarProps) {
       navigate(`/stacks/${created.id}`);
     });
 
-  const assignFolders = () =>
+  const fileFolders = (targets: string[], move: boolean) =>
     run(async () => {
+      const next = (current: string[]) => (move ? moveToFolders(current, from, targets) : [...new Set([...current, ...targets])].sort());
       for (const item of items) {
-        if (item.type === "document") {
-          await api.updateDocument(item.document.id, { folders: [...new Set([...item.document.folders, ...folders])] });
-        } else {
-          await api.updateStack(item.stack.id, { folders: [...new Set([...item.stack.folders, ...folders])] });
-        }
+        if (item.type === "document") await api.updateDocument(item.document.id, { folders: next(item.document.folders) });
+        else await api.updateStack(item.stack.id, { folders: next(item.stack.folders) });
       }
       await reloadFolders();
-      toast.success("Ordner zugewiesen");
+      const where = targets.length === 1 ? `„${targets[0]}“` : `${targets.length} Ordner`;
+      toast.success(move ? `In ${where} verschoben` : `Zu ${where} hinzugefügt`);
       setFolderDialog(false);
-      setFolders([]);
       onDone();
+    });
+
+  const exportPdf = () =>
+    run(async () => {
+      setExporting(true);
+      try {
+        const title = items.length === 1 ? (items[0]!.type === "stack" ? items[0]!.stack.title : documentLabel(items[0]!.document)) : undefined;
+        const { blob, filename } = await api.exportCombinedPdf(documentIds, title);
+        saveBlob(blob, filename);
+      } finally {
+        setExporting(false);
+      }
     });
 
   const remove = () =>
@@ -201,30 +216,24 @@ export function SelectionBar({ items, onClear, onDone }: SelectionBarProps) {
           <FolderPlus size={16} />
           <span className="hide-mobile">Ordner</span>
         </button>
+        <button type="button" className="btn" onClick={exportPdf} disabled={working || !exportable} title="Bilder und PDFs der Auswahl als ein PDF herunterladen">
+          {exporting ? <Loader size={16} className="spin" /> : <Download size={16} />}
+          <span className="hide-mobile">PDF</span>
+        </button>
         <button type="button" className="btn btn--danger-ghost" onClick={() => setConfirmDelete(true)} disabled={working}>
           <Trash size={16} />
           <span className="hide-mobile">Löschen</span>
         </button>
       </div>
 
-      <Dialog
+      <FolderTargetDialog
         open={folderDialog}
-        title="Ordner zuweisen"
+        from={from}
+        working={working}
+        onMove={(targets) => fileFolders(targets, true)}
+        onAdd={(targets) => fileFolders(targets, false)}
         onClose={() => setFolderDialog(false)}
-        footer={
-          <>
-            <button type="button" className="btn" onClick={() => setFolderDialog(false)}>
-              Abbrechen
-            </button>
-            <button type="button" className="btn btn--primary" onClick={assignFolders} disabled={working || folders.length === 0}>
-              Zuweisen
-            </button>
-          </>
-        }
-      >
-        <FolderPicker value={folders} onChange={setFolders} label="Ordner hinzufügen" />
-        <p className="muted small">Mit „/“ werden Unterordner angelegt, z.B. wichtig/2026.</p>
-      </Dialog>
+      />
 
       <ConfirmDialog
         open={confirmDelete}

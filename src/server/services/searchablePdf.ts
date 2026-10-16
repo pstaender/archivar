@@ -15,6 +15,7 @@ import {
   TextRenderingMode,
 } from "pdf-lib";
 import type { OcrLayout } from "../db/documents";
+import { HttpError } from "../http";
 
 // The page gets A4's long side; the image keeps its aspect ratio.
 const PAGE_LONG_SIDE = 842;
@@ -26,21 +27,48 @@ const FALLBACK_MAX_LINE = 0.04;
 
 type Box = OcrLayout["lines"][number]["box"];
 
+export type PdfPart =
+  | { kind: "image"; jpeg: Uint8Array; text: string; layout: OcrLayout | null }
+  /** An uploaded PDF; all its pages are copied as they are. */
+  | { kind: "pdf"; name: string; data: Uint8Array };
+
 /**
- * A PDF with the image as the page and the text as an invisible layer on top, so it can be searched and copied.
- * The text goes onto the recognized line positions when its lines still match them (same number of lines, e.g. after
- * fixing typos); otherwise it is spread evenly over the page.
+ * One PDF from images and PDFs in order. Each image becomes a page with its text as an invisible layer on top, so it
+ * can be searched and copied. The text goes onto the recognized line positions when its lines still match them (same
+ * number of lines, e.g. after fixing typos); otherwise it is spread evenly over the page.
  */
-export async function createSearchablePdf(jpeg: Uint8Array, text: string, layout: OcrLayout | null, title: string): Promise<Uint8Array<ArrayBuffer>> {
+export async function createSearchablePdf(parts: PdfPart[], title: string): Promise<Uint8Array<ArrayBuffer>> {
   const pdf = await PDFDocument.create();
   pdf.setTitle(title);
   pdf.setProducer("archivar");
+  let font: PDFFont | null = null;
+  for (const part of parts) {
+    if (part.kind === "image") {
+      font ??= await pdf.embedFont(StandardFonts.Helvetica);
+      await addImagePage(pdf, font, part);
+    } else {
+      await appendPdf(pdf, part);
+    }
+  }
+  return new Uint8Array(await pdf.save());
+}
+
+async function appendPdf(pdf: PDFDocument, { name, data }: Extract<PdfPart, { kind: "pdf" }>) {
+  let source: PDFDocument;
+  try {
+    source = await PDFDocument.load(data, { ignoreEncryption: true });
+  } catch {
+    throw new HttpError(422, `„${name}“ konnte nicht als PDF gelesen werden`);
+  }
+  for (const page of await pdf.copyPages(source, source.getPageIndices())) pdf.addPage(page);
+}
+
+async function addImagePage(pdf: PDFDocument, font: PDFFont, { jpeg, text, layout }: Extract<PdfPart, { kind: "image" }>) {
   const image = await pdf.embedJpg(jpeg);
   const scale = PAGE_LONG_SIDE / Math.max(image.width, image.height);
   const page = pdf.addPage([image.width * scale, image.height * scale]);
   page.drawImage(image, { x: 0, y: 0, width: page.getWidth(), height: page.getHeight() });
 
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
   const lines = text
     .split("\n")
     .map((line) => toWinAnsi(line.trim(), font))
@@ -48,7 +76,6 @@ export async function createSearchablePdf(jpeg: Uint8Array, text: string, layout
   const matches = layout?.lines.length === lines.length;
   const boxes = matches ? layout.lines.map((line) => line.box) : evenBoxes(lines.length);
   lines.forEach((line, i) => drawInvisibleLine(page, font, line, boxes[i]!, matches));
-  return new Uint8Array(await pdf.save());
 }
 
 function evenBoxes(count: number): Box[] {

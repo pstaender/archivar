@@ -26,7 +26,7 @@ import type { StackRepository } from "../db/stacks";
 import { HttpError } from "../http";
 import { derivedKeys, type FileStorage } from "../storage";
 import { extensionFor, type ImagingService } from "./imaging";
-import { createSearchablePdf } from "./searchablePdf";
+import { createSearchablePdf, type PdfPart } from "./searchablePdf";
 import { type DewarpEngine, toDewarpGrid } from "./dewarp";
 import type { OcrEngine, OcrOptions, OcrQueue } from "./ocr";
 
@@ -179,12 +179,27 @@ export class ArchiveService {
   async exportPdf(userId: number, id: number, text?: string): Promise<{ pdf: Uint8Array<ArrayBuffer>; filename: string }> {
     const doc = this.getDocument(userId, id);
     if (doc.kind !== "image") throw new HttpError(400, "Only images can be exported as PDF");
-    const [jpeg] = await this.imaging.ocrImages(doc);
-    const layout = this.documents.getOcrLayout(userId, id);
-    const current = layout && JSON.stringify(layout.editSettings) === JSON.stringify(doc.editSettings) ? layout : null;
     const title = doc.title.trim() || basename(doc.originalName, extname(doc.originalName));
-    const pdf = await createSearchablePdf(jpeg!, text ?? doc.ocrText, current, title);
+    const pdf = await createSearchablePdf([await this.pdfPart(userId, doc, text)], title);
     return { pdf, filename: `${title}.pdf` };
+  }
+
+  /** Images (as searchable pages) and PDFs of several documents in the given order as one PDF; other files are left out. */
+  async exportCombinedPdf(userId: number, ids: number[], title = "Dokumente"): Promise<{ pdf: Uint8Array<ArrayBuffer>; filename: string }> {
+    const docs = ids.map((id) => this.getDocument(userId, id)).filter((doc) => doc.kind !== "file");
+    if (docs.length === 0) throw new HttpError(400, "Keine Bilder oder PDFs ausgewählt");
+    const parts: PdfPart[] = [];
+    for (const doc of docs) parts.push(await this.pdfPart(userId, doc));
+    const name = title.trim() || "Dokumente";
+    return { pdf: await createSearchablePdf(parts, name), filename: `${name}.pdf` };
+  }
+
+  private async pdfPart(userId: number, doc: StoredDocument, text?: string): Promise<PdfPart> {
+    if (doc.kind === "pdf") return { kind: "pdf", name: doc.originalName, data: await this.storage.read(doc.storageKey) };
+    const [jpeg] = await this.imaging.ocrImages(doc);
+    const layout = this.documents.getOcrLayout(userId, doc.id);
+    const current = layout && JSON.stringify(layout.editSettings) === JSON.stringify(doc.editSettings) ? layout : null;
+    return { kind: "image", jpeg: jpeg!, text: text ?? doc.ocrText, layout: current };
   }
 
   async autoBw(userId: number, id: number, settings: Partial<EditSettings> = {}): Promise<BwVariant[]> {

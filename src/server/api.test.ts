@@ -364,6 +364,33 @@ describe("PDF export", () => {
     expect(items.map((i) => i.text)).toEqual(["?ódz – Grüße ?"]);
   });
 
+  test("combines images and PDFs of several documents into one PDF in the given order", async () => {
+    const first = await ocrImage();
+    const [pdfDoc] = await upload([{ name: "anhang.pdf", data: makePdf("Anhang Seite"), type: "application/pdf" }]);
+    const second = await uploadImage("zweites.jpg");
+    await patch(`/api/documents/${second.id}`, { ocrText: "Zweites Bild" });
+    const [file] = await upload([{ name: "notiz.heic", data: new Uint8Array([1, 2, 3]) }]);
+
+    const res = await post("/api/export/pdf", { documentIds: [second.id, pdfDoc!.id, file!.id, first.id], title: "Mappe März" });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-disposition")).toBe(`attachment; filename*=UTF-8''${encodeURIComponent("Mappe März.pdf")}`);
+    const pdf = await getDocumentProxy(new Uint8Array(await res.arrayBuffer()));
+    expect(pdf.numPages).toBe(3);
+    const pageTexts: string[] = [];
+    for (let i = 1; i <= 3; i++) {
+      const items = (await (await pdf.getPage(i)).getTextContent()).items;
+      pageTexts.push(items.map((item) => ("str" in item ? item.str : "")).join(" ").replace(/\s+/g, " ").trim());
+    }
+    expect(pageTexts).toEqual(["Zweites Bild", "Anhang Seite", "Rechnung Betrag 12 EUR"]);
+  });
+
+  test("refuses a combined PDF without images or PDFs", async () => {
+    const [file] = await upload([{ name: "notiz.heic", data: new Uint8Array([1, 2, 3]) }]);
+    expect((await post("/api/export/pdf", { documentIds: [file!.id] })).status).toBe(400);
+    expect((await post("/api/export/pdf", { documentIds: [] })).status).toBe(400);
+    expect((await post("/api/export/pdf", { documentIds: [999] })).status).toBe(404);
+  });
+
   test("exports images without text and refuses other documents", async () => {
     const doc = await uploadImage();
     expect((await exportPdf(doc.id)).items).toEqual([]);

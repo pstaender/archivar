@@ -12,7 +12,8 @@ Archive photos, scans, documents and PDFs in the browser – on desktop and on t
 - Text recognition (OCR) with Tesseract.js, editable recognized text, full-text search. Unsure, probably misread text parts are left out unless "Alle Textteile erkennen" is enabled
 - "PDF" in the text tab downloads the edited image as a searchable PDF: the (edited) text lies invisibly on the recognized line positions, so it can be searched and copied in any PDF viewer
 - Group documents into ordered stacks with a title
-- Hierarchical folders as labels (e.g. `wichtig/2026`)
+- Hierarchical folders as labels (e.g. `wichtig/2026`); selected documents and stacks can be moved into or added to existing folders (or a new one)
+- "PDF" for a selection downloads all its images (as searchable pages) and PDFs, including the documents of selected stacks, as one PDF
 - REST API, SQLite database, multi-user ready (currently a single default user without login)
 
 ## Getting started
@@ -65,6 +66,7 @@ Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install i
 | POST   | `/api/documents/:id/auto-bw`        | Black-and-white variants `{ brightness, contrast, bwThreshold }[]` for `{ editSettings }`, best first |
 | POST   | `/api/documents/:id/render`         | Full-resolution JPEG of unsaved `{ editSettings }` (not stored) |
 | POST   | `/api/documents/:id/pdf`            | Searchable PDF of the edited image with `{ text }` (default: stored OCR text) |
+| POST   | `/api/export/pdf`                   | One PDF of `{ documentIds, title? }` in order (images as searchable pages, PDF pages copied, other files left out) |
 | GET    | `/api/documents/:id/{file,preview,image,thumbnail}` | Original, editor preview, edited image, thumbnail |
 | GET    | `/api/stacks`                       | Stacks                                        |
 | POST   | `/api/stacks`                       | Create from `documentIds`                     |
