@@ -5,6 +5,8 @@ export interface Resource<T> {
   error: Error | null;
   loading: boolean;
   reload: () => Promise<void>;
+  /** Reloads in the background: `loading` stays false, so the page does not flicker while polling. */
+  refresh: () => Promise<void>;
   setData: (data: T | ((current: T | undefined) => T)) => void;
 }
 
@@ -16,9 +18,9 @@ export function useResource<T>(load: () => Promise<T>, deps: DependencyList): Re
 
   const run = useCallback(load, deps);
 
-  const reload = useCallback(async () => {
+  const fetchData = useCallback(async (background: boolean) => {
     const id = ++requestId.current;
-    setLoading(true);
+    if (!background) setLoading(true);
     try {
       const result = await run();
       if (id === requestId.current) {
@@ -32,9 +34,12 @@ export function useResource<T>(load: () => Promise<T>, deps: DependencyList): Re
     }
   }, [run]);
 
+  const reload = useCallback(() => fetchData(false), [fetchData]);
+  const refresh = useCallback(() => fetchData(true), [fetchData]);
+
   useEffect(() => {
     void reload();
   }, [reload]);
 
-  return { data, error, loading, reload, setData: setData as Resource<T>["setData"] };
+  return { data, error, loading, reload, refresh, setData: setData as Resource<T>["setData"] };
 }

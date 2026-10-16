@@ -19,11 +19,14 @@ import { useConfig } from "../hooks/config";
 import { useFolders } from "../hooks/folders";
 import { useLeaveGuard } from "../hooks/leaveGuard";
 import { useUpload } from "../hooks/upload";
+import { usePolling } from "../hooks/usePolling";
 import { useToast } from "../hooks/toast";
 import { useResource } from "../hooks/useResource";
 import { documentLabel, formatBytes, formatDateTime, isOcrBusy, OCR_STATUS_LABEL } from "../format";
 
 type Tab = "edit" | "text" | "details";
+
+const OCR_POLL_INTERVAL = 2000;
 
 const bwKey = (s: EditSettings) => JSON.stringify([s.rotation, s.dewarp, s.corners, s.denoise]);
 
@@ -75,11 +78,7 @@ export function DocumentPage() {
     if (doc) setTab((current) => (current === "edit" && doc.kind !== "image" ? "text" : current));
   }, [doc?.kind]);
 
-  useEffect(() => {
-    if (!doc || !isOcrBusy(doc)) return;
-    const timer = setInterval(() => void resource.reload(), 2000);
-    return () => clearInterval(timer);
-  }, [doc?.ocrStatus, resource.reload]);
+  usePolling(Boolean(doc && isOcrBusy(doc)), resource.refresh, OCR_POLL_INTERVAL);
 
   const dirty = useMemo(() => doc !== undefined && JSON.stringify(draft) !== JSON.stringify(doc.editSettings), [draft, doc]);
   const leave = useLeaveGuard(dirty);

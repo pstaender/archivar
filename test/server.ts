@@ -16,6 +16,9 @@ export class FakeOcrEngine implements OcrEngine {
   error: Error | null = null;
   orientation: Orientation | null = { rotation: 0, confidence: 10 };
   orientationInputs = 0;
+  /** Simulates a stuck Tesseract worker. */
+  hang = false;
+  terminations = 0;
 
   async detectOrientation(): Promise<Orientation | null> {
     this.orientationInputs++;
@@ -24,11 +27,14 @@ export class FakeOcrEngine implements OcrEngine {
 
   async recognize(): Promise<OcrResult> {
     this.calls++;
+    if (this.hang) return new Promise(() => {});
     if (this.error) throw this.error;
     return this.result;
   }
 
-  async terminate(): Promise<void> {}
+  async terminate(): Promise<void> {
+    this.terminations++;
+  }
 }
 
 export function identityGrid(columns = 31, rows = 45): Float32Array {
@@ -80,7 +86,7 @@ export interface TestServer {
   close(): Promise<void>;
 }
 
-export async function startTestServer(): Promise<TestServer> {
+export async function startTestServer({ ocrPageTimeoutMs }: { ocrPageTimeoutMs?: number } = {}): Promise<TestServer> {
   const dir = await mkdtemp(join(tmpdir(), "archivar-test-"));
   const ocr = new FakeOcrEngine();
   const dewarp = new FakeDewarpEngine();
@@ -91,6 +97,7 @@ export async function startTestServer(): Promise<TestServer> {
     ocrEngine: ocr,
     dewarpEngine: dewarp,
     imageConverter: converter,
+    ocrPageTimeoutMs,
   });
   const server = Bun.serve({ port: 0, routes: createApiRoutes(ctx) });
   const url = server.url.toString().replace(/\/$/, "");

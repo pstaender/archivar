@@ -82,6 +82,12 @@ export class TesseractEngine implements OcrEngine {
   }
 }
 
+// Recognizing one image or PDF page normally takes seconds; a worker that hangs must not block the queue forever.
+export const OCR_PAGE_TIMEOUT_MS = 3 * 60_000;
+export const OCR_TIMEOUT_MESSAGE = "Die Texterkennung hat zu lange gedauert und wurde abgebrochen.";
+
+class OcrTimeoutError extends Error {}
+
 export class OcrQueue {
   private queue: { id: number; options: OcrOptions }[] = [];
   private running: Promise<void> | null = null;
@@ -90,7 +96,15 @@ export class OcrQueue {
     private documents: DocumentRepository,
     private imaging: ImagingService,
     private engine: OcrEngine,
+    private pageTimeoutMs = OCR_PAGE_TIMEOUT_MS,
   ) {}
+
+  /** Queues documents left pending or running by a previous server process (the queue only lives in memory). */
+  resume(): number {
+    const ids = this.documents.unfinishedOcrIds();
+    for (const id of ids) this.enqueue(id);
+    return ids.length;
+  }
 
   enqueue(documentId: number, options: OcrOptions = {}): void {
     const queued = this.queue.find((job) => job.id === documentId);
@@ -123,7 +137,7 @@ export class OcrQueue {
       const images = await this.imaging.ocrImages(doc);
       if (images.length === 0) throw new Error("Document type does not support OCR");
       const results: OcrResult[] = [];
-      for (const image of images) results.push(await this.engine.recognize(image));
+      for (const image of images) results.push(await this.recognize(image));
       let removed = 0;
       const lines: OcrTextLine[][] = [];
       const texts = results.map((result) => {
@@ -143,8 +157,25 @@ export class OcrQueue {
     } catch (error) {
       this.documents.setOcrResult(documentId, {
         status: "failed",
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof OcrTimeoutError ? OCR_TIMEOUT_MESSAGE : error instanceof Error ? error.message : String(error),
       });
+    }
+  }
+
+  private async recognize(image: Uint8Array): Promise<OcrResult> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new OcrTimeoutError()), this.pageTimeoutMs);
+    });
+    try {
+      return await Promise.race([this.engine.recognize(image), timeout]);
+    } catch (error) {
+      // The worker may be stuck; a fresh one is started for the next job.
+      // Not awaited: stopping a worker that hangs while starting would hang as well.
+      if (error instanceof OcrTimeoutError) void this.engine.terminate().catch((e) => console.warn("Could not stop the OCR worker:", e));
+      throw error;
+    } finally {
+      clearTimeout(timer);
     }
   }
 }

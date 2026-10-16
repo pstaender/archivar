@@ -33,6 +33,7 @@ export interface ContextOptions {
   ocrEngine: OcrEngine;
   dewarpEngine: DewarpEngine;
   imageConverter?: ImageConverter | null;
+  ocrPageTimeoutMs?: number;
 }
 
 export function createContext(options: ContextOptions): AppContext {
@@ -43,7 +44,7 @@ export function createContext(options: ContextOptions): AppContext {
   const documents = new DocumentRepository(db, folders);
   const stacks = new StackRepository(db, folders);
   const imaging = new ImagingService(storage, options.imageConverter ?? null);
-  const ocr = new OcrQueue(documents, imaging, options.ocrEngine);
+  const ocr = new OcrQueue(documents, imaging, options.ocrEngine, options.ocrPageTimeoutMs);
   const dewarp = options.dewarpEngine;
   const archive = new ArchiveService(documents, stacks, folders, storage, imaging, ocr, dewarp, options.ocrEngine);
 

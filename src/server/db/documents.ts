@@ -105,6 +105,12 @@ export class DocumentRepository {
     return row ? this.hydrate([row])[0]! : null;
   }
 
+  /** Documents whose OCR was queued or running, across all users. */
+  unfinishedOcrIds(): number[] {
+    const rows = this.db.query("SELECT id FROM documents WHERE ocr_status IN ('pending', 'running') ORDER BY id").all() as { id: number }[];
+    return rows.map((row) => row.id);
+  }
+
   getById(id: number): StoredDocument | null {
     const row = this.db.query("SELECT * FROM documents WHERE id = ?").get(id) as DocumentRow | null;
     return row ? this.hydrate([row])[0]! : null;

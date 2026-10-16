@@ -9,6 +9,7 @@ import { ItemCard, itemKey } from "../components/ItemCard";
 import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
 import { useUpload } from "../hooks/upload";
+import { usePolling } from "../hooks/usePolling";
 import { useResource } from "../hooks/useResource";
 import { isOcrBusy } from "../format";
 import { folderHref, useCurrentFolder } from "../routes";
@@ -29,11 +30,7 @@ export function LibraryPage() {
   const items = library.data ?? [];
   const busy = items.some((item) => item.type === "document" && isOcrBusy(item.document));
 
-  useEffect(() => {
-    if (!busy) return;
-    const timer = setInterval(() => void library.reload(), POLL_INTERVAL);
-    return () => clearInterval(timer);
-  }, [busy, library.reload]);
+  usePolling(busy, library.refresh, POLL_INTERVAL);
 
   const toggle = (key: string) =>
     setSelected((current) => {

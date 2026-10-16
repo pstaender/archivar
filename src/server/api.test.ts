@@ -4,6 +4,7 @@ import { PREVIEW_SIZE } from "../shared/preview";
 import type { ArchiveDocument, Folder, LibraryItem, StackWithDocuments } from "../shared/types";
 import { getDocumentProxy } from "unpdf";
 import { makePdf } from "../../test/pdf";
+import { OCR_TIMEOUT_MESSAGE } from "./services/ocr";
 import { derivedKeys } from "./storage";
 import { makeJpeg, startTestServer, type TestServer, uploadForm } from "../../test/server";
 
@@ -186,6 +187,41 @@ describe("documents", () => {
 });
 
 describe("ocr", () => {
+  const getDocument = async (id: number) => (await (await server.api(`/api/documents/${id}`)).json()) as ArchiveDocument;
+
+  test("gives up on a page that takes too long and keeps processing the queue", async () => {
+    await server.close();
+    server = await startTestServer({ ocrPageTimeoutMs: 30 });
+    const stuck = await uploadImage("haengt.jpg");
+    const next = await uploadImage("danach.jpg");
+    server.ocr.hang = true;
+    await post(`/api/documents/${stuck.id}/ocr`, {});
+    await server.ctx.ocr.idle();
+    expect(await getDocument(stuck.id)).toMatchObject({ ocrStatus: "failed", ocrError: OCR_TIMEOUT_MESSAGE });
+    expect(server.ocr.terminations).toBe(1);
+
+    server.ocr.hang = false;
+    await post(`/api/documents/${next.id}/ocr`, {});
+    await server.ctx.ocr.idle();
+    expect(await getDocument(next.id)).toMatchObject({ ocrStatus: "done", ocrText: "Hallo Welt" });
+  });
+
+  test("resumes OCR that a previous server process left unfinished", async () => {
+    const running = await uploadImage("laufend.jpg");
+    const pending = await uploadImage("wartend.jpg");
+    const done = await uploadImage("fertig.jpg");
+    server.ctx.documents.setOcrResult(running.id, { status: "running" });
+    server.ctx.documents.setOcrResult(pending.id, { status: "pending" });
+    server.ctx.documents.setOcrResult(done.id, { status: "done", text: "alt" });
+
+    expect(server.ctx.ocr.resume()).toBe(2);
+    await server.ctx.ocr.idle();
+    expect(server.ocr.calls).toBe(2);
+    expect((await getDocument(running.id)).ocrStatus).toBe("done");
+    expect((await getDocument(pending.id)).ocrStatus).toBe("done");
+    expect((await getDocument(done.id)).ocrText).toBe("alt");
+  });
+
   test("runs OCR in the background and stores the result", async () => {
     const doc = await uploadImage();
     const res = await server.api(`/api/documents/${doc.id}/ocr`, { method: "POST" });
