@@ -5,7 +5,7 @@ Archive photos, scans, documents and PDFs in the browser – on desktop and on t
 - Upload one or many files via button or drag & drop, or take a photo with the phone camera
 - Edit images: crop, perspective correction, rotation, brightness, contrast, saturation, hue, grayscale, black & white, noise removal, auto levels – with live preview
 - Automatic dewarping of curved/bent pages with [UVDoc](https://github.com/tanguymagne/UVDoc), running server-side via ONNX Runtime
-- "Automatisch SW": finds brightness, contrast and threshold for black and white; clicking again cycles through variants (best guess, darker, lighter). Uploads with "Texterkennung: Nach dem Upload erkennen" are dewarped and converted automatically before OCR
+- "Automatisch SW": finds brightness, contrast and threshold for black and white; clicking again cycles through variants (best guess, darker, lighter). Uploads with "Texterkennung: Nach dem Upload erkennen" are converted automatically before OCR, and also dewarped if "Automatisch entzerren" is switched on (off by default)
 - Text recognition (OCR) with Tesseract.js, editable recognized text, full-text search. Unsure, probably misread text parts are left out unless "Alle Textteile erkennen" is enabled
 - Group documents into ordered stacks with a title
 - Hierarchical folders as labels (e.g. `wichtig/2026`)

@@ -1,7 +1,9 @@
 import { Menu, Search, X } from "../icons";
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from "react-router";
+import { api } from "../api";
 import { useUpload } from "../hooks/upload";
+import { useResource } from "../hooks/useResource";
 import { isLibraryPath } from "../routes";
 import { DropZone } from "./DropZone";
 import { FolderTree } from "./FolderTree";
@@ -87,7 +89,8 @@ function SearchField() {
 }
 
 function SidebarFooter() {
-  const { autoOcr, setAutoOcr, ocrAllText, setOcrAllText } = useUpload();
+  const { autoOcr, setAutoOcr, ocrAllText, setOcrAllText, autoDewarp, setAutoDewarp } = useUpload();
+  const config = useResource(() => api.config(), []);
   return (
     <div className="sidebar__footer">
       <h3>Texterkennung</h3>
@@ -96,6 +99,13 @@ function SidebarFooter() {
         <span className="switch__track" aria-hidden />
         <span>Nach dem Upload erkennen</span>
       </label>
+      {autoOcr && config.data?.dewarpAvailable && (
+        <label className="switch" title="Fotos vor der Texterkennung automatisch entzerren">
+          <input type="checkbox" checked={autoDewarp} onChange={(e) => setAutoDewarp(e.target.checked)} />
+          <span className="switch__track" aria-hidden />
+          <span>Automatisch entzerren</span>
+        </label>
+      )}
       <label className="switch" title="Auch unsichere, vermutlich fehlerhafte Textteile übernehmen">
         <input type="checkbox" checked={ocrAllText} onChange={(e) => setOcrAllText(e.target.checked)} />
         <span className="switch__track" aria-hidden />

@@ -31,6 +31,7 @@ export interface UploadOptions {
   stackId?: number;
   runOcr?: boolean;
   ocrAllText?: boolean;
+  autoDewarp?: boolean;
 }
 
 export interface UploadFile {
@@ -98,7 +99,7 @@ export class ArchiveService {
         metadata: hasEmbeddedText ? { ...inspection.metadata, textSource: "pdf" } : inspection.metadata,
       });
       if (options.folders?.length) this.folders.setForDocument(userId, doc.id, options.folders);
-      if (options.runOcr && doc.kind === "image") doc = await this.autoEnhance(doc);
+      if (options.runOcr && doc.kind === "image") doc = await this.autoEnhance(doc, options.autoDewarp === true);
       const size = await this.imaging.renderDerivatives(doc);
       if (size && !isDefaultEditSettings(doc.editSettings)) this.documents.update(userId, doc.id, size);
       doc = this.documents.get(userId, doc.id)!;
@@ -170,11 +171,11 @@ export class ArchiveService {
     return autoBwVariants(await this.imaging.loadOriginal(doc), normalizeEditSettings(settings, doc.editSettings));
   }
 
-  private async autoEnhance(doc: StoredDocument): Promise<StoredDocument> {
+  private async autoEnhance(doc: StoredDocument, dewarp: boolean): Promise<StoredDocument> {
     try {
       const image = await this.imaging.loadOriginal(doc);
       let settings = doc.editSettings;
-      if (this.dewarp.available()) settings = { ...settings, dewarp: toDewarpGrid(await this.dewarp.predict(image.bitmap), settings.rotation) };
+      if (dewarp && this.dewarp.available()) settings = { ...settings, dewarp: toDewarpGrid(await this.dewarp.predict(image.bitmap), settings.rotation) };
       const [best] = autoBwVariants(image, settings);
       if (best) settings = { ...settings, ...best, colorMode: "bw" };
       return this.documents.update(doc.userId, doc.id, { editSettings: normalizeEditSettings(settings) }) ?? doc;

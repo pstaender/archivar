@@ -265,8 +265,14 @@ describe("automatic black and white", () => {
     expect((await post(`/api/documents/${doc!.id}/auto-bw`, {})).status).toBe(400);
   });
 
-  test("uploads with OCR are dewarped and turned black and white", async () => {
+  test("uploads with OCR are turned black and white but not dewarped by default", async () => {
     const doc = await uploadImage("x.jpg", { ocr: "true" });
+    expect(doc.editSettings).toMatchObject({ colorMode: "bw", dewarp: null });
+    expect(server.dewarp.inputs).toHaveLength(0);
+  });
+
+  test("uploads with OCR and dewarp are dewarped and turned black and white", async () => {
+    const doc = await uploadImage("x.jpg", { ocr: "true", dewarp: "true" });
     expect(doc.editSettings.colorMode).toBe("bw");
     expect(doc.editSettings.dewarp?.rows).toBe(45);
     expect(server.dewarp.inputs).toHaveLength(1);
@@ -276,7 +282,7 @@ describe("automatic black and white", () => {
 
   test("without a model uploads with OCR are only turned black and white", async () => {
     server.dewarp.isAvailable = false;
-    const doc = await uploadImage("x.jpg", { ocr: "true" });
+    const doc = await uploadImage("x.jpg", { ocr: "true", dewarp: "true" });
     expect(doc.editSettings).toMatchObject({ colorMode: "bw", dewarp: null });
   });
 

@@ -32,10 +32,19 @@ describe("api client", () => {
     expect(upload!.body.get("folders")).toBe('["x"]');
     expect(upload!.body.get("stackId")).toBe("4");
     expect(upload!.body.get("ocr")).toBe("true");
+    expect(upload!.body.get("dewarp")).toBeNull();
     upload!.progress(50, 100);
     upload!.respond(201, []);
     expect(await result).toEqual([]);
     expect(progress).toEqual([0.5]);
+    xhr.restore();
+  });
+
+  test("asks for automatic dewarping only when enabled", async () => {
+    const xhr = mockXhr();
+    void api.upload([new File(["a"], "a.jpg")], { ocr: true, autoDewarp: true });
+    expect(xhr.uploads[0]!.body.get("dewarp")).toBe("true");
+    xhr.uploads[0]!.respond(201, []);
     xhr.restore();
   });
 

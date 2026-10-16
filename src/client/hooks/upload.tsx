@@ -9,6 +9,7 @@ import { useToast } from "./toast";
 
 const AUTO_OCR_KEY = "archivar.autoOcr";
 const OCR_ALL_TEXT_KEY = "archivar.ocrAllText";
+const AUTO_DEWARP_KEY = "archivar.autoDewarp";
 
 export interface UploadProgress {
   done: number;
@@ -33,6 +34,8 @@ interface UploadApi {
   setAutoOcr: (value: boolean) => void;
   ocrAllText: boolean;
   setOcrAllText: (value: boolean) => void;
+  autoDewarp: boolean;
+  setAutoDewarp: (value: boolean) => void;
   upload: (files: File[], options?: UploadOptions) => Promise<ArchiveDocument[]>;
   uploadToCurrentTarget: (files: File[]) => Promise<ArchiveDocument[]>;
 }
@@ -70,6 +73,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   const [version, setVersion] = useState(0);
   const [autoOcr, setAutoOcr] = useStoredFlag(AUTO_OCR_KEY, true);
   const [ocrAllText, setOcrAllText] = useStoredFlag(OCR_ALL_TEXT_KEY, false);
+  const [autoDewarp, setAutoDewarp] = useStoredFlag(AUTO_DEWARP_KEY, false);
   const stats = useRef<UploadStats | null>(null);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
@@ -109,7 +113,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
           s.currentBytes = 0;
           publish();
           try {
-            const uploaded = await api.upload([file], { ocr: autoOcr, ocrAllText, ...options }, (loaded, total) => {
+            const uploaded = await api.upload([file], { ocr: autoOcr, ocrAllText, autoDewarp: autoOcr && autoDewarp, ...options }, (loaded, total) => {
               s.currentBytes = file.size * (loaded / total);
               publish();
             });
@@ -144,7 +148,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       queue.current = result.catch(() => undefined);
       return result;
     },
-    [autoOcr, ocrAllText, toast, reloadFolders, publish],
+    [autoOcr, ocrAllText, autoDewarp, toast, reloadFolders, publish],
   );
 
   const stackMatch = matchPath("/stacks/:id", location.pathname);
@@ -160,8 +164,8 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ progress, version, autoOcr, setAutoOcr, ocrAllText, setOcrAllText, upload, uploadToCurrentTarget }),
-    [progress, version, autoOcr, setAutoOcr, ocrAllText, setOcrAllText, upload, uploadToCurrentTarget],
+    () => ({ progress, version, autoOcr, setAutoOcr, ocrAllText, setOcrAllText, autoDewarp, setAutoDewarp, upload, uploadToCurrentTarget }),
+    [progress, version, autoOcr, setAutoOcr, ocrAllText, setOcrAllText, autoDewarp, setAutoDewarp, upload, uploadToCurrentTarget],
   );
 
   return <UploadContext.Provider value={value}>{children}</UploadContext.Provider>;
