@@ -124,7 +124,7 @@ describe("useLeaveGuard", () => {
 describe("UnsavedChangesDialog", () => {
   test("offers saving, discarding and staying", () => {
     const handlers = { onSave: mock(), onDiscard: mock(), onStay: mock() };
-    render(<UnsavedChangesDialog open saving={false} {...handlers} />);
+    render(<UnsavedChangesDialog open {...handlers} />);
     expect(screen.getByText("Die Änderungen an diesem Bild sind noch nicht gespeichert.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
     fireEvent.click(screen.getByRole("button", { name: "Verwerfen" }));
@@ -132,11 +132,5 @@ describe("UnsavedChangesDialog", () => {
     expect(handlers.onSave).toHaveBeenCalledTimes(1);
     expect(handlers.onDiscard).toHaveBeenCalledTimes(1);
     expect(handlers.onStay).toHaveBeenCalledTimes(1);
-  });
-
-  test("disables the choices while saving", () => {
-    render(<UnsavedChangesDialog open saving onSave={mock()} onDiscard={mock()} onStay={mock()} />);
-    expect(screen.getByRole("button", { name: /Speichern/ }).hasAttribute("disabled")).toBe(true);
-    expect(screen.getByRole("button", { name: "Verwerfen" }).hasAttribute("disabled")).toBe(true);
   });
 });

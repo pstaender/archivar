@@ -6,6 +6,7 @@ import { languageName, OCR_LANGUAGES } from "../../shared/languages";
 import type { ArchiveDocument, BwVariant, EditSettings } from "../../shared/types";
 import { api, assetUrl, type OcrRequest } from "../api";
 import { saveBlob } from "../download";
+import { saveEditSettings, useEditSaving, whenEditsSaved } from "../editSaves";
 import { ConfirmDialog } from "../components/Dialog";
 import { EditableTitle } from "../components/EditableTitle";
 import { FolderPicker } from "../components/FolderPicker";
@@ -64,9 +65,9 @@ export function DocumentPage() {
   const [tab, setTab] = useState<Tab>("text");
   const [draft, setDraft] = useState<EditSettings>(DEFAULT_EDIT_SETTINGS);
   const [mode, setMode] = useState<GeometryMode>("none");
-  const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const processed = useProcessedPreview(doc?.id, draft, toast.error);
+  const saving = useEditSaving(doc?.id);
 
   useEffect(() => {
     if (!doc) return;
@@ -112,15 +113,23 @@ export function DocumentPage() {
     }
   };
 
-  const save = async () => {
-    setSaving(true);
-    const updated = await update({ editSettings: draft });
-    setSaving(false);
-    if (updated) {
-      setMode("none");
-      toast.success("Bearbeitung gespeichert");
-    }
-    return updated !== null;
+  // The page treats the settings as saved right away; the server renders the image in the background.
+  const save = () => {
+    const previous = doc.editSettings;
+    const settings = draft;
+    const sameDoc = (current: ArchiveDocument | undefined): current is ArchiveDocument => current?.id === doc.id;
+    resource.setData((current) => (sameDoc(current) ? { ...current, editSettings: settings } : current!));
+    setMode("none");
+    saveEditSettings(doc.id, settings).then(
+      ({ doc: saved, latest }) => {
+        if (latest) resource.setData((current) => (sameDoc(current) ? saved : current!));
+        toast.success(`Bearbeitung von „${documentLabel(saved)}“ gespeichert`);
+      },
+      (error: Error & { latest?: boolean }) => {
+        if (error.latest) resource.setData((current) => (sameDoc(current) ? { ...current, editSettings: previous } : current!));
+        toast.error(error);
+      },
+    );
   };
 
   const selectTab = (next: Tab) => (tab === "edit" && next !== tab ? leave.guard(() => setTab(next)) : setTab(next));
@@ -198,8 +207,9 @@ export function DocumentPage() {
   };
 
   const runOcr = async ({ allText = ocrAllText, languages }: OcrRequest = {}) => {
-    if (dirty) await save();
+    if (dirty) save();
     try {
+      await whenEditsSaved(doc.id);
       resource.setData(await api.runOcr(doc.id, { allText, languages }));
     } catch (error) {
       toast.error(error);
@@ -323,11 +333,15 @@ export function DocumentPage() {
                     Zurücksetzen
                   </button>
                   <span className="spacer" />
-                  <button type="button" className="btn btn--sm" onClick={() => setDraft(doc.editSettings)} disabled={!dirty || saving}>
+                  {saving && (
+                    <span className="muted small saving-hint" role="status">
+                      <Loader size={14} className="spin" /> Speichert …
+                    </span>
+                  )}
+                  <button type="button" className="btn btn--sm" onClick={() => setDraft(doc.editSettings)} disabled={!dirty}>
                     Verwerfen
                   </button>
-                  <button type="button" className="btn btn--sm btn--primary" onClick={save} disabled={!dirty || saving}>
-                    {saving && <Loader size={16} className="spin" />}
+                  <button type="button" className="btn btn--sm btn--primary" onClick={save} disabled={!dirty}>
                     Speichern
                   </button>
                 </div>
@@ -350,9 +364,9 @@ export function DocumentPage() {
       />
       <UnsavedChangesDialog
         open={leave.asking}
-        saving={saving}
-        onSave={async () => {
-          if (await save()) leave.proceed();
+        onSave={() => {
+          save();
+          leave.proceed();
         }}
         onDiscard={() => {
           setDraft(doc.editSettings);
@@ -458,6 +472,7 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
   const exportPdf = async () => {
     setExporting(true);
     try {
+      await whenEditsSaved(doc.id);
       const { blob, filename } = await api.exportPdf(doc.id, text);
       saveBlob(blob, filename);
     } catch (error) {

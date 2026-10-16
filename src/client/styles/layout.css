@@ -1173,3 +1173,10 @@ a.folder-tree__row .folder-tree__toggle {
     gap: 0;
   }
 }
+
+.saving-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}

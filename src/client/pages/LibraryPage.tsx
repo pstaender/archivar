@@ -10,6 +10,7 @@ import { ItemCard, itemKey } from "../components/ItemCard";
 import { SortableGrid } from "../components/SortableGrid";
 import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
+import { useRefreshOnEditSave, whenEditsSaved } from "../editSaves";
 import { useRefreshOnUpload, useUpload } from "../hooks/upload";
 import { usePolling } from "../hooks/usePolling";
 import { useResource } from "../hooks/useResource";
@@ -66,6 +67,7 @@ export function LibraryPage() {
   const [sort, setSort] = useStoredSort(folder ? "folder" : "overview");
   const library = useResource(() => api.library({ folder, q, sort }), [folder, q, sort]);
   useRefreshOnUpload(library.refresh);
+  useRefreshOnEditSave(library.refresh);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => setSelected(new Set()), [folder, q]);
@@ -267,6 +269,7 @@ export function SelectionBar({ items, onClear, onDone }: SelectionBarProps) {
       setExporting(true);
       try {
         const title = items.length === 1 ? (items[0]!.type === "stack" ? items[0]!.stack.title : documentLabel(items[0]!.document)) : undefined;
+        await whenEditsSaved();
         const { blob, filename } = await api.exportCombinedPdf(documentIds, title);
         saveBlob(blob, filename);
       } finally {

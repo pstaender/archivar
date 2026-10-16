@@ -11,6 +11,7 @@ import { uploadAccept } from "../../shared/uploads";
 import { useConfig } from "../hooks/config";
 import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
+import { useRefreshOnEditSave } from "../editSaves";
 import { useRefreshOnUpload, useUpload } from "../hooks/upload";
 import { usePolling } from "../hooks/usePolling";
 import { useResource } from "../hooks/useResource";
@@ -27,6 +28,7 @@ export function StackPage() {
   const { upload } = useUpload();
   const stack = useResource(() => api.stack(id), [id]);
   useRefreshOnUpload(stack.refresh);
+  useRefreshOnEditSave(stack.refresh);
   const [confirm, setConfirm] = useState<"dissolve" | "delete" | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 

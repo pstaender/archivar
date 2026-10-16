@@ -1,15 +1,13 @@
-import { Loader } from "../icons";
 import { Dialog } from "./Dialog";
 
 interface UnsavedChangesDialogProps {
   open: boolean;
-  saving: boolean;
   onSave: () => void;
   onDiscard: () => void;
   onStay: () => void;
 }
 
-export function UnsavedChangesDialog({ open, saving, onSave, onDiscard, onStay }: UnsavedChangesDialogProps) {
+export function UnsavedChangesDialog({ open, onSave, onDiscard, onStay }: UnsavedChangesDialogProps) {
   return (
     <Dialog
       open={open}
@@ -17,15 +15,14 @@ export function UnsavedChangesDialog({ open, saving, onSave, onDiscard, onStay }
       onClose={onStay}
       footer={
         <>
-          <button type="button" className="btn" onClick={onStay} disabled={saving}>
+          <button type="button" className="btn" onClick={onStay}>
             Abbrechen
           </button>
           <span className="spacer" />
-          <button type="button" className="btn" onClick={onDiscard} disabled={saving}>
+          <button type="button" className="btn" onClick={onDiscard}>
             Verwerfen
           </button>
-          <button type="button" className="btn btn--primary" onClick={onSave} disabled={saving}>
-            {saving && <Loader size={16} className="spin" />}
+          <button type="button" className="btn btn--primary" onClick={onSave}>
             Speichern
           </button>
         </>
