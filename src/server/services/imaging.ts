@@ -3,8 +3,10 @@ import { isDefaultEditSettings } from "../../shared/editSettings";
 import { isEditableImageType, Jimp, type JimpImage } from "../../shared/image/jimp";
 import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
 import type { DocumentKind } from "../../shared/types";
+import { convertibleTypeForExtension } from "../../shared/uploads";
 import type { StoredDocument } from "../db/documents";
 import { derivedKeys, type FileStorage } from "../storage";
+import type { ImageConverter } from "./magick";
 import { inspectPdf, renderPdfPage } from "./pdf";
 
 export const PREVIEW_SIZE = 2048;
@@ -26,13 +28,7 @@ export interface UploadInspection {
 export function detectMimeType(name: string, declared: string): string {
   const type = declared.split(";")[0]!.trim().toLowerCase();
   if (type && type !== "application/octet-stream") return type;
-  return Bun.file(name).type.split(";")[0]!;
-}
-
-export function kindForMimeType(mimeType: string): DocumentKind {
-  if (isEditableImageType(mimeType)) return "image";
-  if (mimeType === "application/pdf") return "pdf";
-  return "file";
+  return convertibleTypeForExtension(name) ?? Bun.file(name).type.split(";")[0]!;
 }
 
 export function extensionFor(name: string, mimeType: string): string {
@@ -46,16 +42,34 @@ async function toJpeg(image: JimpImage, quality = JPEG_QUALITY): Promise<Uint8Ar
 }
 
 export class ImagingService {
-  constructor(private storage: FileStorage) {}
+  constructor(
+    private storage: FileStorage,
+    private converter: ImageConverter | null = null,
+  ) {}
+
+  convertibleTypes(): string[] {
+    return this.converter?.types() ?? [];
+  }
+
+  kindForMimeType(mimeType: string): DocumentKind {
+    if (isEditableImageType(mimeType) || this.convertibleTypes().includes(mimeType)) return "image";
+    if (mimeType === "application/pdf") return "pdf";
+    return "file";
+  }
+
+  private async decode(data: Uint8Array, mimeType: string): Promise<JimpImage> {
+    if (isEditableImageType(mimeType) || !this.converter) return (await Jimp.read(Buffer.from(data))) as JimpImage;
+    return (await Jimp.read(Buffer.from(await this.converter.toPng(data, mimeType)))) as JimpImage;
+  }
 
   async inspect(data: Uint8Array, name: string, declaredType: string): Promise<UploadInspection> {
     const mimeType = detectMimeType(name, declaredType);
-    const kind = kindForMimeType(mimeType);
+    const kind = this.kindForMimeType(mimeType);
     const base: UploadInspection = { kind, mimeType, width: null, height: null, pageCount: null, text: "", metadata: {} };
 
     if (kind === "image") {
       try {
-        const image = await Jimp.read(Buffer.from(data));
+        const image = await this.decode(data, mimeType);
         const { width, height } = image.bitmap;
         return { ...base, width, height, metadata: { originalWidth: width, originalHeight: height } };
       } catch (error) {
@@ -74,8 +88,13 @@ export class ImagingService {
   }
 
   async loadOriginal(doc: StoredDocument): Promise<JimpImage> {
-    const data = await this.storage.read(doc.storageKey);
-    return (await Jimp.read(Buffer.from(data))) as JimpImage;
+    if (isEditableImageType(doc.mimeType)) return (await Jimp.read(Buffer.from(await this.storage.read(doc.storageKey)))) as JimpImage;
+    // Converting with ImageMagick is slow, so the decoded original is kept next to the other derived files.
+    const key = derivedKeys.source(doc.id);
+    if (await this.storage.exists(key)) return (await Jimp.read(Buffer.from(await this.storage.read(key)))) as JimpImage;
+    const image = await this.decode(await this.storage.read(doc.storageKey), doc.mimeType);
+    await this.storage.write(key, new Uint8Array(await image.getBuffer("image/png")));
+    return image;
   }
 
   async createPreview(doc: StoredDocument): Promise<void> {

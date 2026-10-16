@@ -10,6 +10,7 @@ import { FolderPicker } from "../components/FolderPicker";
 import { type AutoBwState, EditControls } from "../editor/EditControls";
 import type { GeometryMode } from "../editor/geometry";
 import { ImageEditor } from "../editor/ImageEditor";
+import { useConfig } from "../hooks/config";
 import { useFolders } from "../hooks/folders";
 import { useUpload } from "../hooks/upload";
 import { useToast } from "../hooks/toast";
@@ -41,7 +42,7 @@ export function DocumentPage() {
   const { reload: reloadFolders } = useFolders();
   const { ocrAllText } = useUpload();
   const resource = useResource(() => api.document(id), [id]);
-  const config = useResource(() => api.config(), []);
+  const config = useConfig();
   const [dewarping, setDewarping] = useState(false);
   const [bwCache, setBwCache] = useState<{ key: string; variants: BwVariant[] } | null>(null);
   const [bwLoading, setBwLoading] = useState(false);
@@ -248,7 +249,7 @@ export function DocumentPage() {
                   onChange={setDraft}
                   mode={mode}
                   onModeChange={setMode}
-                  dewarpAvailable={config.data?.dewarpAvailable}
+                  dewarpAvailable={config.dewarpAvailable}
                   dewarping={dewarping}
                   onAutoDewarp={autoDewarp}
                   autoBw={bwState}

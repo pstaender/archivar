@@ -5,6 +5,7 @@ import { createContext, type AppContext } from "../src/server/context";
 import { openDatabase } from "../src/server/db/database";
 import { createApiRoutes } from "../src/server/routes";
 import type { DewarpEngine } from "../src/server/services/dewarp";
+import type { ImageConverter } from "../src/server/services/magick";
 import type { OcrEngine, OcrResult } from "../src/server/services/ocr";
 import type { RawImage } from "../src/shared/image/raw";
 import { createImage } from "../src/shared/image/jimp";
@@ -34,6 +35,20 @@ export function identityGrid(columns = 31, rows = 45): Float32Array {
   return points;
 }
 
+// Pretends to decode WebP; tests upload PNG bytes declared as image/webp.
+export class FakeImageConverter implements ImageConverter {
+  calls: string[] = [];
+
+  types(): string[] {
+    return ["image/webp"];
+  }
+
+  async toPng(data: Uint8Array, mimeType: string): Promise<Uint8Array> {
+    this.calls.push(mimeType);
+    return data;
+  }
+}
+
 export class FakeDewarpEngine implements DewarpEngine {
   isAvailable = true;
   inputs: RawImage[] = [];
@@ -53,6 +68,7 @@ export interface TestServer {
   ctx: AppContext;
   ocr: FakeOcrEngine;
   dewarp: FakeDewarpEngine;
+  converter: FakeImageConverter;
   api(path: string, init?: RequestInit): Promise<Response>;
   close(): Promise<void>;
 }
@@ -61,7 +77,14 @@ export async function startTestServer(): Promise<TestServer> {
   const dir = await mkdtemp(join(tmpdir(), "archivar-test-"));
   const ocr = new FakeOcrEngine();
   const dewarp = new FakeDewarpEngine();
-  const ctx = createContext({ db: openDatabase(":memory:"), storageDir: join(dir, "files"), ocrEngine: ocr, dewarpEngine: dewarp });
+  const converter = new FakeImageConverter();
+  const ctx = createContext({
+    db: openDatabase(":memory:"),
+    storageDir: join(dir, "files"),
+    ocrEngine: ocr,
+    dewarpEngine: dewarp,
+    imageConverter: converter,
+  });
   const server = Bun.serve({ port: 0, routes: createApiRoutes(ctx) });
   const url = server.url.toString().replace(/\/$/, "");
   return {
@@ -69,6 +92,7 @@ export async function startTestServer(): Promise<TestServer> {
     ctx,
     ocr,
     dewarp,
+    converter,
     api: (path, init) => fetch(`${url}${path}`, init),
     async close() {
       await ctx.ocr.idle();

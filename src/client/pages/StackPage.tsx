@@ -7,7 +7,8 @@ import { ConfirmDialog } from "../components/Dialog";
 import { EditableTitle } from "../components/EditableTitle";
 import { FolderPicker } from "../components/FolderPicker";
 import { documentThumbnail, Thumbnail } from "../components/ItemCard";
-import { UPLOAD_ACCEPT } from "../../shared/uploads";
+import { uploadAccept } from "../../shared/uploads";
+import { useConfig } from "../hooks/config";
 import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
 import { useUpload } from "../hooks/upload";
@@ -19,6 +20,7 @@ export function StackPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const { reload: reloadFolders } = useFolders();
+  const { convertibleImageTypes } = useConfig();
   const { upload, version } = useUpload();
   const stack = useResource(() => api.stack(id), [id, version]);
   const [confirm, setConfirm] = useState<"dissolve" | "delete" | null>(null);
@@ -106,7 +108,7 @@ export function StackPage() {
             ref={fileInput}
             type="file"
             multiple
-            accept={UPLOAD_ACCEPT}
+            accept={uploadAccept(convertibleImageTypes)}
             hidden
             onChange={(e) => {
               const files = Array.from(e.currentTarget.files ?? []);

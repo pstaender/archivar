@@ -34,7 +34,7 @@ export function createApiRoutes(ctx: AppContext) {
     },
 
     "/api/config": {
-      GET: handle(() => json({ dewarpAvailable: ctx.dewarp.available() } satisfies AppConfig)),
+      GET: handle(() => json({ dewarpAvailable: ctx.dewarp.available(), convertibleImageTypes: ctx.imaging.convertibleTypes() } satisfies AppConfig)),
     },
 
     "/api/library": {

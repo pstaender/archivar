@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isSupportedUpload, UPLOAD_ACCEPT } from "./uploads";
+import { convertibleTypeForExtension, isSupportedUpload, uploadAccept } from "./uploads";
 
 describe("isSupportedUpload", () => {
   test("accepts editable images and PDFs", () => {
@@ -20,9 +20,25 @@ describe("isSupportedUpload", () => {
     expect(isSupportedUpload({ name: "ohne-endung", type: "" })).toBe(false);
   });
 
+  test("accepts convertible formats only when the server can convert them", () => {
+    const heic = { name: "foto.heic", type: "image/heic" };
+    expect(isSupportedUpload(heic, ["image/heic"])).toBe(true);
+    expect(isSupportedUpload({ name: "foto.HEIC", type: "" }, ["image/heic"])).toBe(true);
+    expect(isSupportedUpload({ name: "bild.webp", type: "image/webp" }, ["image/heic"])).toBe(false);
+  });
+
   test("the accept attribute lists types and extensions", () => {
-    expect(UPLOAD_ACCEPT).toContain("application/pdf");
-    expect(UPLOAD_ACCEPT).toContain(".tiff");
-    expect(UPLOAD_ACCEPT).not.toContain("image/*");
+    const accept = uploadAccept();
+    expect(accept).toContain("application/pdf");
+    expect(accept).toContain(".tiff");
+    expect(accept).not.toContain("image/*");
+    expect(accept).not.toContain("heic");
+    expect(uploadAccept(["image/heic", "image/jxl"])).toContain("image/heic,image/jxl");
+    expect(uploadAccept(["image/heic"])).toContain(".heic");
+  });
+
+  test("maps convertible extensions to their type", () => {
+    expect(convertibleTypeForExtension("bild.JXL")).toBe("image/jxl");
+    expect(convertibleTypeForExtension("bild.jpg")).toBeNull();
   });
 });

@@ -29,6 +29,8 @@ bun run setup:uvdoc
 
 Without `models/uvdoc.onnx` the app works normally, the "Automatisch entzerren" button is just hidden.
 
+Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install imagemagick`, `apt install imagemagick`), HEIC/HEIF, AVIF, WebP, JPEG XL and JPEG 2000 can be uploaded, edited and OCRed as well. The formats your ImageMagick build can read are detected at startup.
+
 ## Configuration
 
 | Variable                 | Default                    | Description                    |
@@ -45,7 +47,7 @@ Without `models/uvdoc.onnx` the app works normally, the "Automatisch entzerren" 
 | Method | Path                                | Description                                   |
 | ------ | ----------------------------------- | --------------------------------------------- |
 | GET    | `/api/me`                           | Current user                                  |
-| GET    | `/api/config`                       | Feature flags (`dewarpAvailable`)             |
+| GET    | `/api/config`                       | Feature flags (`dewarpAvailable`, `convertibleImageTypes`) |
 | GET    | `/api/library?folder=&q=`           | Stacks and loose documents                    |
 | GET    | `/api/documents?folder=&q=&stackId=`| Documents                                     |
 | POST   | `/api/documents`                    | Upload (`multipart`: `files[]`, `folders`, `stackId`, `ocr`) |

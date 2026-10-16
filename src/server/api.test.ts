@@ -57,6 +57,24 @@ describe("documents", () => {
     expect(doc).toMatchObject({ mimeType: "image/jpeg", kind: "image" });
   });
 
+  test("converts other image formats with ImageMagick and runs OCR on them", async () => {
+    const [doc] = await upload([{ name: "foto.webp", data: await makeJpeg(80, 60), type: "image/webp" }], { ocr: "true" });
+    expect(doc).toMatchObject({ mimeType: "image/webp", kind: "image", width: 80, height: 60 });
+    await server.ctx.ocr.idle();
+    expect(server.ocr.calls).toBe(1);
+    expect((await server.api(`/api/documents/${doc!.id}/file`)).headers.get("content-type")).toStartWith("image/webp");
+
+    const calls = server.converter.calls.length;
+    await patch(`/api/documents/${doc!.id}`, { editSettings: { rotation: 90 } });
+    expect(server.converter.calls.length).toBe(calls);
+  });
+
+  test("keeps formats ImageMagick cannot read as plain files", async () => {
+    const [doc] = await upload([{ name: "foto.heic", data: new Uint8Array([1, 2, 3]) }]);
+    expect(doc).toMatchObject({ mimeType: "image/heic", kind: "file" });
+    expect(server.converter.calls).toEqual([]);
+  });
+
   test("rejects uploads without files", async () => {
     const res = await server.api("/api/documents", { method: "POST", body: new FormData() });
     expect(res.status).toBe(400);
@@ -213,9 +231,9 @@ describe("ocr", () => {
 
 describe("dewarp", () => {
   test("reports whether the model is available", async () => {
-    expect(await (await server.api("/api/config")).json()).toEqual({ dewarpAvailable: true });
+    expect(await (await server.api("/api/config")).json()).toEqual({ dewarpAvailable: true, convertibleImageTypes: ["image/webp"] });
     server.dewarp.isAvailable = false;
-    expect(await (await server.api("/api/config")).json()).toEqual({ dewarpAvailable: false });
+    expect(await (await server.api("/api/config")).json()).toEqual({ dewarpAvailable: false, convertibleImageTypes: ["image/webp"] });
   });
 
   test("predicts a grid on the rotated original", async () => {

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { act, fireEvent, screen } from "@testing-library/react";
 import { makeDocument, mockFetch, mockXhr, renderApp, type FetchMock } from "../../../test/client";
-import { UPLOAD_ACCEPT } from "../../shared/uploads";
+import { uploadAccept } from "../../shared/uploads";
 import { UploadButtons } from "./UploadButtons";
 import { UploadProgress } from "./UploadProgress";
 
@@ -12,8 +12,11 @@ afterEach(() => {
   xhr.restore();
 });
 
-async function setup() {
-  fetchMock = mockFetch({ "GET /api/folders": () => [] });
+async function setup(convertibleImageTypes: string[] = []) {
+  fetchMock = mockFetch({
+    "GET /api/folders": () => [],
+    "GET /api/config": () => ({ dewarpAvailable: false, convertibleImageTypes }),
+  });
   xhr = mockXhr();
   await renderApp(
     <>
@@ -29,7 +32,19 @@ const file = (name: string, type: string) => new File(["1234"], name, { type });
 describe("UploadButtons", () => {
   test("only offers supported file types", async () => {
     const input = await setup();
-    expect(input.accept).toBe(UPLOAD_ACCEPT);
+    expect(input.accept).toBe(uploadAccept());
+    expect(input.accept).not.toContain("heic");
+  });
+
+  test("also offers formats the server can convert", async () => {
+    const input = await setup(["image/heic"]);
+    expect(input.accept).toBe(uploadAccept(["image/heic"]));
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file("foto.heic", "image/heic"), file("bild.webp", "image/webp")] } });
+    });
+    expect(xhr.uploads).toHaveLength(1);
+    expect((xhr.uploads[0]!.body.get("files") as File).name).toBe("foto.heic");
+    await act(async () => xhr.uploads[0]!.respond(201, [makeDocument()]));
   });
 
   test("skips unsupported files and shows the progress per file", async () => {

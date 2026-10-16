@@ -36,6 +36,7 @@ export class FileStorage {
 
 export const derivedKeys = {
   dir: (documentId: number) => `derived/${documentId}`,
+  source: (documentId: number) => `derived/${documentId}/source.png`,
   preview: (documentId: number) => `derived/${documentId}/preview.jpg`,
   processed: (documentId: number) => `derived/${documentId}/processed.jpg`,
   thumbnail: (documentId: number) => `derived/${documentId}/thumbnail.jpg`,

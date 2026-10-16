@@ -1,10 +1,12 @@
 import { Camera, Loader, Upload } from "../icons";
 import { useRef } from "react";
-import { UPLOAD_ACCEPT } from "../../shared/uploads";
+import { uploadAccept } from "../../shared/uploads";
+import { useConfig } from "../hooks/config";
 import { useUpload } from "../hooks/upload";
 
 export function UploadButtons() {
   const { progress, uploadToCurrentTarget } = useUpload();
+  const { convertibleImageTypes } = useConfig();
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
 
@@ -20,7 +22,7 @@ export function UploadButtons() {
         ref={fileInput}
         type="file"
         multiple
-        accept={UPLOAD_ACCEPT}
+        accept={uploadAccept(convertibleImageTypes)}
         hidden
         data-testid="file-input"
         onChange={(e) => onFiles(e.currentTarget)}

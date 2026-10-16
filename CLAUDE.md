@@ -13,6 +13,7 @@ Web app for archiving photos, scans, documents and PDFs: upload (incl. phone cam
 - Images: **Jimp** assembled from its `@jimp/*` packages in `src/shared/image/jimp.ts` (the `jimp` meta package ships a broken browser build). The same pipeline (`src/shared/image/pipeline.ts`) renders the live preview in the browser and the final image on the server.
 - OCR: **tesseract.js** on the server (`deu+eng` by default, language data cached in `data/tessdata`).
 - PDFs: **unpdf** (text extraction, page rendering via `@napi-rs/canvas`).
+- Optional image formats: **ImageMagick** CLI, detected at startup (`MagickConverter.detect()`); tests use `FakeImageConverter` (accepts `image/webp`).
 - Automatic dewarping: **UVDoc** exported to ONNX (`models/uvdoc.onnx`, not in git, create with `bun run setup:uvdoc`), run with **onnxruntime-node** in `src/server/services/dewarp.ts`. The model only predicts a 2×45×31 grid; `src/shared/image/unwarp.ts` ports UVDoc's `bilinear_unwarping` (interpolate + grid_sample, `align_corners=True`) so the browser preview uses the same grid. Without the model the feature is hidden (`/api/config`).
 
 ## Commands
@@ -46,7 +47,7 @@ Do not run a bare `bun test`: client tests need the happy-dom preload, server te
 - Pipeline order: rotate → dewarp grid → crop/perspective → denoise → levels/brightness/contrast → color.
 - A dewarp grid is stored in the edit settings together with the rotation it was predicted for; it is dropped when the rotation changes. Crop/perspective corners are normalized (0..1) relative to the rotated (and dewarped) image.
 - Auto B/W (`src/shared/image/autoBw.ts`) analyses the image after geometry/denoise: brightness/contrast stretch the luma range, variants differ only in the threshold (Otsu first, then darker, then lighter). The client caches variants per geometry and cycles through them on repeated clicks.
-- Supported uploads are the Jimp image types and PDF (`src/shared/uploads.ts`, used for the file inputs' `accept` and to skip dropped files). The client uploads files one request at a time via `XMLHttpRequest` to show progress; client tests mock it with `mockXhr()`.
+- Supported uploads are the Jimp image types and PDF (`src/shared/uploads.ts`, used for the file inputs' `accept` and to skip dropped files). If ImageMagick is installed (`magick`, or IM6 `convert`), HEIC/HEIF/AVIF/WebP/JPEG XL/JPEG 2000 are accepted too (`/api/config` → `convertibleImageTypes`): `src/server/services/magick.ts` converts them to PNG with an explicit coder prefix, the result is cached as `derived/<id>/source.png` and everything else (editor preview, OCR) works on that. The client uploads files one request at a time via `XMLHttpRequest` to show progress; client tests mock it with `mockXhr()`.
 - Uploads with `ocr=true` run the best auto B/W variant before rendering and OCR; with `dewarp=true` (opt-in sidebar switch „Automatisch entzerren“, off by default) they are dewarped first if the model exists.
 - OCR drops probable noise by default (`src/server/services/ocrFilter.ts`: low-confidence lines, lines without a real word, very unsure words) and stores the count in `ocr_removed`. `allText` (upload field `ocrAllText`, body of `POST /ocr`) keeps everything.
 - OCR runs asynchronously in `OcrQueue`; clients poll while status is `pending`/`running`.

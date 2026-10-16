@@ -121,6 +121,7 @@ export interface LibraryQuery {
 
 export interface AppConfig {
   dewarpAvailable: boolean;
+  convertibleImageTypes: string[];
 }
 
 export interface ApiError {

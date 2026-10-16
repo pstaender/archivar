@@ -4,6 +4,7 @@ import type { ArchiveDocument } from "../../shared/types";
 import { isSupportedUpload } from "../../shared/uploads";
 import { api, type UploadOptions } from "../api";
 import { folderFromPathname } from "../routes";
+import { useConfig } from "./config";
 import { useFolders } from "./folders";
 import { useToast } from "./toast";
 
@@ -67,6 +68,7 @@ function useStoredFlag(key: string, fallback: boolean): [boolean, (value: boolea
 
 export function UploadProvider({ children }: { children: ReactNode }) {
   const toast = useToast();
+  const { convertibleImageTypes } = useConfig();
   const { reload: reloadFolders } = useFolders();
   const location = useLocation();
   const [progress, setProgress] = useState<UploadProgress | null>(null);
@@ -90,7 +92,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
 
   const upload = useCallback(
     async (files: File[], options: UploadOptions = {}) => {
-      const supported = files.filter(isSupportedUpload);
+      const supported = files.filter((file) => isSupportedUpload(file, convertibleImageTypes));
       const skipped = files.length - supported.length;
       if (skipped > 0) {
         toast.show(
@@ -148,7 +150,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       queue.current = result.catch(() => undefined);
       return result;
     },
-    [autoOcr, ocrAllText, autoDewarp, toast, reloadFolders, publish],
+    [autoOcr, ocrAllText, autoDewarp, convertibleImageTypes, toast, reloadFolders, publish],
   );
 
   const stackMatch = matchPath("/stacks/:id", location.pathname);
