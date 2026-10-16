@@ -18,12 +18,14 @@
   --color-focus: #18181b;
   --color-overlay: rgb(9 9 11 / 0.45);
 
-  --color-danger: #dc2626;
+  --color-danger: #ec6b6b;
   --color-danger-soft: #fef2f2;
-  --color-warning: #b45309;
+  --color-warning: #c99417;
   --color-warning-soft: #fffbeb;
-  --color-success: #15803d;
+  --color-success: #55b660;
   --color-success-soft: #f0fdf4;
+
+  --border-size: 2px;
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
