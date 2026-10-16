@@ -1,8 +1,10 @@
 import type {
   AppConfig,
   ArchiveDocument,
+  BwVariant,
   DewarpGrid,
   DocumentUpdate,
+  EditSettings,
   Folder,
   LibraryItem,
   LibraryQuery,
@@ -60,6 +62,8 @@ export const api = {
   deleteDocument: (id: number) => request<void>(`/api/documents/${id}`, { method: "DELETE" }),
   detectDewarp: (id: number, rotation: Rotation) =>
     request<DewarpGrid>(`/api/documents/${id}/dewarp`, jsonBody("POST", { rotation })),
+  autoBw: (id: number, editSettings: EditSettings) =>
+    request<BwVariant[]>(`/api/documents/${id}/auto-bw`, jsonBody("POST", { editSettings })),
   runOcr: (id: number) => request<ArchiveDocument>(`/api/documents/${id}/ocr`, { method: "POST" }),
 
   upload(files: File[], options: UploadOptions = {}) {

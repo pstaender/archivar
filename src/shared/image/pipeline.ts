@@ -17,15 +17,24 @@ function applyGeometry(image: JimpImage, corners: Quad): JimpImage {
   return createImage(warped.width, warped.height, warped.data);
 }
 
+export function luma(data: Uint8Array, i: number): number {
+  return 0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]!;
+}
+
 function binarize(image: JimpImage, threshold: number): void {
   const data = image.bitmap.data;
   for (let i = 0; i < data.length; i += 4) {
-    const luma = 0.299 * data[i]! + 0.587 * data[i + 1]! + 0.114 * data[i + 2]!;
-    const v = luma >= threshold ? 255 : 0;
+    const v = luma(data, i) >= threshold ? 255 : 0;
     data[i] = v;
     data[i + 1] = v;
     data[i + 2] = v;
   }
+}
+
+export function applyTone(image: JimpImage, settings: Pick<EditSettings, "autoLevels" | "brightness" | "contrast">): void {
+  if (settings.autoLevels) image.normalize();
+  if (settings.brightness !== 0) image.brightness(1 + settings.brightness);
+  if (settings.contrast !== 0) image.contrast(settings.contrast);
 }
 
 export function applyEdits(source: JimpImage, settings: EditSettings): JimpImage {
@@ -43,9 +52,7 @@ export function applyEdits(source: JimpImage, settings: EditSettings): JimpImage
     image = createImage(filtered.width, filtered.height, filtered.data);
   }
 
-  if (settings.autoLevels) image.normalize();
-  if (settings.brightness !== 0) image.brightness(1 + settings.brightness);
-  if (settings.contrast !== 0) image.contrast(settings.contrast);
+  applyTone(image, settings);
 
   if (settings.colorMode === "color") {
     const actions: Parameters<JimpImage["color"]>[0] = [];

@@ -219,6 +219,44 @@ describe("dewarp", () => {
   });
 });
 
+describe("automatic black and white", () => {
+  test("suggests variants with the best guess first", async () => {
+    const doc = await uploadImage();
+    const res = await post(`/api/documents/${doc.id}/auto-bw`, { editSettings: { rotation: 90 } });
+    expect(res.status).toBe(200);
+    const variants = (await res.json()) as { brightness: number; contrast: number; bwThreshold: number }[];
+    expect(variants.length).toBeGreaterThan(0);
+    expect(variants[0]).toEqual({ brightness: expect.any(Number), contrast: expect.any(Number), bwThreshold: expect.any(Number) });
+    expect(server.ctx.documents.getById(doc.id)?.editSettings.colorMode).toBe("color");
+  });
+
+  test("rejects documents that are not images", async () => {
+    const [doc] = await upload([{ name: "a.pdf", data: makePdf("x"), type: "application/pdf" }]);
+    expect((await post(`/api/documents/${doc!.id}/auto-bw`, {})).status).toBe(400);
+  });
+
+  test("uploads with OCR are dewarped and turned black and white", async () => {
+    const doc = await uploadImage("x.jpg", { ocr: "true" });
+    expect(doc.editSettings.colorMode).toBe("bw");
+    expect(doc.editSettings.dewarp?.rows).toBe(45);
+    expect(server.dewarp.inputs).toHaveLength(1);
+    await server.ctx.ocr.idle();
+    expect(server.ocr.calls).toBe(1);
+  });
+
+  test("without a model uploads with OCR are only turned black and white", async () => {
+    server.dewarp.isAvailable = false;
+    const doc = await uploadImage("x.jpg", { ocr: "true" });
+    expect(doc.editSettings).toMatchObject({ colorMode: "bw", dewarp: null });
+  });
+
+  test("uploads without OCR stay untouched", async () => {
+    const doc = await uploadImage();
+    expect(doc.editSettings.colorMode).toBe("color");
+    expect(server.dewarp.inputs).toHaveLength(0);
+  });
+});
+
 describe("stacks", () => {
   test("creates a stack and hides its documents from the library root", async () => {
     const a = await uploadImage("a.jpg");

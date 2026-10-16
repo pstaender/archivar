@@ -1,5 +1,5 @@
 import type { BunRequest } from "bun";
-import type { AppConfig, DocumentUpdate, Rotation, StackCreate, StackUpdate } from "../shared/types";
+import type { AppConfig, DocumentUpdate, EditSettings, Rotation, StackCreate, StackUpdate } from "../shared/types";
 import type { AppContext } from "./context";
 import { toPublicDocument } from "./db/documents";
 import { handle, HttpError, json, noContent, parseId, readJson } from "./http";
@@ -106,6 +106,13 @@ export function createApiRoutes(ctx: AppContext) {
         const body = await readJson<{ rotation?: number }>(req).catch(() => ({ rotation: 0 }));
         const rotation = [0, 90, 180, 270].includes(Number(body.rotation)) ? (Number(body.rotation) as Rotation) : 0;
         return json(await archive.detectDewarp(userId(req), parseId(req.params.id), rotation));
+      }),
+    },
+
+    "/api/documents/:id/auto-bw": {
+      POST: handle(async (req: Req) => {
+        const body = await readJson<{ editSettings?: Partial<EditSettings> }>(req).catch(() => ({ editSettings: undefined }));
+        return json(await archive.autoBw(userId(req), parseId(req.params.id), body.editSettings));
       }),
     },
 

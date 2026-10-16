@@ -1,4 +1,4 @@
-import { Crop, Loader2, RotateCcw, RotateCw, Scan, WandSparkles } from "lucide-react";
+import { Contrast, Crop, Loader2, RotateCcw, RotateCw, Scan, WandSparkles } from "lucide-react";
 import { type CSSProperties, useId } from "react";
 import { rotateBy } from "../../shared/editSettings";
 import type { ColorMode, EditSettings } from "../../shared/types";
@@ -12,7 +12,22 @@ interface EditControlsProps {
   dewarpAvailable?: boolean;
   dewarping?: boolean;
   onAutoDewarp?: () => void;
+  autoBw?: AutoBwState | null;
+  bwLoading?: boolean;
+  onAutoBw?: () => void;
 }
+
+export interface AutoBwState {
+  index: number;
+  count: number;
+  shade: "best" | "darker" | "lighter";
+}
+
+const SHADE_LABELS: Record<AutoBwState["shade"], string> = {
+  best: "beste Schätzung",
+  darker: "dunkler",
+  lighter: "heller",
+};
 
 const COLOR_MODES: { value: ColorMode; label: string }[] = [
   { value: "color", label: "Farbe" },
@@ -22,7 +37,18 @@ const COLOR_MODES: { value: ColorMode; label: string }[] = [
 
 const DENOISE_LABELS = ["Aus", "Leicht", "Mittel", "Stark"];
 
-export function EditControls({ settings, onChange, mode, onModeChange, dewarpAvailable, dewarping, onAutoDewarp }: EditControlsProps) {
+export function EditControls({
+  settings,
+  onChange,
+  mode,
+  onModeChange,
+  dewarpAvailable,
+  dewarping,
+  onAutoDewarp,
+  autoBw,
+  bwLoading,
+  onAutoBw,
+}: EditControlsProps) {
   const set = <K extends keyof EditSettings>(key: K, value: EditSettings[K]) => onChange({ ...settings, [key]: value });
 
   const rotate = (delta: 90 | -90) =>
@@ -119,6 +145,21 @@ export function EditControls({ settings, onChange, mode, onModeChange, dewarpAva
 
       <section className="control-group">
         <h3>Farbe</h3>
+        {onAutoBw && (
+          <div className="dewarp-row">
+            <button type="button" className={`btn btn--sm ${autoBw ? "is-active" : ""}`} aria-pressed={Boolean(autoBw)} onClick={onAutoBw} disabled={bwLoading}>
+              {bwLoading ? <Loader2 size={16} className="spin" /> : <Contrast size={16} />}
+              Automatisch SW
+            </button>
+            <span className="muted small" aria-live="polite">
+              {bwLoading
+                ? "Werte werden ermittelt …"
+                : autoBw
+                  ? `Variante ${autoBw.index + 1} von ${autoBw.count} · ${SHADE_LABELS[autoBw.shade]}${autoBw.count > 1 ? " – erneut klicken für die nächste." : "."}`
+                  : "Ermittelt Helligkeit, Kontrast und Schwelle."}
+            </span>
+          </div>
+        )}
         <div className="segmented" role="radiogroup" aria-label="Farbmodus">
           {COLOR_MODES.map((option) => (
             <button

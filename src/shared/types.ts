@@ -30,6 +30,12 @@ export interface EditSettings {
   autoLevels: boolean;
 }
 
+export interface BwVariant {
+  brightness: number;
+  contrast: number;
+  bwThreshold: number;
+}
+
 export type DocumentKind = "image" | "pdf" | "file";
 
 export type OcrStatus = "none" | "pending" | "running" | "done" | "failed";

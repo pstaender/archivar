@@ -100,4 +100,23 @@ describe("EditControls", () => {
     setup({ denoise: 2 });
     expect(screen.getByText("Mittel")).toBeTruthy();
   });
+
+  test("auto black and white shows the current variant", () => {
+    const onAutoBw = mock();
+    render(
+      <EditControls
+        settings={{ ...DEFAULT_EDIT_SETTINGS, colorMode: "bw" }}
+        onChange={mock()}
+        mode="none"
+        onModeChange={mock()}
+        autoBw={{ index: 1, count: 3, shade: "darker" }}
+        onAutoBw={onAutoBw}
+      />,
+    );
+    const button = screen.getByRole("button", { name: /Automatisch SW/ });
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText(/Variante 2 von 3 · dunkler/)).toBeTruthy();
+    fireEvent.click(button);
+    expect(onAutoBw).toHaveBeenCalled();
+  });
 });

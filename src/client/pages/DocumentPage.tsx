@@ -2,12 +2,12 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, Fil
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
-import type { ArchiveDocument, EditSettings } from "../../shared/types";
+import type { ArchiveDocument, BwVariant, EditSettings } from "../../shared/types";
 import { api, assetUrl } from "../api";
 import { ConfirmDialog } from "../components/Dialog";
 import { EditableTitle } from "../components/EditableTitle";
 import { FolderPicker } from "../components/FolderPicker";
-import { EditControls } from "../editor/EditControls";
+import { type AutoBwState, EditControls } from "../editor/EditControls";
 import type { GeometryMode } from "../editor/geometry";
 import { ImageEditor } from "../editor/ImageEditor";
 import { useFolders } from "../hooks/folders";
@@ -16,6 +16,20 @@ import { useResource } from "../hooks/useResource";
 import { documentLabel, formatBytes, formatDateTime, isOcrBusy, OCR_STATUS_LABEL } from "../format";
 
 type Tab = "edit" | "text" | "details";
+
+const bwKey = (s: EditSettings) => JSON.stringify([s.rotation, s.dewarp, s.corners, s.denoise]);
+
+const isBwVariant = (s: EditSettings, v: BwVariant) =>
+  s.colorMode === "bw" && !s.autoLevels && s.brightness === v.brightness && s.contrast === v.contrast && s.bwThreshold === v.bwThreshold;
+
+export function autoBwState(draft: EditSettings, cache: { key: string; variants: BwVariant[] } | null): AutoBwState | null {
+  if (!cache || cache.key !== bwKey(draft)) return null;
+  const index = cache.variants.findIndex((v) => isBwVariant(draft, v));
+  if (index < 0) return null;
+  const best = cache.variants[0]!.bwThreshold;
+  const threshold = cache.variants[index]!.bwThreshold;
+  return { index, count: cache.variants.length, shade: index === 0 ? "best" : threshold > best ? "darker" : "lighter" };
+}
 
 export function DocumentPage() {
   const id = Number(useParams().id);
@@ -27,6 +41,8 @@ export function DocumentPage() {
   const resource = useResource(() => api.document(id), [id]);
   const config = useResource(() => api.config(), []);
   const [dewarping, setDewarping] = useState(false);
+  const [bwCache, setBwCache] = useState<{ key: string; variants: BwVariant[] } | null>(null);
+  const [bwLoading, setBwLoading] = useState(false);
   const stack = useResource(() => (stackId ? api.stack(stackId) : Promise.resolve(null)), [stackId]);
   const doc = resource.data;
 
@@ -40,6 +56,7 @@ export function DocumentPage() {
     if (!doc) return;
     setDraft(doc.editSettings);
     setMode("none");
+    setBwCache(null);
   }, [doc?.id]);
 
   useEffect(() => {
@@ -102,6 +119,28 @@ export function DocumentPage() {
       toast.error(error);
     } finally {
       setDewarping(false);
+    }
+  };
+
+  const bwState = autoBwState(draft, bwCache);
+  const applyBw = (variant: BwVariant) => setDraft((current) => ({ ...current, ...variant, colorMode: "bw", autoLevels: false }));
+
+  const autoBw = async () => {
+    const key = bwKey(draft);
+    if (bwCache?.key === key) {
+      const next = bwState ? (bwState.index + 1) % bwState.count : 0;
+      applyBw(bwCache.variants[next]!);
+      return;
+    }
+    setBwLoading(true);
+    try {
+      const variants = await api.autoBw(doc.id, draft);
+      setBwCache({ key, variants });
+      if (variants[0]) applyBw(variants[0]);
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setBwLoading(false);
     }
   };
 
@@ -210,6 +249,9 @@ export function DocumentPage() {
                   dewarpAvailable={config.data?.dewarpAvailable}
                   dewarping={dewarping}
                   onAutoDewarp={autoDewarp}
+                  autoBw={bwState}
+                  bwLoading={bwLoading}
+                  onAutoBw={autoBw}
                 />
                 <div className="panel__footer">
                   <button type="button" className="btn btn--ghost btn--sm" onClick={() => setDraft(DEFAULT_EDIT_SETTINGS)}>

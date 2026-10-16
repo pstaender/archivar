@@ -1,11 +1,14 @@
 import { basename, extname } from "node:path";
-import { normalizeEditSettings } from "../../shared/editSettings";
+import { isDefaultEditSettings, normalizeEditSettings } from "../../shared/editSettings";
+import { autoBwVariants } from "../../shared/image/autoBw";
 import type { JimpImage } from "../../shared/image/jimp";
 import { normalizeFolderPath } from "../../shared/folders";
 import type {
   ArchiveDocument,
+  BwVariant,
   DewarpGrid,
   DocumentUpdate,
+  EditSettings,
   LibraryItem,
   LibraryQuery,
   Rotation,
@@ -94,7 +97,9 @@ export class ArchiveService {
         metadata: hasEmbeddedText ? { ...inspection.metadata, textSource: "pdf" } : inspection.metadata,
       });
       if (options.folders?.length) this.folders.setForDocument(userId, doc.id, options.folders);
-      await this.imaging.renderDerivatives(doc);
+      if (options.runOcr && doc.kind === "image") doc = await this.autoEnhance(doc);
+      const size = await this.imaging.renderDerivatives(doc);
+      if (size && !isDefaultEditSettings(doc.editSettings)) this.documents.update(userId, doc.id, size);
       doc = this.documents.get(userId, doc.id)!;
       created.push(doc);
     }
@@ -156,6 +161,26 @@ export class ArchiveService {
     let image = await this.imaging.loadOriginal(doc);
     if (rotation !== 0) image = image.rotate(-rotation) as JimpImage;
     return toDewarpGrid(await this.dewarp.predict(image.bitmap), rotation);
+  }
+
+  async autoBw(userId: number, id: number, settings: Partial<EditSettings> = {}): Promise<BwVariant[]> {
+    const doc = this.getDocument(userId, id);
+    if (doc.kind !== "image") throw new HttpError(400, "Only images can be edited");
+    return autoBwVariants(await this.imaging.loadOriginal(doc), normalizeEditSettings(settings, doc.editSettings));
+  }
+
+  private async autoEnhance(doc: StoredDocument): Promise<StoredDocument> {
+    try {
+      const image = await this.imaging.loadOriginal(doc);
+      let settings = doc.editSettings;
+      if (this.dewarp.available()) settings = { ...settings, dewarp: toDewarpGrid(await this.dewarp.predict(image.bitmap), settings.rotation) };
+      const [best] = autoBwVariants(image, settings);
+      if (best) settings = { ...settings, ...best, colorMode: "bw" };
+      return this.documents.update(doc.userId, doc.id, { editSettings: normalizeEditSettings(settings) }) ?? doc;
+    } catch (error) {
+      console.warn(`Automatic enhancement failed for document ${doc.id}:`, error);
+      return doc;
+    }
   }
 
   getStack(userId: number, id: number): Stack {
