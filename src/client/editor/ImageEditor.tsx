@@ -4,7 +4,6 @@ import { createImage, type JimpImage } from "../../shared/image/jimp";
 import { applyEdits } from "../../shared/image/pipeline";
 import type { EditSettings, Point, Quad } from "../../shared/types";
 import { type GeometryMode, moveCorner, quadOrFull, translateQuad } from "./geometry";
-import { type LensPointer, Magnifier } from "./Magnifier";
 import { loadOpenCv } from "./opencv";
 
 export const PREVIEW_MAX_SIZE = 1400;
@@ -46,8 +45,6 @@ export function ImageEditor({ src, settings, mode, onCornersChange }: ImageEdito
   const [base, setBase] = useState<JimpImage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
-  const [rendered, setRendered] = useState(0);
-  const [pointer, setPointer] = useState<LensPointer | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,7 +67,6 @@ export function ImageEditor({ src, settings, mode, onCornersChange }: ImageEdito
         if (preview.denoise > 0) await loadOpenCv();
         if (cancelled || !canvasRef.current) return;
         drawToCanvas(canvasRef.current, applyEdits(base, preview));
-        setRendered((n) => n + 1);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
@@ -82,28 +78,16 @@ export function ImageEditor({ src, settings, mode, onCornersChange }: ImageEdito
     };
   }, [base, settings, mode]);
 
-  useEffect(() => {
-    if (mode !== "none") setPointer(null);
-  }, [mode]);
-
-  const inspecting = mode === "none" && base !== null;
-
   if (error) return <div className="alert alert--error">Vorschau konnte nicht geladen werden: {error}</div>;
 
   return (
     <div className="editor-canvas">
       <div className="editor-canvas__stage">
-        <canvas
-          ref={canvasRef}
-          className={`editor-canvas__image${inspecting ? " is-inspecting" : ""}`}
-          onPointerMove={(e) => inspecting && e.pointerType === "mouse" && setPointer({ clientX: e.clientX, clientY: e.clientY })}
-          onPointerLeave={() => setPointer(null)}
-        />
+        <canvas ref={canvasRef} className="editor-canvas__image" />
         {base && mode !== "none" && (
           <QuadOverlay quad={quadOrFull(settings.corners)} mode={mode} onChange={onCornersChange} />
         )}
       </div>
-      {inspecting && pointer && <Magnifier source={canvasRef} pointer={pointer} version={rendered} />}
       {(!base || rendering) && (
         <span className="editor-canvas__spinner" aria-label="Vorschau wird berechnet">
           <Loader size={18} className="spin" />

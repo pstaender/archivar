@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { fitScale, formatZoom, lensPosition, zoomIn, zoomOut } from "./zoom";
+import { fitScale, formatZoom, zoomIn, zoomOut } from "./zoom";
 
 describe("zoom steps", () => {
   test("zooming in goes to the next step", () => {
@@ -22,17 +22,5 @@ describe("zoom steps", () => {
 
   test("formats percentages", () => {
     expect(formatZoom(0.333)).toBe("33 %");
-  });
-});
-
-describe("lensPosition", () => {
-  const viewport = { width: 1000, height: 800 };
-
-  test("sits below right of the cursor", () => {
-    expect(lensPosition(100, 100, 200, viewport)).toEqual({ left: 124, top: 124 });
-  });
-
-  test("flips near the right and bottom edge", () => {
-    expect(lensPosition(900, 700, 200, viewport)).toEqual({ left: 676, top: 476 });
   });
 });

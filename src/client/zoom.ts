@@ -18,18 +18,3 @@ export function fitScale(natural: { width: number; height: number }, available: 
 }
 
 export const formatZoom = (scale: number) => `${Math.round(scale * 100)} %`;
-
-export interface Lens {
-  left: number;
-  top: number;
-}
-
-/** Places the magnifier next to the cursor, flipping to the other side near the viewport edges. */
-export function lensPosition(clientX: number, clientY: number, size: number, viewport: { width: number; height: number }, gap = 24): Lens {
-  const margin = 8;
-  let left = clientX + gap;
-  if (left + size > viewport.width - margin) left = clientX - gap - size;
-  let top = clientY + gap;
-  if (top + size > viewport.height - margin) top = clientY - gap - size;
-  return { left: Math.max(margin, left), top: Math.max(margin, top) };
-}
