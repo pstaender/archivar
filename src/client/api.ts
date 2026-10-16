@@ -77,6 +77,11 @@ function query(params: Record<string, string | undefined>): string {
   return s ? `?${s}` : "";
 }
 
+export interface OcrRequest {
+  allText?: boolean;
+  languages?: string[] | null;
+}
+
 export interface UploadOptions {
   folders?: string[];
   stackId?: number;
@@ -110,8 +115,9 @@ export const api = {
     download(await send("/api/export/pdf", jsonBody("POST", { documentIds, title })), "Dokumente.pdf"),
   renderPreview: async (id: number, editSettings: EditSettings, signal?: AbortSignal) =>
     (await send(`/api/documents/${id}/render`, { ...jsonBody("POST", { editSettings }), signal })).blob(),
-  runOcr: (id: number, options: { allText?: boolean } = {}) =>
-    request<ArchiveDocument>(`/api/documents/${id}/ocr`, jsonBody("POST", { allText: options.allText === true })),
+  /** `languages` changes the document's recognition languages (null: back to the default). */
+  runOcr: (id: number, options: OcrRequest = {}) =>
+    request<ArchiveDocument>(`/api/documents/${id}/ocr`, jsonBody("POST", { allText: options.allText === true, languages: options.languages })),
 
   upload(files: File[], options: UploadOptions = {}, onProgress?: (loaded: number, total: number) => void) {
     const form = new FormData();

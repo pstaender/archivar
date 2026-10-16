@@ -11,7 +11,10 @@ import type { RawImage } from "../src/shared/image/raw";
 import { createImage } from "../src/shared/image/jimp";
 
 export class FakeOcrEngine implements OcrEngine {
+  readonly languages = ["deu", "eng"];
   calls = 0;
+  /** Languages passed to each recognize() call (undefined: the default). */
+  recognizedLanguages: (string[] | undefined)[] = [];
   result: OcrResult = { text: "Hallo Welt", confidence: 91 };
   error: Error | null = null;
   orientation: Orientation | null = { rotation: 0, confidence: 10 };
@@ -25,8 +28,9 @@ export class FakeOcrEngine implements OcrEngine {
     return this.orientation;
   }
 
-  async recognize(): Promise<OcrResult> {
+  async recognize(_image: Uint8Array, languages?: string[]): Promise<OcrResult> {
     this.calls++;
+    this.recognizedLanguages.push(languages);
     if (this.hang) return new Promise(() => {});
     if (this.error) throw this.error;
     return this.result;

@@ -47,7 +47,7 @@ test("offers to recognize all text parts after noise was removed", () => {
   const { onRunOcr } = setup({ ocrStatus: "done", ocrText: "Hallo", ocrRemoved: 3 });
   expect(screen.getByText(/3 unsichere Textteile wurden/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Alle Textteile erkennen" }));
-  expect(onRunOcr).toHaveBeenCalledWith(true);
+  expect(onRunOcr).toHaveBeenCalledWith({ allText: true });
 });
 
 test("exports the image with the current text as a PDF download", async () => {
@@ -81,3 +81,29 @@ test("offers the PDF export only for images and not while OCR runs", () => {
   setup({ kind: "image", ocrStatus: "running" });
   expect((screen.getByRole("button", { name: "PDF" }) as HTMLButtonElement).disabled).toBe(true);
 });
+
+test("shows the detected language and recognizes the text again in another language", () => {
+  const { onRunOcr } = setup({ kind: "image", ocrStatus: "done", ocrText: "Bonjour", ocrLanguage: "fra" });
+  expect(screen.getByText("Sprache: Französisch")).toBeTruthy();
+  const select = screen.getByLabelText("Sprache für die Texterkennung") as HTMLSelectElement;
+  expect(select.value).toBe("");
+  expect(screen.getByRole("option", { name: "Automatisch (Deutsch + Englisch)" })).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("button", { name: /Erneut erkennen/ }));
+  expect(onRunOcr).toHaveBeenLastCalledWith({});
+
+  fireEvent.change(select, { target: { value: "ita" } });
+  fireEvent.click(screen.getByRole("button", { name: /Auf Italienisch erkennen/ }));
+  expect(onRunOcr).toHaveBeenLastCalledWith({ languages: ["ita"] });
+});
+
+test("goes back to the default languages and says when no language was detected", () => {
+  const { onRunOcr } = setup({ kind: "image", ocrStatus: "done", ocrText: "12 3", ocrLanguage: null, ocrLanguages: ["ita"] });
+  expect(screen.getByText("Sprache nicht erkannt")).toBeTruthy();
+  const select = screen.getByLabelText("Sprache für die Texterkennung") as HTMLSelectElement;
+  expect(select.value).toBe("ita");
+  fireEvent.change(select, { target: { value: "" } });
+  fireEvent.click(screen.getByRole("button", { name: /Erneut erkennen/ }));
+  expect(onRunOcr).toHaveBeenLastCalledWith({ languages: null });
+});
+

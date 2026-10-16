@@ -2,8 +2,9 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, Fil
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
+import { languageName, OCR_LANGUAGES } from "../../shared/languages";
 import type { ArchiveDocument, BwVariant, EditSettings } from "../../shared/types";
-import { api, assetUrl } from "../api";
+import { api, assetUrl, type OcrRequest } from "../api";
 import { saveBlob } from "../download";
 import { ConfirmDialog } from "../components/Dialog";
 import { EditableTitle } from "../components/EditableTitle";
@@ -196,10 +197,10 @@ export function DocumentPage() {
     }
   };
 
-  const runOcr = async (allText = ocrAllText) => {
+  const runOcr = async ({ allText = ocrAllText, languages }: OcrRequest = {}) => {
     if (dirty) await save();
     try {
-      resource.setData(await api.runOcr(doc.id, { allText }));
+      resource.setData(await api.runOcr(doc.id, { allText, languages }));
     } catch (error) {
       toast.error(error);
     }
@@ -424,17 +425,25 @@ function Viewer({ doc, editing, draft, mode, onCornersChange, processed }: Viewe
 
 interface TextPanelProps {
   doc: ArchiveDocument;
-  onRunOcr: (allText?: boolean) => void;
+  onRunOcr: (request?: OcrRequest) => void;
   onSave: (text: string) => Promise<unknown>;
 }
 
 export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
   const toast = useToast();
+  const config = useConfig();
   const [text, setText] = useState(doc.ocrText);
   const [exporting, setExporting] = useState(false);
+  const current = doc.ocrLanguages?.join("+") ?? "";
+  const [language, setLanguage] = useState(current);
   const busy = isOcrBusy(doc);
 
   useEffect(() => setText(doc.ocrText), [doc.ocrText]);
+  useEffect(() => setLanguage(current), [current]);
+
+  const languageChanged = language !== current;
+  const recognize = () => onRunOcr(languageChanged ? { languages: language ? language.split("+") : null } : {});
+  const defaultLanguages = config.ocrLanguages.map(languageName).join(" + ");
 
   const copy = async () => {
     try {
@@ -472,19 +481,45 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
             <Copy size={16} />
           </button>
           {doc.kind !== "file" && (
-            <button type="button" className="btn btn--sm" onClick={() => onRunOcr()} disabled={busy}>
+            <button type="button" className="btn btn--sm" onClick={recognize} disabled={busy}>
               <ScanText size={16} />
-              {doc.ocrStatus === "none" ? "Text erkennen" : "Erneut erkennen"}
+              {languageChanged && language
+                ? `Auf ${languageName(language)} erkennen`
+                : doc.ocrStatus === "none"
+                  ? "Text erkennen"
+                  : "Erneut erkennen"}
             </button>
           )}
         </div>
       </div>
+      {doc.kind !== "file" && (
+        <div className="text-panel__language">
+          <span className="muted small">
+            {doc.ocrLanguage ? `Sprache: ${languageName(doc.ocrLanguage)}` : doc.ocrStatus === "done" && doc.ocrText ? "Sprache nicht erkannt" : ""}
+          </span>
+          <select
+            className="input input--sm text-panel__language-select"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            disabled={busy}
+            aria-label="Sprache für die Texterkennung"
+            title="Sprache für die Texterkennung"
+          >
+            <option value="">Automatisch ({defaultLanguages})</option>
+            {OCR_LANGUAGES.map(({ code, name }) => (
+              <option key={code} value={code}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       {doc.ocrStatus === "failed" && doc.ocrError && <div className="alert alert--error">{doc.ocrError}</div>}
       {doc.ocrStatus === "done" && doc.ocrRemoved > 0 && (
         <p className="muted small">
           {doc.ocrRemoved === 1 ? "1 unsicherer Textteil wurde" : `${doc.ocrRemoved} unsichere Textteile wurden`} als vermutlich fehlerhaft
           ausgeblendet.{" "}
-          <button type="button" className="link-button" onClick={() => onRunOcr(true)}>
+          <button type="button" className="link-button" onClick={() => onRunOcr({ allText: true })}>
             Alle Textteile erkennen
           </button>
         </p>

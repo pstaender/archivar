@@ -1,6 +1,7 @@
 import type { Rotation } from "../../shared/types";
 import type { DocumentRepository, OcrLayout, StoredDocument } from "../db/documents";
 import type { ImagingService } from "./imaging";
+import { detectLanguage } from "./language";
 import { allOcrLines, filterOcrText, type OcrParagraph, type OcrTextLine } from "./ocrFilter";
 
 export interface OcrResult {
@@ -20,7 +21,9 @@ export interface Orientation {
 }
 
 export interface OcrEngine {
-  recognize(image: Uint8Array): Promise<OcrResult>;
+  /** Languages used when `recognize` gets none. */
+  readonly languages: string[];
+  recognize(image: Uint8Array, languages?: string[]): Promise<OcrResult>;
   detectOrientation(image: Uint8Array): Promise<Orientation | null>;
   terminate(): Promise<void>;
 }
@@ -29,22 +32,36 @@ type TesseractWorker = Awaited<ReturnType<typeof import("tesseract.js").createWo
 
 export class TesseractEngine implements OcrEngine {
   private worker: Promise<TesseractWorker> | null = null;
+  private workerLanguages = "";
   private osdWorker: Promise<TesseractWorker> | null = null;
 
   constructor(
-    private languages: string[],
+    readonly languages: string[],
     private cachePath: string,
   ) {}
 
   private getWorker(): Promise<TesseractWorker> {
+    this.workerLanguages = this.languages.join("+");
     this.worker ??= import("tesseract.js").then(({ createWorker }) =>
       createWorker(this.languages, undefined, { cachePath: this.cachePath }),
     );
     return this.worker;
   }
 
-  async recognize(image: Uint8Array): Promise<OcrResult> {
-    const worker = await this.getWorker();
+  /** The worker with `languages` loaded; their data is downloaded into the cache on first use. */
+  private async workerFor(languages: string[]): Promise<TesseractWorker> {
+    if (!this.worker) await this.getWorker();
+    const worker = await this.worker!;
+    const key = languages.join("+");
+    if (key !== this.workerLanguages) {
+      await worker.reinitialize(key);
+      this.workerLanguages = key;
+    }
+    return worker;
+  }
+
+  async recognize(image: Uint8Array, languages = this.languages): Promise<OcrResult> {
+    const worker = await this.workerFor(languages);
     const { data } = await worker.recognize(Buffer.from(image), {}, { text: true, blocks: true });
     const paragraphs = (data.blocks ?? []).flatMap((block) =>
       block.paragraphs.map((paragraph) =>
@@ -77,6 +94,7 @@ export class TesseractEngine implements OcrEngine {
   async terminate(): Promise<void> {
     const workers = [this.worker, this.osdWorker].filter((w) => w !== null);
     this.worker = null;
+    this.workerLanguages = "";
     this.osdWorker = null;
     for (const worker of workers) await (await worker).terminate();
   }
@@ -137,7 +155,7 @@ export class OcrQueue {
       const images = await this.imaging.ocrImages(doc);
       if (images.length === 0) throw new Error("Document type does not support OCR");
       const results: OcrResult[] = [];
-      for (const image of images) results.push(await this.recognize(image));
+      for (const image of images) results.push(await this.recognize(image, doc.ocrLanguages ?? undefined));
       let removed = 0;
       const lines: OcrTextLine[][] = [];
       const texts = results.map((result) => {
@@ -152,7 +170,7 @@ export class OcrQueue {
       });
       const text = texts.join("\n\n").trim();
       const confidence = results.reduce((sum, r) => sum + r.confidence, 0) / results.length;
-      this.documents.setOcrResult(documentId, { status: "done", text, confidence, error: null, removed });
+      this.documents.setOcrResult(documentId, { status: "done", text, confidence, error: null, removed, language: detectLanguage(text) });
       this.documents.setOcrLayout(documentId, doc.kind === "image" ? toLayout(doc, lines[0] ?? []) : null);
     } catch (error) {
       this.documents.setOcrResult(documentId, {
@@ -162,13 +180,13 @@ export class OcrQueue {
     }
   }
 
-  private async recognize(image: Uint8Array): Promise<OcrResult> {
+  private async recognize(image: Uint8Array, languages?: string[]): Promise<OcrResult> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(() => reject(new OcrTimeoutError()), this.pageTimeoutMs);
     });
     try {
-      return await Promise.race([this.engine.recognize(image), timeout]);
+      return await Promise.race([this.engine.recognize(image, languages), timeout]);
     } catch (error) {
       // The worker may be stuck; a fresh one is started for the next job.
       // Not awaited: stopping a worker that hangs while starting would hang as well.

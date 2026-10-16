@@ -23,6 +23,7 @@ export interface AppContext {
   ocr: OcrQueue;
   dewarp: DewarpEngine;
   imaging: ImagingService;
+  ocrEngine: OcrEngine;
   archive: ArchiveService;
   currentUser(req: Request): User;
 }
@@ -55,5 +56,5 @@ export function createContext(options: ContextOptions): AppContext {
     return user;
   };
 
-  return { db, storage, users, folders, documents, stacks, ocr, dewarp, imaging, archive, currentUser };
+  return { db, storage, users, folders, documents, stacks, ocr, ocrEngine: options.ocrEngine, dewarp, imaging, archive, currentUser };
 }

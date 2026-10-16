@@ -71,6 +71,10 @@ export interface ArchiveDocument {
   ocrError: string | null;
   /** Text parts dropped as probable noise by the last OCR run. */
   ocrRemoved: number;
+  /** Language detected in the text (Tesseract code, e.g. "deu"), null if unclear. */
+  ocrLanguage: string | null;
+  /** Languages chosen for text recognition; null uses the server's default languages. */
+  ocrLanguages: string[] | null;
   metadata: Record<string, unknown>;
   folders: string[];
   createdAt: string;
@@ -122,6 +126,8 @@ export interface LibraryQuery {
 export interface AppConfig {
   dewarpAvailable: boolean;
   convertibleImageTypes: string[];
+  /** Languages used for text recognition unless a document has its own. */
+  ocrLanguages: string[];
 }
 
 export interface ApiError {

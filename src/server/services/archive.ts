@@ -5,6 +5,7 @@ import { detectDocument } from "../../shared/image/autoCrop";
 import type { JimpImage } from "../../shared/image/jimp";
 import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
 import { normalizeFolderPath } from "../../shared/folders";
+import { isOcrLanguage } from "../../shared/languages";
 import type { PdfImageQuality, UploadEnhancement } from "../../shared/settings";
 import type {
   ArchiveDocument,
@@ -27,6 +28,7 @@ import type { StackRepository } from "../db/stacks";
 import { HttpError } from "../http";
 import { derivedKeys, type FileStorage } from "../storage";
 import { extensionFor, type ImagingService } from "./imaging";
+import { detectLanguage } from "./language";
 import { createSearchablePdf, type PdfPart } from "./searchablePdf";
 import { type DewarpEngine, toDewarpGrid } from "./dewarp";
 import type { OcrEngine, OcrOptions, OcrQueue } from "./ocr";
@@ -109,6 +111,7 @@ export class ArchiveService {
         pageCount: inspection.pageCount,
         ocrText: inspection.text,
         ocrStatus: hasEmbeddedText ? "done" : "none",
+        ocrLanguage: hasEmbeddedText ? detectLanguage(inspection.text) : null,
         metadata: hasEmbeddedText ? { ...inspection.metadata, textSource: "pdf" } : inspection.metadata,
       });
       if (options.folders?.length) this.folders.setForDocument(userId, doc.id, options.folders);
@@ -138,7 +141,10 @@ export class ArchiveService {
     const doc = this.getDocument(userId, id);
     const fields: Parameters<DocumentRepository["update"]>[2] = {};
     if (typeof update.title === "string") fields.title = update.title.trim();
-    if (typeof update.ocrText === "string") fields.ocrText = update.ocrText;
+    if (typeof update.ocrText === "string") {
+      fields.ocrText = update.ocrText;
+      fields.ocrLanguage = detectLanguage(update.ocrText);
+    }
     if (update.editSettings !== undefined) {
       if (doc.kind !== "image") throw new HttpError(400, "Only images can be edited");
       fields.editSettings = normalizeEditSettings(update.editSettings, doc.editSettings);
@@ -162,9 +168,26 @@ export class ArchiveService {
     await this.storage.delete(derivedKeys.dir(id));
   }
 
-  requestOcr(userId: number, id: number, options: OcrOptions = {}): ArchiveDocument {
+  /** Detects the language of texts stored without one; returns how many were found. */
+  detectMissingLanguages(): number {
+    let found = 0;
+    for (const { id, text } of this.documents.withoutLanguage()) {
+      const language = detectLanguage(text);
+      if (!language) continue;
+      this.documents.setOcrLanguage(id, language);
+      found++;
+    }
+    return found;
+  }
+
+  /** Queues OCR; `languages` replaces the document's recognition languages (null: back to the default). */
+  requestOcr(userId: number, id: number, options: OcrOptions = {}, languages?: string[] | null): ArchiveDocument {
     const doc = this.getDocument(userId, id);
     if (doc.kind === "file") throw new HttpError(400, "OCR is only available for images and PDFs");
+    if (languages !== undefined) {
+      if (languages !== null && (languages.length === 0 || !languages.every(isOcrLanguage))) throw new HttpError(400, "Unknown OCR language");
+      this.documents.setOcrLanguages(id, languages);
+    }
     this.ocr.enqueue(id, options);
     return toPublicDocument(this.documents.get(userId, id)!);
   }

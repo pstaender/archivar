@@ -23,6 +23,8 @@ interface DocumentRow {
   ocr_confidence: number | null;
   ocr_error: string | null;
   ocr_removed: number;
+  ocr_language: string | null;
+  ocr_languages: string | null;
   metadata: string;
   created_at: string;
   updated_at: string;
@@ -46,6 +48,7 @@ export interface DocumentCreate {
   pageCount?: number | null;
   ocrText?: string;
   ocrStatus?: OcrStatus;
+  ocrLanguage?: string | null;
   metadata?: Record<string, unknown>;
 }
 
@@ -67,6 +70,8 @@ export interface OcrResultUpdate {
   confidence?: number | null;
   error?: string | null;
   removed?: number;
+  /** Detected language of `text`. */
+  language?: string | null;
 }
 
 export class DocumentRepository {
@@ -78,8 +83,8 @@ export class DocumentRepository {
   create(input: DocumentCreate): StoredDocument {
     const row = this.db
       .query(
-        `INSERT INTO documents (user_id, title, original_name, mime_type, kind, size, storage_key, width, height, page_count, ocr_text, ocr_status, metadata)
-         VALUES ($userId, $title, $originalName, $mimeType, $kind, $size, $storageKey, $width, $height, $pageCount, $ocrText, $ocrStatus, $metadata)
+        `INSERT INTO documents (user_id, title, original_name, mime_type, kind, size, storage_key, width, height, page_count, ocr_text, ocr_status, ocr_language, metadata)
+         VALUES ($userId, $title, $originalName, $mimeType, $kind, $size, $storageKey, $width, $height, $pageCount, $ocrText, $ocrStatus, $ocrLanguage, $metadata)
          RETURNING id`,
       )
       .get({
@@ -95,6 +100,7 @@ export class DocumentRepository {
         pageCount: input.pageCount ?? null,
         ocrText: input.ocrText ?? "",
         ocrStatus: input.ocrStatus ?? "none",
+        ocrLanguage: input.ocrLanguage ?? null,
         metadata: JSON.stringify(input.metadata ?? {}),
       }) as { id: number };
     return this.get(input.userId, row.id)!;
@@ -146,10 +152,10 @@ export class DocumentRepository {
   update(
     userId: number,
     id: number,
-    fields: { title?: string; editSettings?: EditSettings; ocrText?: string; width?: number; height?: number },
+    fields: { title?: string; editSettings?: EditSettings; ocrText?: string; ocrLanguage?: string | null; width?: number; height?: number },
   ): StoredDocument | null {
     const sets: string[] = [];
-    const params: Record<string, string | number> = { userId, id };
+    const params: Record<string, string | number | null> = { userId, id };
     if (fields.title !== undefined) {
       sets.push("title = $title");
       params.title = fields.title;
@@ -161,6 +167,10 @@ export class DocumentRepository {
     if (fields.ocrText !== undefined) {
       sets.push("ocr_text = $ocrText");
       params.ocrText = fields.ocrText;
+    }
+    if (fields.ocrLanguage !== undefined) {
+      sets.push("ocr_language = $ocrLanguage");
+      params.ocrLanguage = fields.ocrLanguage;
     }
     if (fields.width !== undefined && fields.height !== undefined) {
       sets.push("width = $width", "height = $height");
@@ -188,6 +198,7 @@ export class DocumentRepository {
            ocr_confidence = CASE WHEN $hasConfidence THEN $confidence ELSE ocr_confidence END,
            ocr_error = $error,
            ocr_removed = CASE WHEN $text IS NULL THEN ocr_removed ELSE $removed END,
+           ocr_language = CASE WHEN $text IS NULL THEN ocr_language ELSE $language END,
            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
          WHERE id = $id`,
       )
@@ -199,7 +210,22 @@ export class DocumentRepository {
         confidence: result.confidence ?? null,
         error: result.error ?? null,
         removed: result.removed ?? 0,
+        language: result.language ?? null,
       });
+  }
+
+  /** Documents with text but no detected language (recognized before languages were detected, or unclear). */
+  withoutLanguage(): { id: number; text: string }[] {
+    return this.db.query("SELECT id, ocr_text AS text FROM documents WHERE ocr_language IS NULL AND ocr_text != ''").all() as { id: number; text: string }[];
+  }
+
+  setOcrLanguage(id: number, language: string | null): void {
+    this.db.query("UPDATE documents SET ocr_language = ? WHERE id = ?").run(language, id);
+  }
+
+  /** Languages for the next text recognition of the document; null means the server's default. */
+  setOcrLanguages(id: number, languages: string[] | null): void {
+    this.db.query("UPDATE documents SET ocr_languages = ? WHERE id = ?").run(languages?.join("+") ?? null, id);
   }
 
   // Kept out of hydrate(): it is only needed for the PDF export and can be large.
@@ -247,6 +273,8 @@ export class DocumentRepository {
       ocrConfidence: row.ocr_confidence,
       ocrError: row.ocr_error,
       ocrRemoved: row.ocr_removed,
+      ocrLanguage: row.ocr_language,
+      ocrLanguages: row.ocr_languages ? row.ocr_languages.split("+") : null,
       metadata: JSON.parse(row.metadata),
       folders: folders.get(row.id) ?? [],
       createdAt: row.created_at,

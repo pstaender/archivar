@@ -10,6 +10,7 @@ Archive photos, scans, documents and PDFs in the browser – on desktop and on t
 - "Automatisch SW": finds brightness, contrast and threshold for black and white; clicking again cycles through variants (best guess, darker, lighter). Uploads with "Nach dem Upload erkennen" are converted automatically before OCR, and also dewarped if "Automatisch entzerren" is switched on (off by default)
 - Image view with zoom (fit, steps up to 400 %, 100 %); "Vorschau" in the editor renders the final image at full resolution with a 100 % magnifier
 - Text recognition (OCR) with Tesseract.js, editable recognized text, full-text search. Unsure, probably misread text parts are left out unless "Alle Textteile erkennen" is enabled
+- The text tab shows the detected language of the text and can recognize it again in another language (21 languages; the language data is downloaded on first use)
 - "PDF" in the text tab downloads the edited image as a searchable PDF: the (edited) text lies invisibly on the recognized line positions, so it can be searched and copied in any PDF viewer
 - Group documents into ordered stacks with a title
 - Hierarchical folders as labels (e.g. `wichtig/2026`); selected documents and stacks can be moved into or added to existing folders (or a new one), or removed from the folder being viewed
@@ -62,7 +63,7 @@ Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install i
 | GET    | `/api/documents/:id`                | Document                                      |
 | PATCH  | `/api/documents/:id`                | Update `title`, `editSettings`, `ocrText`, `folders` |
 | DELETE | `/api/documents/:id`                | Delete document and files                     |
-| POST   | `/api/documents/:id/ocr`            | Queue OCR; `{ allText: true }` keeps unsure text parts |
+| POST   | `/api/documents/:id/ocr`            | Queue OCR; `{ allText: true }` keeps unsure text parts, `{ languages: ["fra"] }` sets the recognition languages (`null`: default) |
 | POST   | `/api/documents/:id/dewarp`         | Predict UVDoc grid for `{ rotation }` (store it via `editSettings.dewarp`) |
 | POST   | `/api/documents/:id/orientation`    | `{ rotation }` that turns the original upright, `null` if unsure |
 | POST   | `/api/documents/:id/auto-crop`      | Page outline `{ corners }` for unsaved `{ editSettings }` (rotation/dewarp), `null` if none |

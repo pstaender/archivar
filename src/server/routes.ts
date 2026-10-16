@@ -49,7 +49,13 @@ export function createApiRoutes(ctx: AppContext) {
     },
 
     "/api/config": {
-      GET: handle(() => json({ dewarpAvailable: ctx.dewarp.available(), convertibleImageTypes: ctx.imaging.convertibleTypes() } satisfies AppConfig)),
+      GET: handle(() =>
+        json({
+          dewarpAvailable: ctx.dewarp.available(),
+          convertibleImageTypes: ctx.imaging.convertibleTypes(),
+          ocrLanguages: ctx.ocrEngine.languages,
+        } satisfies AppConfig),
+      ),
     },
 
     "/api/library": {
@@ -117,8 +123,10 @@ export function createApiRoutes(ctx: AppContext) {
 
     "/api/documents/:id/ocr": {
       POST: handle(async (req: Req) => {
-        const body = await readJson<{ allText?: boolean }>(req).catch(() => ({ allText: false }));
-        return json(archive.requestOcr(userId(req), parseId(req.params.id), { allText: body.allText === true }), 202);
+        const body = await readJson<{ allText?: boolean; languages?: unknown }>(req).catch(() => ({ allText: false, languages: undefined }));
+        if (body.languages !== undefined && body.languages !== null && !Array.isArray(body.languages)) throw new HttpError(400, "languages must be a list");
+        const languages = body.languages as string[] | null | undefined;
+        return json(archive.requestOcr(userId(req), parseId(req.params.id), { allText: body.allText === true }, languages), 202);
       }),
     },
 

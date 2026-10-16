@@ -232,6 +232,50 @@ describe("ocr", () => {
     expect(done).toMatchObject({ ocrStatus: "done", ocrText: "Hallo Welt", ocrConfidence: 91, ocrError: null });
   });
 
+  test("detects the language of the recognized text and recognizes again in a chosen language", async () => {
+    server.ocr.result = { text: "Sehr geehrte Damen und Herren, hiermit bestätigen wir den Eingang Ihrer Unterlagen.", confidence: 90 };
+    const doc = await uploadImage();
+    await post(`/api/documents/${doc.id}/ocr`, {});
+    await server.ctx.ocr.idle();
+    expect(await getDocument(doc.id)).toMatchObject({ ocrLanguage: "deu", ocrLanguages: null });
+
+    server.ocr.result = { text: "Madame, Monsieur, nous accusons réception de vos documents et vous remercions.", confidence: 85 };
+    const queued = (await (await post(`/api/documents/${doc.id}/ocr`, { languages: ["fra"] })).json()) as ArchiveDocument;
+    expect(queued.ocrLanguages).toEqual(["fra"]);
+    await server.ctx.ocr.idle();
+    expect(await getDocument(doc.id)).toMatchObject({ ocrLanguage: "fra", ocrLanguages: ["fra"] });
+
+    await post(`/api/documents/${doc.id}/ocr`, {});
+    await server.ctx.ocr.idle();
+    await post(`/api/documents/${doc.id}/ocr`, { languages: null });
+    await server.ctx.ocr.idle();
+    expect(server.ocr.recognizedLanguages).toEqual([undefined, ["fra"], ["fra"], undefined]);
+    expect((await getDocument(doc.id)).ocrLanguages).toBeNull();
+  });
+
+  test("detects the language of texts stored before languages were detected", async () => {
+    const doc = await uploadImage();
+    server.ctx.documents.setOcrResult(doc.id, { status: "done", text: "Madame, Monsieur, nous accusons réception de vos documents." });
+    server.ctx.documents.setOcrLanguage(doc.id, null);
+    const unclear = await uploadImage();
+    server.ctx.documents.setOcrResult(unclear.id, { status: "done", text: "12 3" });
+
+    expect(server.ctx.archive.detectMissingLanguages()).toBe(1);
+    expect((await getDocument(doc.id)).ocrLanguage).toBe("fra");
+    expect((await getDocument(unclear.id)).ocrLanguage).toBeNull();
+  });
+
+  test("refuses unknown OCR languages and detects the language of edited text", async () => {
+    const doc = await uploadImage();
+    expect((await post(`/api/documents/${doc.id}/ocr`, { languages: ["klingonisch"] })).status).toBe(400);
+    expect((await post(`/api/documents/${doc.id}/ocr`, { languages: [] })).status).toBe(400);
+    expect((await post(`/api/documents/${doc.id}/ocr`, { languages: "fra" })).status).toBe(400);
+
+    const edited = (await (await patch(`/api/documents/${doc.id}`, { ocrText: "Dear Sir or Madam, we hereby confirm that we have received your documents." })).json()) as ArchiveDocument;
+    expect(edited.ocrLanguage).toBe("eng");
+    expect(((await (await server.api("/api/config")).json()) as { ocrLanguages: string[] }).ocrLanguages).toEqual(["deu", "eng"]);
+  });
+
   test("drops probable noise unless all text parts are requested", async () => {
     server.ocr.result = {
       text: "Rechnung\n\n=a nn - LL",
@@ -463,9 +507,10 @@ describe("settings", () => {
 
 describe("dewarp", () => {
   test("reports whether the model is available", async () => {
-    expect(await (await server.api("/api/config")).json()).toEqual({ dewarpAvailable: true, convertibleImageTypes: ["image/webp"] });
+    const config = { convertibleImageTypes: ["image/webp"], ocrLanguages: ["deu", "eng"] };
+    expect(await (await server.api("/api/config")).json()).toEqual({ ...config, dewarpAvailable: true });
     server.dewarp.isAvailable = false;
-    expect(await (await server.api("/api/config")).json()).toEqual({ dewarpAvailable: false, convertibleImageTypes: ["image/webp"] });
+    expect(await (await server.api("/api/config")).json()).toEqual({ ...config, dewarpAvailable: false });
   });
 
   test("predicts a grid on the rotated original", async () => {

@@ -23,6 +23,8 @@ const imageConverter = await MagickConverter.detect();
 if (imageConverter) console.log(`ImageMagick found, also accepting ${imageConverter.types().join(", ")}.`);
 else console.warn("ImageMagick not found, HEIC/AVIF/WebP/JPEG XL/JPEG 2000 uploads are not supported.");
 const ctx = createContext({ db: openDatabase(config.databasePath), storageDir: config.storageDir, ocrEngine, dewarpEngine, imageConverter });
+const detected = ctx.archive.detectMissingLanguages();
+if (detected > 0) console.log(`Detected the language of ${detected} documents.`);
 const resumed = ctx.ocr.resume();
 if (resumed > 0) console.log(`Resumed text recognition for ${resumed} documents.`);
 ctx.imaging

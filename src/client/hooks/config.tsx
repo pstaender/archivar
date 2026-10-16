@@ -3,7 +3,7 @@ import type { AppConfig } from "../../shared/types";
 import { api } from "../api";
 import { useResource } from "./useResource";
 
-const DEFAULT_CONFIG: AppConfig = { dewarpAvailable: false, convertibleImageTypes: [] };
+const DEFAULT_CONFIG: AppConfig = { dewarpAvailable: false, convertibleImageTypes: [], ocrLanguages: ["deu", "eng"] };
 
 const ConfigContext = createContext<AppConfig>(DEFAULT_CONFIG);
 
