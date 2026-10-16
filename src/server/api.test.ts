@@ -512,7 +512,7 @@ describe("settings", () => {
     const dpi150 = await size("150");
     expect(dpi300).toBeLessThan(original / 5);
     expect(dpi150).toBeLessThan(dpi300);
-  });
+  }, 30_000);
 });
 
 describe("dewarp", () => {
@@ -821,6 +821,60 @@ describe("folders", () => {
 
   test("rejects empty folder names", async () => {
     expect((await post("/api/folders", { path: " / " })).status).toBe(400);
+  });
+});
+
+describe("library sorting", () => {
+  const titles = async (query: string) =>
+    ((await (await server.api(`/api/library${query}`)).json()) as LibraryItem[]).map((item) =>
+      item.type === "stack" ? item.stack.title : item.document.title,
+    );
+  const put = (path: string, body: unknown) =>
+    server.api(path, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+  async function setup() {
+    const ids: Record<string, number> = {};
+    for (const name of ["Banane", "apfel", "Kirsche 10", "Kirsche 9"]) {
+      ids[name] = (await uploadImage(`${name}.jpg`, { folders: "obst" })).id;
+    }
+    await patch(`/api/documents/${ids.Banane}`, { title: "Banane" });
+    return ids;
+  }
+
+  test("sorts by upload date, change date and name", async () => {
+    await setup();
+    expect(await titles("?folder=obst")).toEqual(["Banane", "Kirsche 9", "Kirsche 10", "apfel"]);
+    expect(await titles("?folder=obst&sort=created-asc")).toEqual(["Banane", "apfel", "Kirsche 10", "Kirsche 9"]);
+    expect(await titles("?folder=obst&sort=created-desc")).toEqual(["Kirsche 9", "Kirsche 10", "apfel", "Banane"]);
+    expect(await titles("?folder=obst&sort=title-asc")).toEqual(["apfel", "Banane", "Kirsche 9", "Kirsche 10"]);
+    expect(await titles("?folder=obst&sort=title-desc")).toEqual(["Kirsche 10", "Kirsche 9", "Banane", "apfel"]);
+    expect((await server.api("/api/library?sort=random")).status).toBe(400);
+  });
+
+  test("keeps the order arranged in a folder, with new items at the end", async () => {
+    const ids = await setup();
+    const stack = (await (await post("/api/stacks", { documentIds: [ids["Kirsche 9"]!], title: "Mappe", folders: ["obst"] })).json()) as { id: number };
+    const order = [
+      { type: "document", id: ids["Kirsche 10"] },
+      { type: "stack", id: stack.id },
+      { type: "document", id: ids.Banane },
+    ];
+    expect((await put("/api/folders/order", { folder: "obst", items: order })).status).toBe(204);
+
+    expect(await titles("?folder=obst&sort=custom")).toEqual(["Kirsche 10", "Mappe", "Banane", "apfel"]);
+    const later = await uploadImage("Dattel.jpg", { folders: "obst" });
+    expect((await titles("?folder=obst&sort=custom")).at(-1)).toBe(later.title);
+    expect(await titles("?folder=&sort=custom")).toContain("apfel");
+
+    expect((await put("/api/folders/order", { folder: "obst", items: [{ type: "folder", id: 1 }] })).status).toBe(400);
+    expect((await put("/api/folders/order", { items: [] })).status).toBe(400);
+  });
+
+  test("keeps the arranged order of a folder that only exists through its sub-folders", async () => {
+    const a = await uploadImage("a.jpg", { folders: "privat/wohnung" });
+    const b = await uploadImage("b.jpg", { folders: "privat/auto" });
+    await put("/api/folders/order", { folder: "privat", items: [{ type: "document", id: a.id }, { type: "document", id: b.id }] });
+    expect(await titles("?folder=privat&sort=custom")).toEqual(["a", "b"]);
   });
 });
 

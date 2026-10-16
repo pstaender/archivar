@@ -120,9 +120,20 @@ export interface StackUpdate {
   documentIds?: number[];
 }
 
+/** "custom" is the order the user arranged in a folder (only with `folder`); the default is "updated". */
+export type LibrarySort = "updated" | "created-desc" | "created-asc" | "title-asc" | "title-desc" | "custom";
+
+export const LIBRARY_SORTS: LibrarySort[] = ["updated", "created-desc", "created-asc", "title-asc", "title-desc", "custom"];
+
 export interface LibraryQuery {
   folder?: string;
   q?: string;
+  sort?: LibrarySort;
+}
+
+export interface LibraryItemRef {
+  type: LibraryItem["type"];
+  id: number;
 }
 
 export interface AppConfig {

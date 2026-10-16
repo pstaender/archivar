@@ -1,5 +1,5 @@
 import type { BunRequest } from "bun";
-import type { AppConfig, DocumentUpdate, EditSettings, Rotation, StackCreate, StackUpdate } from "../shared/types";
+import { type AppConfig, type DocumentUpdate, type EditSettings, LIBRARY_SORTS, type LibraryItemRef, type LibrarySort, type Rotation, type StackCreate, type StackUpdate } from "../shared/types";
 import type { AppContext } from "./context";
 import { toPublicDocument } from "./db/documents";
 import { handle, HttpError, json, noContent, parseId, readJson } from "./http";
@@ -15,6 +15,12 @@ function parseFolderList(value: FormDataEntryValue | null): string[] {
   } catch {
     return [value];
   }
+}
+
+function parseSort(value: string | null): LibrarySort | undefined {
+  if (value === null) return undefined;
+  if (!LIBRARY_SORTS.includes(value as LibrarySort)) throw new HttpError(400, "Unknown sort");
+  return value as LibrarySort;
 }
 
 function pdfResponse({ pdf, filename }: { pdf: Uint8Array<ArrayBuffer>; filename: string }): Response {
@@ -65,6 +71,7 @@ export function createApiRoutes(ctx: AppContext) {
           archive.library(userId(req), {
             folder: url.searchParams.get("folder") ?? undefined,
             q: url.searchParams.get("q") ?? undefined,
+            sort: parseSort(url.searchParams.get("sort")),
           }),
         );
       }),
@@ -231,6 +238,20 @@ export function createApiRoutes(ctx: AppContext) {
       POST: handle(async (req: Req) => {
         const body = await readJson<{ documentIds: number[] }>(req);
         return json(archive.addToStack(userId(req), parseId(req.params.id), body.documentIds));
+      }),
+    },
+
+    "/api/folders/order": {
+      PUT: handle(async (req: Req) => {
+        const body = await readJson<{ folder?: unknown; items?: unknown }>(req);
+        if (typeof body.folder !== "string" || !Array.isArray(body.items)) throw new HttpError(400, "folder and items required");
+        const items = body.items.map((item): LibraryItemRef => {
+          const { type, id } = (item ?? {}) as { type?: unknown; id?: unknown };
+          if ((type !== "document" && type !== "stack") || !Number.isInteger(id)) throw new HttpError(400, "Invalid item");
+          return { type, id: id as number };
+        });
+        archive.setFolderOrder(userId(req), body.folder, items);
+        return noContent();
       }),
     },
 

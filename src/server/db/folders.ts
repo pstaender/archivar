@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import { normalizeFolderPath } from "../../shared/folders";
-import type { Folder } from "../../shared/types";
+import type { Folder, LibraryItemRef } from "../../shared/types";
 import { HttpError } from "../http";
 
 type OwnerTable = "document_folders" | "stack_folders";
@@ -32,6 +32,29 @@ export class FolderRepository {
       id: number;
     };
     return row.id;
+  }
+
+  idByPath(userId: number, rawPath: string): number | null {
+    const row = this.db.query("SELECT id FROM folders WHERE user_id = ? AND path = ?").get(userId, normalizeFolderPath(rawPath)) as { id: number } | null;
+    return row?.id ?? null;
+  }
+
+  /** Positions of the items the user arranged in the folder, keyed "document:12" / "stack:3". */
+  order(folderId: number): Map<string, number> {
+    const rows = this.db.query("SELECT item_type, item_id, position FROM folder_order WHERE folder_id = ?").all(folderId) as {
+      item_type: string;
+      item_id: number;
+      position: number;
+    }[];
+    return new Map(rows.map((row) => [`${row.item_type}:${row.item_id}`, row.position]));
+  }
+
+  setOrder(folderId: number, items: LibraryItemRef[]): void {
+    const insert = this.db.query("INSERT OR REPLACE INTO folder_order (folder_id, item_type, item_id, position) VALUES (?, ?, ?, ?)");
+    this.db.transaction(() => {
+      this.db.query("DELETE FROM folder_order WHERE folder_id = ?").run(folderId);
+      items.forEach((item, position) => insert.run(folderId, item.type, item.id, position));
+    })();
   }
 
   rename(userId: number, id: number, rawPath: string): void {

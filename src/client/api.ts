@@ -9,6 +9,7 @@ import type {
   EditSettings,
   Folder,
   LibraryItem,
+  LibraryItemRef,
   LibraryQuery,
   Quad,
   Rotation,
@@ -96,7 +97,10 @@ export const api = {
   updateSettings: (update: Partial<UserSettings>) => request<UserSettings>("/api/settings", jsonBody("PATCH", update)),
   config: () => request<AppConfig>("/api/config"),
 
-  library: (params: LibraryQuery = {}) => request<LibraryItem[]>(`/api/library${query({ folder: params.folder, q: params.q })}`),
+  library: (params: LibraryQuery = {}) =>
+    request<LibraryItem[]>(`/api/library${query({ folder: params.folder, q: params.q, sort: params.sort })}`),
+  /** Stores the order of the items arranged by the user in a folder. */
+  saveFolderOrder: (folder: string, items: LibraryItemRef[]) => request<void>("/api/folders/order", jsonBody("PUT", { folder, items })),
 
   document: (id: number) => request<ArchiveDocument>(`/api/documents/${id}`),
   updateDocument: (id: number, update: DocumentUpdate) => request<ArchiveDocument>(`/api/documents/${id}`, jsonBody("PATCH", update)),

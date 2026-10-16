@@ -71,6 +71,15 @@ const migrations: string[] = [
   ALTER TABLE documents ADD COLUMN ocr_languages TEXT;
   `,
   `ALTER TABLE documents ADD COLUMN ocr_all_text INTEGER NOT NULL DEFAULT 0;`,
+  `
+  CREATE TABLE folder_order (
+    folder_id INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
+    item_type TEXT NOT NULL,
+    item_id INTEGER NOT NULL,
+    position INTEGER NOT NULL,
+    PRIMARY KEY (folder_id, item_type, item_id)
+  );
+  `,
 ];
 
 export function migrate(db: Database): void {

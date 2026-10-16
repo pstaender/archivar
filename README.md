@@ -12,6 +12,7 @@ Archive photos, scans, documents and PDFs in the browser – on desktop and on t
 - Text recognition (OCR) with Tesseract.js, editable recognized text, full-text search. Unsure, probably misread text parts are left out unless "Alle Textteile erkennen" is enabled
 - The text tab shows the detected language of the text and can recognize it again in another language (21 languages; the language data is downloaded on first use)
 - "PDF" in the text tab downloads the edited image as a searchable PDF: the (edited) text lies invisibly on the recognized line positions, so it can be searched and copied in any PDF viewer
+- Sort the overview and folders by change date, upload date or name; inside a folder also in an own order arranged by dragging cards (mouse, touch, or keyboard via the grip)
 - Group documents into ordered stacks with a title
 - Hierarchical folders as labels (e.g. `wichtig/2026`); selected documents and stacks can be moved into or added to existing folders (or a new one), or removed from the folder being viewed
 - "PDF" for a selection downloads all its images (as searchable pages) and PDFs, including the documents of selected stacks, as one PDF
@@ -57,7 +58,8 @@ Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install i
 | GET    | `/api/config`                       | Feature flags (`dewarpAvailable`, `convertibleImageTypes`) |
 | GET    | `/api/settings`                     | User settings (`autoOcr`, `autoDewarp`, `ocrAllText`, `uploadEnhancement`, `pdfImageQuality`) |
 | PATCH  | `/api/settings`                     | Update user settings (unknown values are ignored) |
-| GET    | `/api/library?folder=&q=`           | Stacks and loose documents                    |
+| GET    | `/api/library?folder=&q=&sort=`     | Stacks and loose documents; `sort`: `updated` (default), `created-desc`, `created-asc`, `title-asc`, `title-desc`, `custom` |
+| PUT    | `/api/folders/order`                | Store the own order `{ folder, items: [{ type, id }] }` of a folder |
 | GET    | `/api/documents?folder=&q=&stackId=`| Documents                                     |
 | POST   | `/api/documents`                    | Upload (`multipart`: `files[]`, `folders`, `stackId`, `ocr`) |
 | GET    | `/api/documents/:id`                | Document                                      |

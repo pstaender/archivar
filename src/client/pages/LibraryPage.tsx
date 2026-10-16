@@ -2,11 +2,12 @@ import { Download, FolderMinus, FolderPlus, Layers, Loader, Trash, Upload, X } f
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { moveToFolders } from "../../shared/folders";
-import type { LibraryItem } from "../../shared/types";
+import { LIBRARY_SORTS, type LibraryItem, type LibrarySort } from "../../shared/types";
 import { api } from "../api";
 import { ConfirmDialog } from "../components/Dialog";
 import { FolderTargetDialog } from "../components/FolderTargetDialog";
 import { ItemCard, itemKey } from "../components/ItemCard";
+import { SortableGrid } from "../components/SortableGrid";
 import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
 import { useRefreshOnUpload, useUpload } from "../hooks/upload";
@@ -17,13 +18,50 @@ import { documentLabel, isOcrBusy } from "../format";
 import { folderHref, useCurrentFolder } from "../routes";
 
 const POLL_INTERVAL = 2500;
+const SORT_KEY = "archivar.librarySort";
+
+const SORT_LABELS: Record<LibrarySort, string> = {
+  updated: "Zuletzt geändert",
+  "created-desc": "Hochgeladen, neueste zuerst",
+  "created-asc": "Hochgeladen, älteste zuerst",
+  "title-asc": "Name A–Z",
+  "title-desc": "Name Z–A",
+  custom: "Eigene Reihenfolge",
+};
+
+function readSort(): LibrarySort {
+  try {
+    const stored = localStorage.getItem(SORT_KEY);
+    return LIBRARY_SORTS.includes(stored as LibrarySort) ? (stored as LibrarySort) : "updated";
+  } catch {
+    return "updated";
+  }
+}
+
+function useStoredSort(): [LibrarySort, (sort: LibrarySort) => void] {
+  const [sort, setSort] = useState(readSort);
+  const update = (next: LibrarySort) => {
+    setSort(next);
+    try {
+      localStorage.setItem(SORT_KEY, next);
+    } catch {}
+  };
+  return [sort, update];
+}
+
+const itemRef = (item: LibraryItem) => ({ type: item.type, id: item.type === "stack" ? item.stack.id : item.document.id });
+const itemTitle = (item: LibraryItem) => (item.type === "stack" ? item.stack.title : documentLabel(item.document));
 
 export function LibraryPage() {
   const [params] = useSearchParams();
   const folder = useCurrentFolder() ?? undefined;
   const q = params.get("q") ?? undefined;
   const legacyFolder = params.get("folder");
-  const library = useResource(() => api.library({ folder, q }), [folder, q]);
+  const toast = useToast();
+  const [sortChoice, setSortChoice] = useStoredSort();
+  // The arranged order belongs to a folder; the overview falls back to the default.
+  const sort = sortChoice === "custom" && !folder ? "updated" : sortChoice;
+  const library = useResource(() => api.library({ folder, q, sort }), [folder, q, sort]);
   useRefreshOnUpload(library.refresh);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -44,6 +82,15 @@ export function LibraryPage() {
 
   const selectedItems = items.filter((item) => selected.has(itemKey(item)));
 
+  const reorder = (next: LibraryItem[]) => {
+    if (!folder) return;
+    library.setData(next);
+    api.saveFolderOrder(folder, next.map(itemRef)).catch((error) => {
+      toast.error(error);
+      void library.refresh();
+    });
+  };
+
   if (legacyFolder) {
     const rest = new URLSearchParams(params);
     rest.delete("folder");
@@ -58,29 +105,46 @@ export function LibraryPage() {
         <div>
           <h1>{title}</h1>
           {!library.loading && (
-            <p className="muted small">{items.length === 1 ? "1 Eintrag" : `${items.length} Einträge`}</p>
+            <p className="muted small">
+              {items.length === 1 ? "1 Eintrag" : `${items.length} Einträge`}
+              {sort === "custom" && items.length > 1 && " · Karten ziehen, um sie anzuordnen"}
+            </p>
           )}
         </div>
+        <select
+          className="input input--sm library-sort"
+          value={sort}
+          onChange={(e) => setSortChoice(e.target.value as LibrarySort)}
+          aria-label="Sortierung"
+          title="Sortierung"
+        >
+          {LIBRARY_SORTS.filter((value) => value !== "custom" || folder).map((value) => (
+            <option key={value} value={value}>
+              {SORT_LABELS[value]}
+            </option>
+          ))}
+        </select>
       </header>
 
       {library.error && <div className="alert alert--error">{library.error.message}</div>}
 
       {!library.loading && items.length === 0 && !library.error && <EmptyLibrary filtered={Boolean(folder || q)} />}
 
-      <div className="grid" aria-busy={library.loading}>
-        {items.map((item) => {
-          const key = itemKey(item);
-          return (
-            <ItemCard
-              key={key}
-              item={item}
-              selected={selected.has(key)}
-              selectionMode={selected.size > 0}
-              onToggle={() => toggle(key)}
-            />
-          );
-        })}
-      </div>
+      <SortableGrid
+        items={items}
+        itemKey={itemKey}
+        itemLabel={itemTitle}
+        busy={library.loading}
+        onReorder={sort === "custom" ? reorder : undefined}
+        renderItem={(item) => (
+          <ItemCard
+            item={item}
+            selected={selected.has(itemKey(item))}
+            selectionMode={selected.size > 0}
+            onToggle={() => toggle(itemKey(item))}
+          />
+        )}
+      />
 
       {selectedItems.length > 0 && (
         <SelectionBar

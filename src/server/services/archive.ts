@@ -14,7 +14,9 @@ import type {
   DocumentUpdate,
   EditSettings,
   LibraryItem,
+  LibraryItemRef,
   LibraryQuery,
+  LibrarySort,
   Quad,
   Rotation,
   Stack,
@@ -68,16 +70,17 @@ export class ArchiveService {
 
   library(userId: number, query: LibraryQuery): LibraryItem[] {
     const filter = { folder: query.folder ? normalizeFolderPath(query.folder) : undefined, q: query.q?.trim() || undefined };
-    const items: (LibraryItem & { sortKey: string })[] = [
-      ...this.stacks.list(userId, filter).map((stack) => ({ type: "stack" as const, stack, sortKey: stack.updatedAt })),
-      ...this.documents.list(userId, { ...filter, stackId: null }).map((doc) => ({
-        type: "document" as const,
-        document: toPublicDocument(doc),
-        sortKey: doc.updatedAt,
-      })),
+    const items: LibraryItem[] = [
+      ...this.stacks.list(userId, filter).map((stack) => ({ type: "stack" as const, stack })),
+      ...this.documents.list(userId, { ...filter, stackId: null }).map((doc) => ({ type: "document" as const, document: toPublicDocument(doc) })),
     ];
-    items.sort((a, b) => b.sortKey.localeCompare(a.sortKey));
-    return items.map(({ sortKey: _sortKey, ...item }) => item as LibraryItem);
+    const folderId = filter.folder && query.sort === "custom" ? this.folders.idByPath(userId, filter.folder) : null;
+    return sortLibrary(items, query.sort ?? "updated", folderId === null ? new Map() : this.folders.order(folderId));
+  }
+
+  /** Stores the order of the items the user arranged in a folder; items left out go to the end. */
+  setFolderOrder(userId: number, folder: string, items: LibraryItemRef[]): void {
+    this.folders.setOrder(this.folders.ensure(userId, folder), items);
   }
 
   getDocument(userId: number, id: number): StoredDocument {
@@ -365,4 +368,31 @@ export class ArchiveService {
     }
     return unique;
   }
+}
+
+const titleCollator = new Intl.Collator("de", { numeric: true, sensitivity: "base" });
+
+const itemTitle = (item: LibraryItem) =>
+  item.type === "stack" ? item.stack.title : item.document.title.trim() || item.document.originalName;
+const itemCreated = (item: LibraryItem) => (item.type === "stack" ? item.stack.createdAt : item.document.createdAt);
+const itemUpdated = (item: LibraryItem) => (item.type === "stack" ? item.stack.updatedAt : item.document.updatedAt);
+const itemKey = (item: LibraryItem) => `${item.type}:${item.type === "stack" ? item.stack.id : item.document.id}`;
+
+/** Sorts library items; with "custom", arranged items come first in their order, then the rest by upload date (new ones last). */
+export function sortLibrary(items: LibraryItem[], sort: LibrarySort, positions: Map<string, number>): LibraryItem[] {
+  const byUpdated = (a: LibraryItem, b: LibraryItem) => itemUpdated(b).localeCompare(itemUpdated(a));
+  const byCreatedAsc = (a: LibraryItem, b: LibraryItem) => itemCreated(a).localeCompare(itemCreated(b));
+  const compare: Record<LibrarySort, (a: LibraryItem, b: LibraryItem) => number> = {
+    updated: byUpdated,
+    "created-desc": (a, b) => itemCreated(b).localeCompare(itemCreated(a)),
+    "created-asc": byCreatedAsc,
+    "title-asc": (a, b) => titleCollator.compare(itemTitle(a), itemTitle(b)),
+    "title-desc": (a, b) => titleCollator.compare(itemTitle(b), itemTitle(a)),
+    custom: (a, b) => {
+      const pa = positions.get(itemKey(a)) ?? Infinity;
+      const pb = positions.get(itemKey(b)) ?? Infinity;
+      return pa === pb ? byCreatedAsc(a, b) : pa - pb;
+    },
+  };
+  return [...items].sort(compare[sort]);
 }

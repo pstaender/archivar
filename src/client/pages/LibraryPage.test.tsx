@@ -6,7 +6,10 @@ import { UploadButtons } from "../components/UploadButtons";
 import { LibraryPage } from "./LibraryPage";
 
 let fetchMock: FetchMock;
-afterEach(() => fetchMock.restore());
+afterEach(() => {
+  fetchMock.restore();
+  localStorage.clear();
+});
 
 describe("LibraryPage", () => {
   test("lists documents and stacks", async () => {
@@ -24,7 +27,7 @@ describe("LibraryPage", () => {
   test("passes folder and search filters to the API", async () => {
     fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [] });
     await renderApp(<LibraryPage />, { path: "/folders/wichtig/2026?q=miete" });
-    expect(fetchMock.calls.some((c) => c.path === "/api/library?folder=wichtig%2F2026&q=miete")).toBe(true);
+    expect(fetchMock.calls.some((c) => c.path === "/api/library?folder=wichtig%2F2026&q=miete&sort=updated")).toBe(true);
     expect(screen.getByRole("heading", { name: "Suche „miete“" })).toBeTruthy();
     expect(screen.getByText("Keine passenden Dokumente gefunden.")).toBeTruthy();
   });
@@ -32,7 +35,7 @@ describe("LibraryPage", () => {
   test("redirects old folder query links to folder routes", async () => {
     fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [] });
     await renderApp(<LibraryPage />, { path: "/?folder=wichtig%2F2026" });
-    expect(fetchMock.calls.some((c) => c.path === "/api/library?folder=wichtig%2F2026")).toBe(true);
+    expect(fetchMock.calls.some((c) => c.path === "/api/library?folder=wichtig%2F2026&sort=updated")).toBe(true);
     expect(screen.getByRole("heading", { name: "wichtig / 2026" })).toBeTruthy();
   });
 
@@ -254,6 +257,66 @@ describe("LibraryPage", () => {
     } finally {
       xhr.restore();
     }
+  });
+
+  test("sorts by the chosen criterion and remembers it", async () => {
+    fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [docItem(makeDocument({ title: "Brief" }))] });
+    await renderApp(<LibraryPage />);
+    const select = screen.getByLabelText("Sortierung") as HTMLSelectElement;
+    expect([...select.options].map((o) => o.textContent)).toEqual([
+      "Zuletzt geändert",
+      "Hochgeladen, neueste zuerst",
+      "Hochgeladen, älteste zuerst",
+      "Name A–Z",
+      "Name Z–A",
+    ]);
+    fireEvent.change(select, { target: { value: "title-asc" } });
+    await waitFor(() => expect(fetchMock.calls.some((c) => c.path === "/api/library?sort=title-asc")).toBe(true));
+    expect(localStorage.getItem("archivar.librarySort")).toBe("title-asc");
+  });
+
+  test("offers an own order only inside a folder and falls back to the default elsewhere", async () => {
+    localStorage.setItem("archivar.librarySort", "custom");
+    fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [] });
+    await renderApp(<LibraryPage />, { path: "/folders/obst" });
+    expect((screen.getByLabelText("Sortierung") as HTMLSelectElement).value).toBe("custom");
+    expect(fetchMock.calls.some((c) => c.path === "/api/library?folder=obst&sort=custom")).toBe(true);
+    fetchMock.restore();
+
+    fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [] });
+    await renderApp(<LibraryPage />);
+    expect(fetchMock.calls.some((c) => c.path === "/api/library?sort=updated")).toBe(true);
+  });
+
+  test("moves a card with the keyboard grip and stores the folder's order", async () => {
+    localStorage.setItem("archivar.librarySort", "custom");
+    const a = makeDocument({ title: "Erstes" });
+    const b = makeDocument({ title: "Zweites" });
+    const stack = makeStack({ title: "Mappe", documentIds: [90] });
+    fetchMock = mockFetch({
+      "GET /api/folders": () => [],
+      "GET /api/library": () => [docItem(a), docItem(b), stackItem(stack)],
+      "PUT /api/folders/order": () => undefined,
+    });
+    await renderApp(<LibraryPage />, { path: "/folders/obst" });
+    expect(screen.getByText(/Karten ziehen, um sie anzuordnen/)).toBeTruthy();
+
+    const grip = screen.getByRole("button", { name: "Mappe verschieben" });
+    grip.focus();
+    await act(async () => {
+      fireEvent.keyDown(grip, { code: "Space", key: " " });
+    });
+    await act(async () => {
+      fireEvent.keyDown(grip, { code: "ArrowLeft", key: "ArrowLeft" });
+    });
+    await act(async () => {
+      fireEvent.keyDown(grip, { code: "Space", key: " " });
+    });
+
+    await waitFor(() => expect(fetchMock.calls.some((c) => c.method === "PUT")).toBe(true));
+    const put = fetchMock.calls.find((c) => c.method === "PUT")!;
+    expect(put.body).toMatchObject({ folder: "obst" });
+    expect((put.body as { items: unknown[] }).items).toHaveLength(3);
   });
 
   test("shows API errors", async () => {
