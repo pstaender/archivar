@@ -1,0 +1,112 @@
+import { mock } from "bun:test";
+import { act, render } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { MemoryRouter, Route, Routes } from "react-router";
+import type { ArchiveDocument, Folder, LibraryItem, Stack } from "../src/shared/types";
+import { DEFAULT_EDIT_SETTINGS } from "../src/shared/editSettings";
+import { FoldersProvider } from "../src/client/hooks/folders";
+import { ToastProvider } from "../src/client/hooks/toast";
+import { UploadProvider } from "../src/client/hooks/upload";
+
+export type Handler = (url: URL, init: RequestInit) => unknown | Response | Promise<unknown>;
+
+export interface FetchMock {
+  calls: { method: string; path: string; body: unknown }[];
+  restore(): void;
+}
+
+export function mockFetch(routes: Record<string, Handler>): FetchMock {
+  const original = globalThis.fetch;
+  const calls: FetchMock["calls"] = [];
+  globalThis.fetch = mock(async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const url = new URL(String(input), "http://localhost:3000");
+    const method = (init.method ?? "GET").toUpperCase();
+    const body = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
+    calls.push({ method, path: url.pathname + url.search, body });
+    const key = `${method} ${url.pathname}`;
+    const handler = routes[key];
+    if (!handler) return Response.json({ error: `No mock for ${key}` }, { status: 404 });
+    const result = await handler(url, init);
+    if (result instanceof Response) return result;
+    if (result === undefined) return new Response(null, { status: 204 });
+    return Response.json(result);
+  }) as unknown as typeof fetch;
+  return {
+    calls,
+    restore: () => {
+      globalThis.fetch = original;
+    },
+  };
+}
+
+export async function settle(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+export async function renderApp(ui: ReactElement, { path = "/", route = "*" }: { path?: string; route?: string } = {}) {
+  const result = render(
+    <MemoryRouter initialEntries={[path]}>
+      <ToastProvider>
+        <FoldersProvider>
+          <UploadProvider>
+            <Routes>
+              <Route path={route} element={ui} />
+            </Routes>
+          </UploadProvider>
+        </FoldersProvider>
+      </ToastProvider>
+    </MemoryRouter>,
+  );
+  await settle();
+  return result;
+}
+
+let nextId = 1;
+
+export function makeDocument(overrides: Partial<ArchiveDocument> = {}): ArchiveDocument {
+  const id = overrides.id ?? nextId++;
+  return {
+    id,
+    title: `Dokument ${id}`,
+    originalName: `doc-${id}.jpg`,
+    mimeType: "image/jpeg",
+    kind: "image",
+    size: 1234,
+    width: 100,
+    height: 140,
+    pageCount: null,
+    stackId: null,
+    stackPosition: 0,
+    editSettings: { ...DEFAULT_EDIT_SETTINGS },
+    ocrText: "",
+    ocrStatus: "none",
+    ocrConfidence: null,
+    ocrError: null,
+    metadata: {},
+    folders: [],
+    createdAt: "2026-03-01T10:00:00.000Z",
+    updatedAt: "2026-03-01T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
+export function makeStack(overrides: Partial<Stack> = {}): Stack {
+  const id = overrides.id ?? nextId++;
+  return {
+    id,
+    title: `Stapel ${id}`,
+    folders: [],
+    documentIds: [],
+    coverDocumentId: null,
+    createdAt: "2026-03-01T10:00:00.000Z",
+    updatedAt: "2026-03-01T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
+export const docItem = (document: ArchiveDocument): LibraryItem => ({ type: "document", document });
+export const stackItem = (stack: Stack): LibraryItem => ({ type: "stack", stack });
+
+export const folder = (id: number, path: string, documentCount = 0): Folder => ({ id, path, documentCount, stackCount: 0 });
