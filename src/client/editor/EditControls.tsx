@@ -1,4 +1,4 @@
-import { Contrast, Crop, Loader2, RotateCcw, RotateCw, Scan, WandSparkles } from "lucide-react";
+import { Contrast, Crop, Loader, RotateCcw, RotateCw, Scan, WandSparkles } from "../icons";
 import { type CSSProperties, useId } from "react";
 import { rotateBy } from "../../shared/editSettings";
 import type { ColorMode, EditSettings } from "../../shared/types";
@@ -68,14 +68,18 @@ export function EditControls({
   return (
     <div className="edit-controls">
       <section className="control-group">
-        <h3>Ausrichtung</h3>
-        <div className="button-row">
-          <button type="button" className="btn btn--sm" onClick={() => rotate(-90)} aria-label="Nach links drehen" title="Nach links drehen">
-            <RotateCcw size={16} />
-          </button>
-          <button type="button" className="btn btn--sm" onClick={() => rotate(90)} aria-label="Nach rechts drehen" title="Nach rechts drehen">
-            <RotateCw size={16} />
-          </button>
+        <div className="control-group__header">
+          <h3>Ausrichtung</h3>
+          <div className="button-row">
+            <button type="button" className="btn btn--sm btn--icon" onClick={() => rotate(-90)} aria-label="Nach links drehen" title="Nach links drehen">
+              <RotateCcw size={16} />
+            </button>
+            <button type="button" className="btn btn--sm btn--icon" onClick={() => rotate(90)} aria-label="Nach rechts drehen" title="Nach rechts drehen">
+              <RotateCw size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="tool-grid">
           <button type="button" className={`btn btn--sm ${mode === "crop" ? "is-active" : ""}`} aria-pressed={mode === "crop"} onClick={() => toggleMode("crop")}>
             <Crop size={16} />
             Zuschneiden
@@ -99,7 +103,7 @@ export function EditControls({
               onClick={() => (settings.dewarp ? onChange({ ...settings, dewarp: null, corners: null }) : onAutoDewarp?.())}
               disabled={dewarping}
             >
-              {dewarping ? <Loader2 size={16} className="spin" /> : <WandSparkles size={16} />}
+              {dewarping ? <Loader size={16} className="spin" /> : <WandSparkles size={16} />}
               Automatisch entzerren
             </button>
             <span className="muted small">
@@ -148,7 +152,7 @@ export function EditControls({
         {onAutoBw && (
           <div className="dewarp-row">
             <button type="button" className={`btn btn--sm ${autoBw ? "is-active" : ""}`} aria-pressed={Boolean(autoBw)} onClick={onAutoBw} disabled={bwLoading}>
-              {bwLoading ? <Loader2 size={16} className="spin" /> : <Contrast size={16} />}
+              {bwLoading ? <Loader size={16} className="spin" /> : <Contrast size={16} />}
               Automatisch SW
             </button>
             <span className="muted small" aria-live="polite">

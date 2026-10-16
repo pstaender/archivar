@@ -21,10 +21,17 @@ describe("LibraryPage", () => {
 
   test("passes folder and search filters to the API", async () => {
     fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [] });
-    await renderApp(<LibraryPage />, { path: "/?folder=wichtig%2F2026&q=miete" });
+    await renderApp(<LibraryPage />, { path: "/folders/wichtig/2026?q=miete" });
     expect(fetchMock.calls.some((c) => c.path === "/api/library?folder=wichtig%2F2026&q=miete")).toBe(true);
     expect(screen.getByRole("heading", { name: "Suche „miete“" })).toBeTruthy();
     expect(screen.getByText("Keine passenden Dokumente gefunden.")).toBeTruthy();
+  });
+
+  test("redirects old folder query links to folder routes", async () => {
+    fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [] });
+    await renderApp(<LibraryPage />, { path: "/?folder=wichtig%2F2026" });
+    expect(fetchMock.calls.some((c) => c.path === "/api/library?folder=wichtig%2F2026")).toBe(true);
+    expect(screen.getByRole("heading", { name: "wichtig / 2026" })).toBeTruthy();
   });
 
   test("shows an upload prompt for an empty archive", async () => {

@@ -1,4 +1,4 @@
-import { Upload } from "lucide-react";
+import { Upload } from "../icons";
 import { useEffect, useRef, useState } from "react";
 import { useUpload } from "../hooks/upload";
 

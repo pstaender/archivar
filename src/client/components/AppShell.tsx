@@ -1,7 +1,8 @@
-import { Menu, Search, X } from "lucide-react";
+import { Menu, Search, X } from "../icons";
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useUpload } from "../hooks/upload";
+import { isLibraryPath } from "../routes";
 import { DropZone } from "./DropZone";
 import { FolderTree } from "./FolderTree";
 import { UploadButtons } from "./UploadButtons";
@@ -46,16 +47,19 @@ function SearchField() {
 
   useEffect(() => setValue(params.get("q") ?? ""), [params]);
 
+  const onLibrary = isLibraryPath(location.pathname);
+
   const apply = (q: string) => {
-    const next = new URLSearchParams(location.pathname === "/" ? params : undefined);
+    const next = new URLSearchParams(onLibrary ? params : undefined);
     if (q.trim()) next.set("q", q.trim());
     else next.delete("q");
     const search = next.toString();
-    navigate(search ? `/?${search}` : "/", { replace: location.pathname === "/" });
+    const pathname = onLibrary ? location.pathname : "/";
+    navigate(search ? `${pathname}?${search}` : pathname, { replace: onLibrary });
   };
 
   useEffect(() => {
-    if (location.pathname !== "/" || value === (params.get("q") ?? "")) return;
+    if (!onLibrary || value === (params.get("q") ?? "")) return;
     const timer = setTimeout(() => apply(value), 300);
     return () => clearTimeout(timer);
   }, [value]);
@@ -84,10 +88,11 @@ function SidebarFooter() {
   const { autoOcr, setAutoOcr, ocrAllText, setOcrAllText } = useUpload();
   return (
     <div className="sidebar__footer">
+      <h3>Texterkennung</h3>
       <label className="switch">
         <input type="checkbox" checked={autoOcr} onChange={(e) => setAutoOcr(e.target.checked)} />
         <span className="switch__track" aria-hidden />
-        <span>Texterkennung nach Upload</span>
+        <span>Nach dem Upload erkennen</span>
       </label>
       <label className="switch" title="Auch unsichere, vermutlich fehlerhafte Textteile übernehmen">
         <input type="checkbox" checked={ocrAllText} onChange={(e) => setOcrAllText(e.target.checked)} />

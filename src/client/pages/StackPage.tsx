@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, ImagePlus, MinusCircle, Trash2, Unlink } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ImagePlus, CircleMinus, Trash, Unlink } from "../icons";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import type { StackWithDocuments } from "../../shared/types";
@@ -122,7 +122,7 @@ export function StackPage() {
             <Unlink size={16} />
           </button>
           <button type="button" className="btn btn--ghost btn--icon btn--danger-ghost" onClick={() => setConfirm("delete")} aria-label="Stapel löschen" title="Stapel löschen">
-            <Trash2 size={16} />
+            <Trash size={16} />
           </button>
         </div>
       </header>
@@ -162,7 +162,7 @@ export function StackPage() {
                   aria-label="Aus Stapel entfernen"
                   title="Aus Stapel entfernen"
                 >
-                  <MinusCircle size={14} />
+                  <CircleMinus size={14} />
                 </button>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { Loader } from "../icons";
 import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
 import { createImage, type JimpImage } from "../../shared/image/jimp";
 import { applyEdits } from "../../shared/image/pipeline";
@@ -83,7 +83,7 @@ export function ImageEditor({ src, settings, mode, onCornersChange }: ImageEdito
       </div>
       {(!base || rendering) && (
         <span className="editor-canvas__spinner" aria-label="Vorschau wird berechnet">
-          <Loader2 size={18} className="spin" />
+          <Loader size={18} className="spin" />
         </span>
       )}
     </div>

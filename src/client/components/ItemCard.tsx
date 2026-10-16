@@ -1,4 +1,4 @@
-import { Check, FileText, Layers, Loader2, ScanText } from "lucide-react";
+import { Check, FileText, Layers, Loader, ScanText } from "../icons";
 import { type MouseEvent, useState } from "react";
 import { Link } from "react-router";
 import type { ArchiveDocument, LibraryItem } from "../../shared/types";
@@ -104,7 +104,7 @@ function OcrIndicator({ doc }: { doc: ArchiveDocument }) {
   if (isOcrBusy(doc)) {
     return (
       <span className="card__status" title={OCR_STATUS_LABEL[doc.ocrStatus]}>
-        <Loader2 size={12} className="spin" aria-label={OCR_STATUS_LABEL[doc.ocrStatus]} />
+        <Loader size={12} className="spin" aria-label={OCR_STATUS_LABEL[doc.ocrStatus]} />
       </span>
     );
   }

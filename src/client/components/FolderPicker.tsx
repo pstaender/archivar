@@ -1,4 +1,4 @@
-import { Folder as FolderIcon, X } from "lucide-react";
+import { Folder as FolderIcon, X } from "../icons";
 import { type KeyboardEvent, useId, useState } from "react";
 import { normalizeFolderPath } from "../../shared/folders";
 import { useFolders } from "../hooks/folders";

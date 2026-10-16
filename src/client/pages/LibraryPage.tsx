@@ -1,6 +1,6 @@
-import { FolderPlus, Layers, Trash2, Upload, X } from "lucide-react";
+import { FolderPlus, Layers, Trash, Upload, X } from "../icons";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { Navigate, useNavigate, useSearchParams } from "react-router";
 import type { LibraryItem } from "../../shared/types";
 import { api } from "../api";
 import { ConfirmDialog, Dialog } from "../components/Dialog";
@@ -11,13 +11,15 @@ import { useToast } from "../hooks/toast";
 import { useUpload } from "../hooks/upload";
 import { useResource } from "../hooks/useResource";
 import { isOcrBusy } from "../format";
+import { folderHref, useCurrentFolder } from "../routes";
 
 const POLL_INTERVAL = 2500;
 
 export function LibraryPage() {
   const [params] = useSearchParams();
-  const folder = params.get("folder") ?? undefined;
+  const folder = useCurrentFolder() ?? undefined;
   const q = params.get("q") ?? undefined;
+  const legacyFolder = params.get("folder");
   const { version } = useUpload();
   const library = useResource(() => api.library({ folder, q }), [folder, q, version]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -42,6 +44,12 @@ export function LibraryPage() {
     });
 
   const selectedItems = items.filter((item) => selected.has(itemKey(item)));
+
+  if (legacyFolder) {
+    const rest = new URLSearchParams(params);
+    rest.delete("folder");
+    return <Navigate to={folderHref(legacyFolder, rest.toString())} replace />;
+  }
 
   const title = q ? `Suche „${q}“` : folder ? folder.split("/").join(" / ") : "Alle Dokumente";
 
@@ -197,7 +205,7 @@ export function SelectionBar({ items, onClear, onDone }: SelectionBarProps) {
           <span className="hide-mobile">Ordner</span>
         </button>
         <button type="button" className="btn btn--danger-ghost" onClick={() => setConfirmDelete(true)} disabled={working}>
-          <Trash2 size={16} />
+          <Trash size={16} />
           <span className="hide-mobile">Löschen</span>
         </button>
       </div>

@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { X } from "../icons";
 import { type ReactNode, useEffect, useRef } from "react";
 
 interface DialogProps {

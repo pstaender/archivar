@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FileText, Loader2, ScanText, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FileText, Loader, ScanText, Trash } from "../icons";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
@@ -215,7 +215,7 @@ export function DocumentPage() {
             <Download size={18} />
           </a>
           <button type="button" className="btn btn--ghost btn--icon btn--danger-ghost" onClick={() => setConfirmDelete(true)} aria-label="Dokument löschen" title="Löschen">
-            <Trash2 size={18} />
+            <Trash size={18} />
           </button>
         </div>
       </header>
@@ -264,7 +264,7 @@ export function DocumentPage() {
                     Verwerfen
                   </button>
                   <button type="button" className="btn btn--sm btn--primary" onClick={save} disabled={!dirty || saving}>
-                    {saving && <Loader2 size={16} className="spin" />}
+                    {saving && <Loader size={16} className="spin" />}
                     Speichern
                   </button>
                 </div>
@@ -363,7 +363,7 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
     <div className="text-panel">
       <div className="text-panel__status">
         <span className={`status status--${doc.ocrStatus}`}>
-          {busy && <Loader2 size={14} className="spin" />}
+          {busy && <Loader size={14} className="spin" />}
           {OCR_STATUS_LABEL[doc.ocrStatus]}
           {doc.ocrStatus === "done" && doc.ocrConfidence !== null && ` · ${Math.round(doc.ocrConfidence)} % Konfidenz`}
           {doc.metadata.textSource === "pdf" && " · aus PDF übernommen"}

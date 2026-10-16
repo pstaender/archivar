@@ -5,7 +5,9 @@ Web app for archiving photos, scans, documents and PDFs: upload (incl. phone cam
 ## Stack
 
 - Runtime/server: **Bun** (`Bun.serve` with route table, `bun:sqlite`). No Express, no Vite – Bun bundles `src/client/index.html` itself.
-- Frontend: **React 19** + **react-router**, icons from **lucide-react**.
+- Frontend: **React 19** + **react-router** (folders are routes: `/folders/wichtig/2026`, built with `folderHref()` in `src/client/routes.ts`).
+- Icons: **Keyline Icons** (`@iconify-json/keyline-icons`). Add an icon to `src/client/icons/index.tsx`; the `keyline()` macro inlines the SVG at bundle time, so never import the 7 MB icon JSON elsewhere.
+- Font: **Inter** variable (`@fontsource-variable/inter`, Latin subsets declared in `styles/fonts.css`).
 - Language: **TypeScript** everywhere (strict, `noUncheckedIndexedAccess`).
 - Styling: plain modern CSS with custom properties (`src/client/styles/`). **No CSS framework, no SASS/SCSS.** Native nesting is fine.
 - Images: **Jimp** assembled from its `@jimp/*` packages in `src/shared/image/jimp.ts` (the `jimp` meta package ships a broken browser build). The same pipeline (`src/shared/image/pipeline.ts`) renders the live preview in the browser and the final image on the server.

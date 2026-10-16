@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, TriangleAlert, X } from "lucide-react";
+import { CircleAlert, CircleCheck, TriangleAlert, X } from "../icons";
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
 
 export type ToastTone = "success" | "error" | "warning" | "info";

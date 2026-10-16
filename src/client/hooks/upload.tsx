@@ -1,7 +1,8 @@
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
-import { matchPath, useLocation, useSearchParams } from "react-router";
+import { matchPath, useLocation } from "react-router";
 import type { ArchiveDocument } from "../../shared/types";
 import { api, type UploadOptions } from "../api";
+import { folderFromPathname } from "../routes";
 import { useFolders } from "./folders";
 import { useToast } from "./toast";
 
@@ -48,7 +49,6 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   const toast = useToast();
   const { reload: reloadFolders } = useFolders();
   const location = useLocation();
-  const [params] = useSearchParams();
   const [uploading, setUploading] = useState(0);
   const [version, setVersion] = useState(0);
   const [autoOcr, setAutoOcr] = useStoredFlag(AUTO_OCR_KEY, true);
@@ -75,7 +75,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   );
 
   const stackMatch = matchPath("/stacks/:id", location.pathname);
-  const folder = location.pathname === "/" ? params.get("folder") : null;
+  const folder = folderFromPathname(location.pathname);
 
   const uploadToCurrentTarget = useCallback(
     (files: File[]) =>

@@ -1,10 +1,11 @@
-import { ChevronRight, Folder, FolderOpen, Inbox, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Folder, FolderOpen, Inbox, Pencil, Plus, Trash } from "../icons";
 import { type FormEvent, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link } from "react-router";
 import { buildFolderTree, type FolderNode, isWithinFolder } from "../../shared/folders";
 import { api } from "../api";
 import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
+import { folderHref, useCurrentFolder } from "../routes";
 import { ConfirmDialog } from "./Dialog";
 
 const EXPANDED_KEY = "archivar.expandedFolders";
@@ -34,8 +35,7 @@ interface FolderTreeProps {
 export function FolderTree({ onNavigate }: FolderTreeProps) {
   const { folders, reload } = useFolders();
   const toast = useToast();
-  const [params] = useSearchParams();
-  const active = params.get("folder") ?? "";
+  const active = useCurrentFolder() ?? "";
   const tree = useMemo(
     () => buildFolderTree(folders.map((f) => ({ id: f.id, path: f.path, count: f.documentCount + f.stackCount }))),
     [folders],
@@ -181,7 +181,7 @@ function FolderTreeNode({ node, active, depth, onNavigate }: NodeProps) {
           >
             <ChevronRight size={14} className={expanded ? "is-rotated" : ""} />
           </button>
-          <Link to={`/?folder=${encodeURIComponent(node.path)}`} className="folder-tree__link" onClick={onNavigate}>
+          <Link to={folderHref(node.path)} className="folder-tree__link" onClick={onNavigate}>
             <Icon size={16} aria-hidden />
             <span className="folder-tree__name">{node.name}</span>
             {node.count > 0 && <span className="folder-tree__count">{node.count}</span>}
@@ -191,7 +191,7 @@ function FolderTreeNode({ node, active, depth, onNavigate }: NodeProps) {
               <Pencil size={13} />
             </button>
             <button type="button" className="btn btn--ghost btn--icon btn--xs" onClick={() => setConfirmDelete(true)} aria-label={`${node.path} löschen`}>
-              <Trash2 size={13} />
+              <Trash size={13} />
             </button>
           </span>
         </div>

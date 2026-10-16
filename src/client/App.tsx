@@ -16,6 +16,7 @@ export function App() {
           <Routes>
             <Route element={<AppShell />}>
               <Route index element={<LibraryPage />} />
+              <Route path="folders/*" element={<LibraryPage />} />
               <Route path="documents/:id" element={<DocumentPage />} />
               <Route path="stacks/:id" element={<StackPage />} />
               <Route path="*" element={<NotFoundPage />} />

@@ -28,10 +28,10 @@ test("folders start collapsed and remember being opened", async () => {
 
 test("renders nested folders with counts and marks the active one", async () => {
   fetchMock = mockFetch({ "GET /api/folders": () => [folder(1, "wichtig", 0), folder(2, "wichtig/2026", 3)] });
-  await renderApp(<FolderTree />, { path: "/?folder=wichtig%2F2026" });
+  await renderApp(<FolderTree />, { path: "/folders/wichtig/2026" });
 
   const link = await screen.findByRole("link", { name: /2026/ });
-  expect(link.getAttribute("href")).toBe("/?folder=wichtig%2F2026");
+  expect(link.getAttribute("href")).toBe("/folders/wichtig/2026");
   expect(link.textContent).toContain("3");
   expect(link.closest(".folder-tree__row")?.classList.contains("is-active")).toBe(true);
   expect(screen.getByRole("link", { name: "Alle Dokumente" }).classList.contains("is-active")).toBe(false);

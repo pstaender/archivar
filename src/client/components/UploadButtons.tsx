@@ -1,4 +1,4 @@
-import { Camera, Loader2, Upload } from "lucide-react";
+import { Camera, Loader, Upload } from "../icons";
 import { useRef } from "react";
 import { useUpload } from "../hooks/upload";
 
@@ -39,7 +39,7 @@ export function UploadButtons() {
         <Camera size={18} />
       </button>
       <button type="button" className="btn btn--primary" onClick={() => fileInput.current?.click()} disabled={uploading > 0}>
-        {uploading > 0 ? <Loader2 size={16} className="spin" /> : <Upload size={16} />}
+        {uploading > 0 ? <Loader size={16} className="spin" /> : <Upload size={16} />}
         <span className="hide-mobile">{uploading > 0 ? `Lade ${uploading} …` : "Hochladen"}</span>
       </button>
     </div>
