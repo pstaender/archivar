@@ -81,13 +81,18 @@ function SearchField() {
 }
 
 function SidebarFooter() {
-  const { autoOcr, setAutoOcr } = useUpload();
+  const { autoOcr, setAutoOcr, ocrAllText, setOcrAllText } = useUpload();
   return (
     <div className="sidebar__footer">
       <label className="switch">
         <input type="checkbox" checked={autoOcr} onChange={(e) => setAutoOcr(e.target.checked)} />
         <span className="switch__track" aria-hidden />
         <span>Texterkennung nach Upload</span>
+      </label>
+      <label className="switch" title="Auch unsichere, vermutlich fehlerhafte Textteile übernehmen">
+        <input type="checkbox" checked={ocrAllText} onChange={(e) => setOcrAllText(e.target.checked)} />
+        <span className="switch__track" aria-hidden />
+        <span>Alle Textteile erkennen</span>
       </label>
     </div>
   );

@@ -69,6 +69,8 @@ export interface ArchiveDocument {
   ocrStatus: OcrStatus;
   ocrConfidence: number | null;
   ocrError: string | null;
+  /** Text parts dropped as probable noise by the last OCR run. */
+  ocrRemoved: number;
   metadata: Record<string, unknown>;
   folders: string[];
   createdAt: string;

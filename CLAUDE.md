@@ -45,6 +45,7 @@ Do not run a bare `bun test`: client tests need the happy-dom preload, server te
 - A dewarp grid is stored in the edit settings together with the rotation it was predicted for; it is dropped when the rotation changes. Crop/perspective corners are normalized (0..1) relative to the rotated (and dewarped) image.
 - Auto B/W (`src/shared/image/autoBw.ts`) analyses the image after geometry/denoise: brightness/contrast stretch the luma range, variants differ only in the threshold (Otsu first, then darker, then lighter). The client caches variants per geometry and cycles through them on repeated clicks.
 - Uploads with `ocr=true` run dewarp (if the model exists) and the best auto B/W variant before rendering and OCR.
+- OCR drops probable noise by default (`src/server/services/ocrFilter.ts`: low-confidence lines, lines without a real word, very unsure words) and stores the count in `ocr_removed`. `allText` (upload field `ocrAllText`, body of `POST /ocr`) keeps everything.
 - OCR runs asynchronously in `OcrQueue`; clients poll while status is `pending`/`running`.
 - UI is German, monochrome (grays only). Colors only for error/warning/success via `--color-danger|warning|success`.
 

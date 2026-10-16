@@ -6,24 +6,42 @@ import { useFolders } from "./folders";
 import { useToast } from "./toast";
 
 const AUTO_OCR_KEY = "archivar.autoOcr";
+const OCR_ALL_TEXT_KEY = "archivar.ocrAllText";
 
 interface UploadApi {
   uploading: number;
   version: number;
   autoOcr: boolean;
   setAutoOcr: (value: boolean) => void;
+  ocrAllText: boolean;
+  setOcrAllText: (value: boolean) => void;
   upload: (files: File[], options?: UploadOptions) => Promise<ArchiveDocument[]>;
   uploadToCurrentTarget: (files: File[]) => Promise<ArchiveDocument[]>;
 }
 
 const UploadContext = createContext<UploadApi | null>(null);
 
-function readAutoOcr(): boolean {
+function readFlag(key: string, fallback: boolean): boolean {
   try {
-    return localStorage.getItem(AUTO_OCR_KEY) !== "false";
+    const value = localStorage.getItem(key);
+    return value === null ? fallback : value === "true";
   } catch {
-    return true;
+    return fallback;
   }
+}
+
+function useStoredFlag(key: string, fallback: boolean): [boolean, (value: boolean) => void] {
+  const [flag, setFlag] = useState(() => readFlag(key, fallback));
+  const update = useCallback(
+    (value: boolean) => {
+      setFlag(value);
+      try {
+        localStorage.setItem(key, String(value));
+      } catch {}
+    },
+    [key],
+  );
+  return [flag, update];
 }
 
 export function UploadProvider({ children }: { children: ReactNode }) {
@@ -33,21 +51,15 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   const [params] = useSearchParams();
   const [uploading, setUploading] = useState(0);
   const [version, setVersion] = useState(0);
-  const [autoOcr, setAutoOcrState] = useState(readAutoOcr);
-
-  const setAutoOcr = useCallback((value: boolean) => {
-    setAutoOcrState(value);
-    try {
-      localStorage.setItem(AUTO_OCR_KEY, String(value));
-    } catch {}
-  }, []);
+  const [autoOcr, setAutoOcr] = useStoredFlag(AUTO_OCR_KEY, true);
+  const [ocrAllText, setOcrAllText] = useStoredFlag(OCR_ALL_TEXT_KEY, false);
 
   const upload = useCallback(
     async (files: File[], options: UploadOptions = {}) => {
       if (files.length === 0) return [];
       setUploading((n) => n + files.length);
       try {
-        const docs = await api.upload(files, { ocr: autoOcr, ...options });
+        const docs = await api.upload(files, { ocr: autoOcr, ocrAllText, ...options });
         toast.success(docs.length === 1 ? "1 Datei hochgeladen" : `${docs.length} Dateien hochgeladen`);
         setVersion((v) => v + 1);
         if (options.folders?.length) void reloadFolders();
@@ -59,7 +71,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
         setUploading((n) => n - files.length);
       }
     },
-    [autoOcr, toast, reloadFolders],
+    [autoOcr, ocrAllText, toast, reloadFolders],
   );
 
   const stackMatch = matchPath("/stacks/:id", location.pathname);
@@ -75,8 +87,8 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ uploading, version, autoOcr, setAutoOcr, upload, uploadToCurrentTarget }),
-    [uploading, version, autoOcr, setAutoOcr, upload, uploadToCurrentTarget],
+    () => ({ uploading, version, autoOcr, setAutoOcr, ocrAllText, setOcrAllText, upload, uploadToCurrentTarget }),
+    [uploading, version, autoOcr, setAutoOcr, ocrAllText, setOcrAllText, upload, uploadToCurrentTarget],
   );
 
   return <UploadContext.Provider value={value}>{children}</UploadContext.Provider>;

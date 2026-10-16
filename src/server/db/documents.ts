@@ -22,6 +22,7 @@ interface DocumentRow {
   ocr_status: OcrStatus;
   ocr_confidence: number | null;
   ocr_error: string | null;
+  ocr_removed: number;
   metadata: string;
   created_at: string;
   updated_at: string;
@@ -59,6 +60,7 @@ export interface OcrResultUpdate {
   text?: string;
   confidence?: number | null;
   error?: string | null;
+  removed?: number;
 }
 
 export class DocumentRepository {
@@ -173,6 +175,7 @@ export class DocumentRepository {
            ocr_text = COALESCE($text, ocr_text),
            ocr_confidence = CASE WHEN $hasConfidence THEN $confidence ELSE ocr_confidence END,
            ocr_error = $error,
+           ocr_removed = CASE WHEN $text IS NULL THEN ocr_removed ELSE $removed END,
            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
          WHERE id = $id`,
       )
@@ -183,6 +186,7 @@ export class DocumentRepository {
         hasConfidence: result.confidence !== undefined ? 1 : 0,
         confidence: result.confidence ?? null,
         error: result.error ?? null,
+        removed: result.removed ?? 0,
       });
   }
 
@@ -220,6 +224,7 @@ export class DocumentRepository {
       ocrStatus: row.ocr_status,
       ocrConfidence: row.ocr_confidence,
       ocrError: row.ocr_error,
+      ocrRemoved: row.ocr_removed,
       metadata: JSON.parse(row.metadata),
       folders: folders.get(row.id) ?? [],
       createdAt: row.created_at,

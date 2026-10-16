@@ -11,6 +11,7 @@ import { type AutoBwState, EditControls } from "../editor/EditControls";
 import type { GeometryMode } from "../editor/geometry";
 import { ImageEditor } from "../editor/ImageEditor";
 import { useFolders } from "../hooks/folders";
+import { useUpload } from "../hooks/upload";
 import { useToast } from "../hooks/toast";
 import { useResource } from "../hooks/useResource";
 import { documentLabel, formatBytes, formatDateTime, isOcrBusy, OCR_STATUS_LABEL } from "../format";
@@ -38,6 +39,7 @@ export function DocumentPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const { reload: reloadFolders } = useFolders();
+  const { ocrAllText } = useUpload();
   const resource = useResource(() => api.document(id), [id]);
   const config = useResource(() => api.config(), []);
   const [dewarping, setDewarping] = useState(false);
@@ -144,10 +146,10 @@ export function DocumentPage() {
     }
   };
 
-  const runOcr = async () => {
+  const runOcr = async (allText = ocrAllText) => {
     if (dirty) await save();
     try {
-      resource.setData(await api.runOcr(doc.id));
+      resource.setData(await api.runOcr(doc.id, { allText }));
     } catch (error) {
       toast.error(error);
     }
@@ -337,7 +339,7 @@ function Viewer({ doc, editing, draft, mode, onCornersChange }: ViewerProps) {
 
 interface TextPanelProps {
   doc: ArchiveDocument;
-  onRunOcr: () => void;
+  onRunOcr: (allText?: boolean) => void;
   onSave: (text: string) => Promise<unknown>;
 }
 
@@ -367,13 +369,22 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
           {doc.metadata.textSource === "pdf" && " · aus PDF übernommen"}
         </span>
         {doc.kind !== "file" && (
-          <button type="button" className="btn btn--sm" onClick={onRunOcr} disabled={busy}>
+          <button type="button" className="btn btn--sm" onClick={() => onRunOcr()} disabled={busy}>
             <ScanText size={16} />
             {doc.ocrStatus === "none" ? "Text erkennen" : "Erneut erkennen"}
           </button>
         )}
       </div>
       {doc.ocrStatus === "failed" && doc.ocrError && <div className="alert alert--error">{doc.ocrError}</div>}
+      {doc.ocrStatus === "done" && doc.ocrRemoved > 0 && (
+        <p className="muted small">
+          {doc.ocrRemoved === 1 ? "1 unsicherer Textteil wurde" : `${doc.ocrRemoved} unsichere Textteile wurden`} als vermutlich fehlerhaft
+          ausgeblendet.{" "}
+          <button type="button" className="link-button" onClick={() => onRunOcr(true)}>
+            Alle Textteile erkennen
+          </button>
+        </p>
+      )}
       <textarea
         className="textarea text-panel__text"
         value={text}

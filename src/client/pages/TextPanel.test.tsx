@@ -42,3 +42,10 @@ test("shows OCR errors", () => {
   setup({ ocrStatus: "failed", ocrError: "Kaputt" });
   expect(screen.getByText("Kaputt")).toBeTruthy();
 });
+
+test("offers to recognize all text parts after noise was removed", () => {
+  const { onRunOcr } = setup({ ocrStatus: "done", ocrText: "Hallo", ocrRemoved: 3 });
+  expect(screen.getByText(/3 unsichere Textteile wurden/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Alle Textteile erkennen" }));
+  expect(onRunOcr).toHaveBeenCalledWith(true);
+});

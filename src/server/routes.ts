@@ -81,6 +81,7 @@ export function createApiRoutes(ctx: AppContext) {
           folders: parseFolderList(form.get("folders")),
           stackId: typeof stackId === "string" && stackId ? parseId(stackId) : undefined,
           runOcr: form.get("ocr") === "true",
+          ocrAllText: form.get("ocrAllText") === "true",
         });
         return json(docs, 201);
       }),
@@ -98,7 +99,10 @@ export function createApiRoutes(ctx: AppContext) {
     },
 
     "/api/documents/:id/ocr": {
-      POST: handle((req: Req) => json(archive.requestOcr(userId(req), parseId(req.params.id)), 202)),
+      POST: handle(async (req: Req) => {
+        const body = await readJson<{ allText?: boolean }>(req).catch(() => ({ allText: false }));
+        return json(archive.requestOcr(userId(req), parseId(req.params.id), { allText: body.allText === true }), 202);
+      }),
     },
 
     "/api/documents/:id/dewarp": {

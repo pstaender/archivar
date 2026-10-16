@@ -147,6 +147,36 @@ describe("ocr", () => {
     expect(done).toMatchObject({ ocrStatus: "done", ocrText: "Hallo Welt", ocrConfidence: 91, ocrError: null });
   });
 
+  test("drops probable noise unless all text parts are requested", async () => {
+    server.ocr.result = {
+      text: "Rechnung\n\n=a nn - LL",
+      confidence: 70,
+      paragraphs: [
+        [{ confidence: 95, words: [{ text: "Rechnung", confidence: 95 }] }],
+        [{ confidence: 40, words: ["=a", "nn", "-", "LL"].map((text) => ({ text, confidence: 40 })) }],
+      ],
+    };
+    const doc = await uploadImage();
+    await server.api(`/api/documents/${doc.id}/ocr`, { method: "POST" });
+    await server.ctx.ocr.idle();
+    expect(server.ctx.documents.getById(doc.id)).toMatchObject({ ocrText: "Rechnung", ocrRemoved: 1 });
+
+    await post(`/api/documents/${doc.id}/ocr`, { allText: true });
+    await server.ctx.ocr.idle();
+    expect(server.ctx.documents.getById(doc.id)).toMatchObject({ ocrText: "Rechnung\n\n=a nn - LL", ocrRemoved: 0 });
+  });
+
+  test("uploads can request all text parts", async () => {
+    server.ocr.result = {
+      text: "x\n\n~~",
+      confidence: 50,
+      paragraphs: [[{ confidence: 10, words: [{ text: "~~", confidence: 10 }] }]],
+    };
+    const doc = await uploadImage("x.jpg", { ocr: "true", ocrAllText: "true" });
+    await server.ctx.ocr.idle();
+    expect(server.ctx.documents.getById(doc.id)).toMatchObject({ ocrText: "x\n\n~~", ocrRemoved: 0 });
+  });
+
   test("can run OCR directly after upload", async () => {
     const doc = await uploadImage("x.jpg", { ocr: "true" });
     await server.ctx.ocr.idle();

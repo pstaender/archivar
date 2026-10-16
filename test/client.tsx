@@ -84,6 +84,7 @@ export function makeDocument(overrides: Partial<ArchiveDocument> = {}): ArchiveD
     ocrStatus: "none",
     ocrConfidence: null,
     ocrError: null,
+    ocrRemoved: 0,
     metadata: {},
     folders: [],
     createdAt: "2026-03-01T10:00:00.000Z",

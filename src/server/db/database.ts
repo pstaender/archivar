@@ -63,6 +63,7 @@ const migrations: string[] = [
     PRIMARY KEY (stack_id, folder_id)
   );
   `,
+  `ALTER TABLE documents ADD COLUMN ocr_removed INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 export function migrate(db: Database): void {

@@ -49,6 +49,7 @@ export interface UploadOptions {
   folders?: string[];
   stackId?: number;
   ocr?: boolean;
+  ocrAllText?: boolean;
 }
 
 export const api = {
@@ -64,7 +65,8 @@ export const api = {
     request<DewarpGrid>(`/api/documents/${id}/dewarp`, jsonBody("POST", { rotation })),
   autoBw: (id: number, editSettings: EditSettings) =>
     request<BwVariant[]>(`/api/documents/${id}/auto-bw`, jsonBody("POST", { editSettings })),
-  runOcr: (id: number) => request<ArchiveDocument>(`/api/documents/${id}/ocr`, { method: "POST" }),
+  runOcr: (id: number, options: { allText?: boolean } = {}) =>
+    request<ArchiveDocument>(`/api/documents/${id}/ocr`, jsonBody("POST", { allText: options.allText === true })),
 
   upload(files: File[], options: UploadOptions = {}) {
     const form = new FormData();
@@ -72,6 +74,7 @@ export const api = {
     if (options.folders?.length) form.append("folders", JSON.stringify(options.folders));
     if (options.stackId !== undefined) form.append("stackId", String(options.stackId));
     if (options.ocr) form.append("ocr", "true");
+    if (options.ocrAllText) form.append("ocrAllText", "true");
     return request<ArchiveDocument[]>("/api/documents", { method: "POST", body: form });
   },
 

@@ -24,12 +24,13 @@ import { HttpError } from "../http";
 import { derivedKeys, type FileStorage } from "../storage";
 import { extensionFor, type ImagingService } from "./imaging";
 import { type DewarpEngine, toDewarpGrid } from "./dewarp";
-import type { OcrQueue } from "./ocr";
+import type { OcrOptions, OcrQueue } from "./ocr";
 
 export interface UploadOptions {
   folders?: string[];
   stackId?: number;
   runOcr?: boolean;
+  ocrAllText?: boolean;
 }
 
 export interface UploadFile {
@@ -112,7 +113,7 @@ export class ArchiveService {
 
     if (options.runOcr) {
       for (const doc of created) {
-        if (doc.kind !== "file" && doc.ocrStatus !== "done") this.ocr.enqueue(doc.id);
+        if (doc.kind !== "file" && doc.ocrStatus !== "done") this.ocr.enqueue(doc.id, { allText: options.ocrAllText });
       }
     }
 
@@ -147,10 +148,10 @@ export class ArchiveService {
     await this.storage.delete(derivedKeys.dir(id));
   }
 
-  requestOcr(userId: number, id: number): ArchiveDocument {
+  requestOcr(userId: number, id: number, options: OcrOptions = {}): ArchiveDocument {
     const doc = this.getDocument(userId, id);
     if (doc.kind === "file") throw new HttpError(400, "OCR is only available for images and PDFs");
-    this.ocr.enqueue(id);
+    this.ocr.enqueue(id, options);
     return toPublicDocument(this.documents.get(userId, id)!);
   }
 
