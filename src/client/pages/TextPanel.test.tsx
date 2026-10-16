@@ -107,3 +107,10 @@ test("goes back to the default languages and says when no language was detected"
   expect(onRunOcr).toHaveBeenLastCalledWith({ languages: null });
 });
 
+test("offers to hide unsure text parts again after all were kept", () => {
+  const { onRunOcr } = setup({ ocrStatus: "done", ocrText: "Hallo ~~", ocrAllText: true });
+  expect(screen.getByText(/Alle Textteile wurden übernommen/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Alle Textteile erkennen" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Unsichere Textteile ausblenden" }));
+  expect(onRunOcr).toHaveBeenCalledWith({ allText: false });
+});

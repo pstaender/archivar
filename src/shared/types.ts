@@ -71,6 +71,8 @@ export interface ArchiveDocument {
   ocrError: string | null;
   /** Text parts dropped as probable noise by the last OCR run. */
   ocrRemoved: number;
+  /** The last OCR run kept all text parts, also unsure ones. */
+  ocrAllText: boolean;
   /** Language detected in the text (Tesseract code, e.g. "deu"), null if unclear. */
   ocrLanguage: string | null;
   /** Languages chosen for text recognition; null uses the server's default languages. */

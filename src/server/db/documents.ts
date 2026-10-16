@@ -23,6 +23,7 @@ interface DocumentRow {
   ocr_confidence: number | null;
   ocr_error: string | null;
   ocr_removed: number;
+  ocr_all_text: number;
   ocr_language: string | null;
   ocr_languages: string | null;
   metadata: string;
@@ -72,6 +73,8 @@ export interface OcrResultUpdate {
   removed?: number;
   /** Detected language of `text`. */
   language?: string | null;
+  /** `text` keeps all text parts, also unsure ones. */
+  allText?: boolean;
 }
 
 export class DocumentRepository {
@@ -199,6 +202,7 @@ export class DocumentRepository {
            ocr_error = $error,
            ocr_removed = CASE WHEN $text IS NULL THEN ocr_removed ELSE $removed END,
            ocr_language = CASE WHEN $text IS NULL THEN ocr_language ELSE $language END,
+           ocr_all_text = CASE WHEN $text IS NULL THEN ocr_all_text ELSE $allText END,
            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
          WHERE id = $id`,
       )
@@ -211,6 +215,7 @@ export class DocumentRepository {
         error: result.error ?? null,
         removed: result.removed ?? 0,
         language: result.language ?? null,
+        allText: result.allText ? 1 : 0,
       });
   }
 
@@ -273,6 +278,7 @@ export class DocumentRepository {
       ocrConfidence: row.ocr_confidence,
       ocrError: row.ocr_error,
       ocrRemoved: row.ocr_removed,
+      ocrAllText: row.ocr_all_text === 1,
       ocrLanguage: row.ocr_language,
       ocrLanguages: row.ocr_languages ? row.ocr_languages.split("+") : null,
       metadata: JSON.parse(row.metadata),

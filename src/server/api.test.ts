@@ -276,6 +276,16 @@ describe("ocr", () => {
     expect(((await (await server.api("/api/config")).json()) as { ocrLanguages: string[] }).ocrLanguages).toEqual(["deu", "eng"]);
   });
 
+  test("remembers whether the last run kept all text parts", async () => {
+    const doc = await uploadImage();
+    await post(`/api/documents/${doc.id}/ocr`, { allText: true });
+    await server.ctx.ocr.idle();
+    expect((await getDocument(doc.id)).ocrAllText).toBe(true);
+    await post(`/api/documents/${doc.id}/ocr`, { allText: false });
+    await server.ctx.ocr.idle();
+    expect((await getDocument(doc.id)).ocrAllText).toBe(false);
+  });
+
   test("drops probable noise unless all text parts are requested", async () => {
     server.ocr.result = {
       text: "Rechnung\n\n=a nn - LL",

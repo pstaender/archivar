@@ -170,7 +170,7 @@ export class OcrQueue {
       });
       const text = texts.join("\n\n").trim();
       const confidence = results.reduce((sum, r) => sum + r.confidence, 0) / results.length;
-      this.documents.setOcrResult(documentId, { status: "done", text, confidence, error: null, removed, language: detectLanguage(text) });
+      this.documents.setOcrResult(documentId, { status: "done", text, confidence, error: null, removed, language: detectLanguage(text), allText: options.allText === true });
       this.documents.setOcrLayout(documentId, doc.kind === "image" ? toLayout(doc, lines[0] ?? []) : null);
     } catch (error) {
       this.documents.setOcrResult(documentId, {

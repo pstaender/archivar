@@ -70,6 +70,7 @@ const migrations: string[] = [
   ALTER TABLE documents ADD COLUMN ocr_language TEXT;
   ALTER TABLE documents ADD COLUMN ocr_languages TEXT;
   `,
+  `ALTER TABLE documents ADD COLUMN ocr_all_text INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 export function migrate(db: Database): void {

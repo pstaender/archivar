@@ -524,6 +524,14 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
           </button>
         </p>
       )}
+      {doc.ocrStatus === "done" && doc.ocrAllText && (
+        <p className="muted small">
+          Alle Textteile wurden übernommen, auch unsichere.{" "}
+          <button type="button" className="link-button" onClick={() => onRunOcr({ allText: false })}>
+            Unsichere Textteile ausblenden
+          </button>
+        </p>
+      )}
       <textarea
         className="textarea text-panel__text"
         value={text}
