@@ -18,7 +18,11 @@ import { documentLabel, isOcrBusy } from "../format";
 import { folderHref, useCurrentFolder } from "../routes";
 
 const POLL_INTERVAL = 2500;
-const SORT_KEY = "archivar.librarySort";
+// Folders and the overview keep separate choices, so folders open in their own arrangement by default.
+const SORT_KEYS = { overview: "archivar.librarySort", folder: "archivar.folderSort" } as const;
+const DEFAULT_SORTS: Record<keyof typeof SORT_KEYS, LibrarySort> = { overview: "updated", folder: "custom" };
+const FOLDER_SORTS: LibrarySort[] = ["custom", ...LIBRARY_SORTS.filter((value) => value !== "custom")];
+const OVERVIEW_SORTS = LIBRARY_SORTS.filter((value) => value !== "custom");
 
 const SORT_LABELS: Record<LibrarySort, string> = {
   updated: "Zuletzt geändert",
@@ -29,24 +33,25 @@ const SORT_LABELS: Record<LibrarySort, string> = {
   custom: "Eigene Reihenfolge",
 };
 
-function readSort(): LibrarySort {
+function readSort(scope: keyof typeof SORT_KEYS): LibrarySort {
+  const allowed = scope === "folder" ? FOLDER_SORTS : OVERVIEW_SORTS;
   try {
-    const stored = localStorage.getItem(SORT_KEY);
-    return LIBRARY_SORTS.includes(stored as LibrarySort) ? (stored as LibrarySort) : "updated";
+    const stored = localStorage.getItem(SORT_KEYS[scope]);
+    return allowed.includes(stored as LibrarySort) ? (stored as LibrarySort) : DEFAULT_SORTS[scope];
   } catch {
-    return "updated";
+    return DEFAULT_SORTS[scope];
   }
 }
 
-function useStoredSort(): [LibrarySort, (sort: LibrarySort) => void] {
-  const [sort, setSort] = useState(readSort);
+function useStoredSort(scope: keyof typeof SORT_KEYS): [LibrarySort, (sort: LibrarySort) => void] {
+  const [sorts, setSorts] = useState(() => ({ overview: readSort("overview"), folder: readSort("folder") }));
   const update = (next: LibrarySort) => {
-    setSort(next);
+    setSorts((current) => ({ ...current, [scope]: next }));
     try {
-      localStorage.setItem(SORT_KEY, next);
+      localStorage.setItem(SORT_KEYS[scope], next);
     } catch {}
   };
-  return [sort, update];
+  return [sorts[scope], update];
 }
 
 const itemRef = (item: LibraryItem) => ({ type: item.type, id: item.type === "stack" ? item.stack.id : item.document.id });
@@ -58,9 +63,7 @@ export function LibraryPage() {
   const q = params.get("q") ?? undefined;
   const legacyFolder = params.get("folder");
   const toast = useToast();
-  const [sortChoice, setSortChoice] = useStoredSort();
-  // The arranged order belongs to a folder; the overview falls back to the default.
-  const sort = sortChoice === "custom" && !folder ? "updated" : sortChoice;
+  const [sort, setSort] = useStoredSort(folder ? "folder" : "overview");
   const library = useResource(() => api.library({ folder, q, sort }), [folder, q, sort]);
   useRefreshOnUpload(library.refresh);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -114,11 +117,11 @@ export function LibraryPage() {
         <select
           className="input input--sm library-sort"
           value={sort}
-          onChange={(e) => setSortChoice(e.target.value as LibrarySort)}
+          onChange={(e) => setSort(e.target.value as LibrarySort)}
           aria-label="Sortierung"
           title="Sortierung"
         >
-          {LIBRARY_SORTS.filter((value) => value !== "custom" || folder).map((value) => (
+          {(folder ? FOLDER_SORTS : OVERVIEW_SORTS).map((value) => (
             <option key={value} value={value}>
               {SORT_LABELS[value]}
             </option>

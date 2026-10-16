@@ -27,7 +27,7 @@ describe("LibraryPage", () => {
   test("passes folder and search filters to the API", async () => {
     fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [] });
     await renderApp(<LibraryPage />, { path: "/folders/wichtig/2026?q=miete" });
-    expect(fetchMock.calls.some((c) => c.path === "/api/library?folder=wichtig%2F2026&q=miete&sort=updated")).toBe(true);
+    expect(fetchMock.calls.some((c) => c.path === "/api/library?folder=wichtig%2F2026&q=miete&sort=custom")).toBe(true);
     expect(screen.getByRole("heading", { name: "Suche „miete“" })).toBeTruthy();
     expect(screen.getByText("Keine passenden Dokumente gefunden.")).toBeTruthy();
   });
@@ -35,7 +35,7 @@ describe("LibraryPage", () => {
   test("redirects old folder query links to folder routes", async () => {
     fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [] });
     await renderApp(<LibraryPage />, { path: "/?folder=wichtig%2F2026" });
-    expect(fetchMock.calls.some((c) => c.path === "/api/library?folder=wichtig%2F2026&sort=updated")).toBe(true);
+    expect(fetchMock.calls.some((c) => c.path === "/api/library?folder=wichtig%2F2026&sort=custom")).toBe(true);
     expect(screen.getByRole("heading", { name: "wichtig / 2026" })).toBeTruthy();
   });
 
@@ -275,21 +275,26 @@ describe("LibraryPage", () => {
     expect(localStorage.getItem("archivar.librarySort")).toBe("title-asc");
   });
 
-  test("offers an own order only inside a folder and falls back to the default elsewhere", async () => {
-    localStorage.setItem("archivar.librarySort", "custom");
+  test("opens folders in their own order first and keeps the overview's choice separate", async () => {
+    localStorage.setItem("archivar.librarySort", "title-asc");
     fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [] });
     await renderApp(<LibraryPage />, { path: "/folders/obst" });
-    expect((screen.getByLabelText("Sortierung") as HTMLSelectElement).value).toBe("custom");
+    const select = screen.getByLabelText("Sortierung") as HTMLSelectElement;
+    expect(select.value).toBe("custom");
+    expect(select.options[0]?.textContent).toBe("Eigene Reihenfolge");
     expect(fetchMock.calls.some((c) => c.path === "/api/library?folder=obst&sort=custom")).toBe(true);
+    fireEvent.change(select, { target: { value: "created-desc" } });
+    await waitFor(() => expect(fetchMock.calls.some((c) => c.path === "/api/library?folder=obst&sort=created-desc")).toBe(true));
+    expect(localStorage.getItem("archivar.folderSort")).toBe("created-desc");
+    expect(localStorage.getItem("archivar.librarySort")).toBe("title-asc");
     fetchMock.restore();
 
     fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [] });
     await renderApp(<LibraryPage />);
-    expect(fetchMock.calls.some((c) => c.path === "/api/library?sort=updated")).toBe(true);
+    expect(fetchMock.calls.some((c) => c.path === "/api/library?sort=title-asc")).toBe(true);
   });
 
   test("moves a card with the keyboard grip and stores the folder's order", async () => {
-    localStorage.setItem("archivar.librarySort", "custom");
     const a = makeDocument({ title: "Erstes" });
     const b = makeDocument({ title: "Zweites" });
     const stack = makeStack({ title: "Mappe", documentIds: [90] });
