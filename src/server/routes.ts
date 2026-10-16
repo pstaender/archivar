@@ -43,6 +43,11 @@ export function createApiRoutes(ctx: AppContext) {
       GET: handle((req: Req) => json(ctx.currentUser(req))),
     },
 
+    "/api/settings": {
+      GET: handle((req: Req) => json(ctx.users.settings(userId(req)))),
+      PATCH: handle(async (req: Req) => json(ctx.users.updateSettings(userId(req), await readJson<unknown>(req)))),
+    },
+
     "/api/config": {
       GET: handle(() => json({ dewarpAvailable: ctx.dewarp.available(), convertibleImageTypes: ctx.imaging.convertibleTypes() } satisfies AppConfig)),
     },
@@ -93,6 +98,7 @@ export function createApiRoutes(ctx: AppContext) {
           runOcr: form.get("ocr") === "true",
           ocrAllText: form.get("ocrAllText") === "true",
           autoDewarp: form.get("dewarp") === "true",
+          enhancement: ctx.users.settings(userId(req)).uploadEnhancement,
         });
         return json(docs, 201);
       }),
@@ -156,7 +162,7 @@ export function createApiRoutes(ctx: AppContext) {
         if (!Array.isArray(body.documentIds) || body.documentIds.length === 0) throw new HttpError(400, "documentIds required");
         const ids = body.documentIds.map((id) => parseId(String(id)));
         const title = typeof body.title === "string" ? body.title : undefined;
-        return pdfResponse(await archive.exportCombinedPdf(userId(req), ids, title));
+        return pdfResponse(await archive.exportCombinedPdf(userId(req), ids, title, ctx.users.settings(userId(req)).pdfImageQuality));
       }),
     },
 
@@ -164,7 +170,7 @@ export function createApiRoutes(ctx: AppContext) {
       POST: handle(async (req: Req) => {
         const body = await readJson<{ text?: unknown }>(req).catch(() => ({ text: undefined }));
         const text = typeof body.text === "string" ? body.text : undefined;
-        return pdfResponse(await archive.exportPdf(userId(req), parseId(req.params.id), text));
+        return pdfResponse(await archive.exportPdf(userId(req), parseId(req.params.id), text, ctx.users.settings(userId(req)).pdfImageQuality));
       }),
     },
 

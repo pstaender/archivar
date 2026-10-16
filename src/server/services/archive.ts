@@ -1,10 +1,11 @@
 import { basename, extname } from "node:path";
 import { DEFAULT_EDIT_SETTINGS, isDefaultEditSettings, normalizeEditSettings } from "../../shared/editSettings";
-import { autoBwVariants } from "../../shared/image/autoBw";
+import { autoBwVariants, autoTone } from "../../shared/image/autoBw";
 import { detectDocument } from "../../shared/image/autoCrop";
 import type { JimpImage } from "../../shared/image/jimp";
 import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
 import { normalizeFolderPath } from "../../shared/folders";
+import type { PdfImageQuality, UploadEnhancement } from "../../shared/settings";
 import type {
   ArchiveDocument,
   BwVariant,
@@ -41,6 +42,8 @@ export interface UploadOptions {
   runOcr?: boolean;
   ocrAllText?: boolean;
   autoDewarp?: boolean;
+  /** How images are prepared before OCR (only with `runOcr`). */
+  enhancement?: UploadEnhancement;
 }
 
 export interface UploadFile {
@@ -109,7 +112,7 @@ export class ArchiveService {
         metadata: hasEmbeddedText ? { ...inspection.metadata, textSource: "pdf" } : inspection.metadata,
       });
       if (options.folders?.length) this.folders.setForDocument(userId, doc.id, options.folders);
-      if (options.runOcr && doc.kind === "image") doc = await this.autoEnhance(doc, options.autoDewarp === true);
+      if (options.runOcr && doc.kind === "image") doc = await this.autoEnhance(doc, options.autoDewarp === true, options.enhancement ?? "bw");
       const size = await this.imaging.renderDerivatives(doc);
       if (size && !isDefaultEditSettings(doc.editSettings)) this.documents.update(userId, doc.id, size);
       doc = this.documents.get(userId, doc.id)!;
@@ -176,22 +179,27 @@ export class ArchiveService {
   }
 
   /** The edited image as a PDF page with the text (default: the stored OCR text) as a searchable layer. */
-  async exportPdf(userId: number, id: number, text?: string): Promise<{ pdf: Uint8Array<ArrayBuffer>; filename: string }> {
+  async exportPdf(userId: number, id: number, text: string | undefined, imageQuality: PdfImageQuality): Promise<{ pdf: Uint8Array<ArrayBuffer>; filename: string }> {
     const doc = this.getDocument(userId, id);
     if (doc.kind !== "image") throw new HttpError(400, "Only images can be exported as PDF");
     const title = doc.title.trim() || basename(doc.originalName, extname(doc.originalName));
-    const pdf = await createSearchablePdf([await this.pdfPart(userId, doc, text)], title);
+    const pdf = await createSearchablePdf([await this.pdfPart(userId, doc, text)], title, imageQuality);
     return { pdf, filename: `${title}.pdf` };
   }
 
   /** Images (as searchable pages) and PDFs of several documents in the given order as one PDF; other files are left out. */
-  async exportCombinedPdf(userId: number, ids: number[], title = "Dokumente"): Promise<{ pdf: Uint8Array<ArrayBuffer>; filename: string }> {
+  async exportCombinedPdf(
+    userId: number,
+    ids: number[],
+    title: string | undefined,
+    imageQuality: PdfImageQuality,
+  ): Promise<{ pdf: Uint8Array<ArrayBuffer>; filename: string }> {
     const docs = ids.map((id) => this.getDocument(userId, id)).filter((doc) => doc.kind !== "file");
     if (docs.length === 0) throw new HttpError(400, "Keine Bilder oder PDFs ausgewählt");
     const parts: PdfPart[] = [];
     for (const doc of docs) parts.push(await this.pdfPart(userId, doc));
-    const name = title.trim() || "Dokumente";
-    return { pdf: await createSearchablePdf(parts, name), filename: `${name}.pdf` };
+    const name = title?.trim() || "Dokumente";
+    return { pdf: await createSearchablePdf(parts, name, imageQuality), filename: `${name}.pdf` };
   }
 
   private async pdfPart(userId: number, doc: StoredDocument, text?: string): Promise<PdfPart> {
@@ -199,7 +207,7 @@ export class ArchiveService {
     const [jpeg] = await this.imaging.ocrImages(doc);
     const layout = this.documents.getOcrLayout(userId, doc.id);
     const current = layout && JSON.stringify(layout.editSettings) === JSON.stringify(doc.editSettings) ? layout : null;
-    return { kind: "image", jpeg: jpeg!, text: text ?? doc.ocrText, layout: current };
+    return { kind: "image", jpeg: jpeg!, bilevel: doc.editSettings.colorMode === "bw", text: text ?? doc.ocrText, layout: current };
   }
 
   async autoBw(userId: number, id: number, settings: Partial<EditSettings> = {}): Promise<BwVariant[]> {
@@ -237,21 +245,28 @@ export class ArchiveService {
     return this.imaging.renderJpeg(doc, normalizeEditSettings(settings, doc.editSettings));
   }
 
-  private async autoEnhance(doc: StoredDocument, dewarp: boolean): Promise<StoredDocument> {
+  private async autoEnhance(doc: StoredDocument, dewarp: boolean, enhancement: UploadEnhancement): Promise<StoredDocument> {
+    if (enhancement === "original" && !dewarp) return doc;
     try {
       const original = await this.imaging.loadOriginal(doc);
       let settings = doc.editSettings;
-      const rotation = await this.orientationOf(original).catch((error) => {
-        console.warn(`Orientation detection failed for document ${doc.id}:`, error);
-        return null;
-      });
-      if (rotation !== null) settings = { ...settings, rotation };
+      if (enhancement !== "original") {
+        const rotation = await this.orientationOf(original).catch((error) => {
+          console.warn(`Orientation detection failed for document ${doc.id}:`, error);
+          return null;
+        });
+        if (rotation !== null) settings = { ...settings, rotation };
+      }
       if (dewarp && this.dewarp.available()) {
         const upright = settings.rotation === 0 ? original : (original.clone().rotate(-settings.rotation) as JimpImage);
         settings = { ...settings, dewarp: toDewarpGrid(await this.dewarp.predict(upright.bitmap), settings.rotation) };
       }
-      const [best] = autoBwVariants(original, settings);
-      if (best) settings = { ...settings, ...best, colorMode: "bw" };
+      if (enhancement === "bw") {
+        const [best] = autoBwVariants(original, settings);
+        if (best) settings = { ...settings, ...best, colorMode: "bw" };
+      } else if (enhancement === "grayscale") {
+        settings = { ...settings, ...autoTone(original, settings), colorMode: "grayscale" };
+      }
       return this.documents.update(doc.userId, doc.id, { editSettings: normalizeEditSettings(settings) }) ?? doc;
     } catch (error) {
       console.warn(`Automatic enhancement failed for document ${doc.id}:`, error);

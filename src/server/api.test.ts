@@ -399,6 +399,57 @@ describe("PDF export", () => {
   });
 });
 
+describe("settings", () => {
+  const patchSettings = async (body: unknown) => (await patch("/api/settings", body)).json();
+
+  test("stores the user's settings and ignores unknown values", async () => {
+    expect(await (await server.api("/api/settings")).json()).toEqual({ uploadEnhancement: "bw", pdfImageQuality: "300" });
+    expect(await patchSettings({ uploadEnhancement: "grayscale" })).toEqual({ uploadEnhancement: "grayscale", pdfImageQuality: "300" });
+    expect(await patchSettings({ pdfImageQuality: "72", uploadEnhancement: "sepia" })).toEqual({ uploadEnhancement: "grayscale", pdfImageQuality: "300" });
+    expect(await patchSettings({ pdfImageQuality: "original" })).toEqual({ uploadEnhancement: "grayscale", pdfImageQuality: "original" });
+    expect(await (await server.api("/api/settings")).json()).toEqual({ uploadEnhancement: "grayscale", pdfImageQuality: "original" });
+  });
+
+  test("prepares uploads with OCR as chosen in the settings", async () => {
+    server.ocr.orientation = { rotation: 90, confidence: 8 };
+    const contrasty = async (name: string) => {
+      const data = new Uint8ClampedArray(60 * 40 * 4);
+      for (let i = 0; i < data.length; i += 4) data.set(i % 32 < 16 ? [90, 90, 90, 255] : [170, 170, 170, 255], i);
+      const [doc] = await upload([{ name, data: new Uint8Array(await createImage(60, 40, data).getBuffer("image/jpeg")), type: "image/jpeg" }], { ocr: "true" });
+      return doc!.editSettings;
+    };
+
+    await patchSettings({ uploadEnhancement: "grayscale" });
+    const gray = await contrasty("grau.jpg");
+    expect(gray).toMatchObject({ rotation: 90, colorMode: "grayscale" });
+    expect(gray.contrast).toBeGreaterThan(0);
+
+    await patchSettings({ uploadEnhancement: "color" });
+    expect(await contrasty("farbe.jpg")).toMatchObject({ rotation: 90, colorMode: "color", brightness: 0, contrast: 0 });
+
+    const detections = server.ocr.orientationInputs;
+    await patchSettings({ uploadEnhancement: "original" });
+    expect(await contrasty("original.jpg")).toMatchObject({ rotation: 0, colorMode: "color", brightness: 0, contrast: 0 });
+    expect(server.ocr.orientationInputs).toBe(detections);
+    await server.ctx.ocr.idle();
+    expect(server.ocr.calls).toBe(3);
+  });
+
+  test("scales images in exported PDFs down to the chosen resolution", async () => {
+    const [doc] = await upload([{ name: "scan.jpg", data: await makeJpeg(3000, 4000, [250, 250, 250]), type: "image/jpeg" }]);
+    await patch(`/api/documents/${doc!.id}`, { editSettings: { colorMode: "bw" } });
+    const size = async (pdfImageQuality: string) => {
+      await patchSettings({ pdfImageQuality });
+      return (await (await post(`/api/documents/${doc!.id}/pdf`, {})).arrayBuffer()).byteLength;
+    };
+    const original = await size("original");
+    const dpi300 = await size("300");
+    const dpi150 = await size("150");
+    expect(dpi300).toBeLessThan(original / 5);
+    expect(dpi150).toBeLessThan(dpi300);
+  });
+});
+
 describe("dewarp", () => {
   test("reports whether the model is available", async () => {
     expect(await (await server.api("/api/config")).json()).toEqual({ dewarpAvailable: true, convertibleImageTypes: ["image/webp"] });

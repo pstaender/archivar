@@ -14,6 +14,7 @@ Archive photos, scans, documents and PDFs in the browser – on desktop and on t
 - Group documents into ordered stacks with a title
 - Hierarchical folders as labels (e.g. `wichtig/2026`); selected documents and stacks can be moved into or added to existing folders (or a new one), or removed from the folder being viewed
 - "PDF" for a selection downloads all its images (as searchable pages) and PDFs, including the documents of selected stacks, as one PDF
+- "Einstellungen" (sidebar): how uploads with OCR are prepared (black & white – the default –, grayscale, color only turned upright, or original) and the image resolution in exported PDFs (300 DPI for A4 by default, 150 DPI, or original). Black-and-white pages are stored as lossless 1-bit images (about 150–200 KB per A4 text page at 300 DPI), others as JPEG
 - REST API, SQLite database, multi-user ready (currently a single default user without login)
 
 ## Getting started
@@ -53,6 +54,8 @@ Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install i
 | ------ | ----------------------------------- | --------------------------------------------- |
 | GET    | `/api/me`                           | Current user                                  |
 | GET    | `/api/config`                       | Feature flags (`dewarpAvailable`, `convertibleImageTypes`) |
+| GET    | `/api/settings`                     | User settings (`uploadEnhancement`, `pdfImageQuality`) |
+| PATCH  | `/api/settings`                     | Update user settings (unknown values are ignored) |
 | GET    | `/api/library?folder=&q=`           | Stacks and loose documents                    |
 | GET    | `/api/documents?folder=&q=&stackId=`| Documents                                     |
 | POST   | `/api/documents`                    | Upload (`multipart`: `files[]`, `folders`, `stackId`, `ocr`) |

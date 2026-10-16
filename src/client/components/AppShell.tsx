@@ -1,4 +1,4 @@
-import { Menu, Search, X } from "../icons";
+import { Menu, Search, Settings, X } from "../icons";
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useConfig } from "../hooks/config";
@@ -6,6 +6,7 @@ import { useUpload } from "../hooks/upload";
 import { isLibraryPath } from "../routes";
 import { DropZone } from "./DropZone";
 import { FolderTree } from "./FolderTree";
+import { SettingsDialog } from "./SettingsDialog";
 import { UploadButtons } from "./UploadButtons";
 import { UploadProgress } from "./UploadProgress";
 
@@ -90,6 +91,7 @@ function SearchField() {
 function SidebarFooter() {
   const { autoOcr, setAutoOcr, ocrAllText, setOcrAllText, autoDewarp, setAutoDewarp } = useUpload();
   const config = useConfig();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   return (
     <div className="sidebar__footer">
       <h3>Texterkennung</h3>
@@ -110,6 +112,11 @@ function SidebarFooter() {
         <span className="switch__track" aria-hidden />
         <span>Alle Textteile erkennen</span>
       </label>
+      <button type="button" className="btn btn--ghost btn--sm sidebar__settings" onClick={() => setSettingsOpen(true)}>
+        <Settings size={16} />
+        Einstellungen
+      </button>
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

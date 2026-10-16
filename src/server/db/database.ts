@@ -65,6 +65,7 @@ const migrations: string[] = [
   `,
   `ALTER TABLE documents ADD COLUMN ocr_removed INTEGER NOT NULL DEFAULT 0;`,
   `ALTER TABLE documents ADD COLUMN ocr_layout TEXT;`,
+  `ALTER TABLE users ADD COLUMN settings TEXT NOT NULL DEFAULT '{}';`,
 ];
 
 export function migrate(db: Database): void {

@@ -115,6 +115,10 @@
   border-top: 1px solid var(--color-border);
 }
 
+.sidebar__settings {
+  justify-self: start;
+}
+
 .sidebar-backdrop {
   display: none;
 }

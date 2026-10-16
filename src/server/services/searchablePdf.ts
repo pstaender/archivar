@@ -1,5 +1,7 @@
 import {
   beginText,
+  concatTransformationMatrix,
+  drawObject,
   endText,
   type PDFFont,
   PDFDocument,
@@ -14,8 +16,10 @@ import {
   StandardFonts,
   TextRenderingMode,
 } from "pdf-lib";
+import type { PdfImageQuality } from "../../shared/settings";
 import type { OcrLayout } from "../db/documents";
 import { HttpError } from "../http";
+import { type PdfImage, preparePdfImage } from "./pdfImage";
 
 // The page gets A4's long side; the image keeps its aspect ratio.
 const PAGE_LONG_SIDE = 842;
@@ -28,7 +32,8 @@ const FALLBACK_MAX_LINE = 0.04;
 type Box = OcrLayout["lines"][number]["box"];
 
 export type PdfPart =
-  | { kind: "image"; jpeg: Uint8Array; text: string; layout: OcrLayout | null }
+  /** `bilevel` for black-and-white images, which are stored as lossless 1-bit images when downscaled. */
+  | { kind: "image"; jpeg: Uint8Array; bilevel: boolean; text: string; layout: OcrLayout | null }
   /** An uploaded PDF; all its pages are copied as they are. */
   | { kind: "pdf"; name: string; data: Uint8Array };
 
@@ -37,7 +42,7 @@ export type PdfPart =
  * can be searched and copied. The text goes onto the recognized line positions when its lines still match them (same
  * number of lines, e.g. after fixing typos); otherwise it is spread evenly over the page.
  */
-export async function createSearchablePdf(parts: PdfPart[], title: string): Promise<Uint8Array<ArrayBuffer>> {
+export async function createSearchablePdf(parts: PdfPart[], title: string, imageQuality: PdfImageQuality): Promise<Uint8Array<ArrayBuffer>> {
   const pdf = await PDFDocument.create();
   pdf.setTitle(title);
   pdf.setProducer("archivar");
@@ -45,7 +50,7 @@ export async function createSearchablePdf(parts: PdfPart[], title: string): Prom
   for (const part of parts) {
     if (part.kind === "image") {
       font ??= await pdf.embedFont(StandardFonts.Helvetica);
-      await addImagePage(pdf, font, part);
+      await addImagePage(pdf, font, part, await preparePdfImage(part.jpeg, imageQuality, part.bilevel));
     } else {
       await appendPdf(pdf, part);
     }
@@ -63,11 +68,8 @@ async function appendPdf(pdf: PDFDocument, { name, data }: Extract<PdfPart, { ki
   for (const page of await pdf.copyPages(source, source.getPageIndices())) pdf.addPage(page);
 }
 
-async function addImagePage(pdf: PDFDocument, font: PDFFont, { jpeg, text, layout }: Extract<PdfPart, { kind: "image" }>) {
-  const image = await pdf.embedJpg(jpeg);
-  const scale = PAGE_LONG_SIDE / Math.max(image.width, image.height);
-  const page = pdf.addPage([image.width * scale, image.height * scale]);
-  page.drawImage(image, { x: 0, y: 0, width: page.getWidth(), height: page.getHeight() });
+async function addImagePage(pdf: PDFDocument, font: PDFFont, { text, layout }: Extract<PdfPart, { kind: "image" }>, image: PdfImage) {
+  const page = image.kind === "jpeg" ? await addJpegPage(pdf, image.data) : addBilevelPage(pdf, image);
 
   const lines = text
     .split("\n")
@@ -76,6 +78,35 @@ async function addImagePage(pdf: PDFDocument, font: PDFFont, { jpeg, text, layou
   const matches = layout?.lines.length === lines.length;
   const boxes = matches ? layout.lines.map((line) => line.box) : evenBoxes(lines.length);
   lines.forEach((line, i) => drawInvisibleLine(page, font, line, boxes[i]!, matches));
+}
+
+function pageFor(pdf: PDFDocument, width: number, height: number): PDFPage {
+  const scale = PAGE_LONG_SIDE / Math.max(width, height);
+  return pdf.addPage([width * scale, height * scale]);
+}
+
+async function addJpegPage(pdf: PDFDocument, jpeg: Uint8Array): Promise<PDFPage> {
+  const image = await pdf.embedJpg(jpeg);
+  const page = pageFor(pdf, image.width, image.height);
+  page.drawImage(image, { x: 0, y: 0, width: page.getWidth(), height: page.getHeight() });
+  return page;
+}
+
+// pdf-lib can only embed 8-bit images, so the 1-bit image XObject is written directly.
+function addBilevelPage(pdf: PDFDocument, { width, height, data }: Extract<PdfImage, { kind: "bilevel" }>): PDFPage {
+  const stream = pdf.context.stream(data, {
+    Type: "XObject",
+    Subtype: "Image",
+    Width: width,
+    Height: height,
+    ColorSpace: "DeviceGray",
+    BitsPerComponent: 1,
+    Filter: "FlateDecode",
+  });
+  const page = pageFor(pdf, width, height);
+  const name = page.node.newXObject("Image", pdf.context.register(stream));
+  page.pushOperators(pushGraphicsState(), concatTransformationMatrix(page.getWidth(), 0, 0, page.getHeight(), 0, 0), drawObject(name), popGraphicsState());
+  return page;
 }
 
 function evenBoxes(count: number): Box[] {

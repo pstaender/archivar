@@ -1,4 +1,5 @@
 import { PREVIEW_SIZE } from "../shared/preview";
+import type { UserSettings } from "../shared/settings";
 import type {
   AppConfig,
   ArchiveDocument,
@@ -86,6 +87,8 @@ export interface UploadOptions {
 
 export const api = {
   me: () => request<User>("/api/me"),
+  settings: () => request<UserSettings>("/api/settings"),
+  updateSettings: (update: Partial<UserSettings>) => request<UserSettings>("/api/settings", jsonBody("PATCH", update)),
   config: () => request<AppConfig>("/api/config"),
 
   library: (params: LibraryQuery = {}) => request<LibraryItem[]>(`/api/library${query({ folder: params.folder, q: params.q })}`),

@@ -62,6 +62,7 @@ export const RotateCw = createIcon(keyline("rotate-cw"), "RotateCw");
 export const Scan = createIcon(keyline("scan"), "Scan");
 export const ScanText = createIcon(keyline("scan-text"), "ScanText");
 export const Search = createIcon(keyline("search"), "Search");
+export const Settings = createIcon(keyline("settings"), "Settings");
 export const Trash = createIcon(keyline("bin"), "Trash");
 export const TriangleAlert = createIcon(keyline("triangle-alert"), "TriangleAlert");
 export const Unlink = createIcon(keyline("unlink"), "Unlink");

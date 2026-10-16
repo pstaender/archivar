@@ -127,3 +127,18 @@ export function autoBwVariants(source: JimpImage, settings: EditSettings): BwVar
   const thresholds = distinctThresholds([otsu, (otsu + paper) / 2, (otsu + ink) / 2]);
   return thresholds.map((bwThreshold) => ({ ...tone, bwThreshold }));
 }
+
+/** Brightness/contrast that stretch the luma range of the image after geometry and denoise (for grayscale). */
+export function autoTone(source: JimpImage, settings: EditSettings): Pick<BwVariant, "brightness" | "contrast"> {
+  const prepared = applyEdits(scaleToFit(source.clone() as JimpImage, ANALYSIS_SIZE), {
+    ...settings,
+    autoLevels: false,
+    brightness: 0,
+    contrast: 0,
+    colorMode: "grayscale",
+    saturation: 0,
+    hue: 0,
+  });
+  const hist = lumaHistogram(prepared);
+  return stretchTone(percentile(hist, STRETCH_CLIP), percentile(hist, 1 - STRETCH_CLIP));
+}
