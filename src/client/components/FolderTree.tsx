@@ -7,6 +7,26 @@ import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
 import { ConfirmDialog } from "./Dialog";
 
+const EXPANDED_KEY = "archivar.expandedFolders";
+
+function readExpandedFolders(): Set<string> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(EXPANDED_KEY) ?? "[]");
+    return new Set(Array.isArray(parsed) ? parsed.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function storeExpanded(path: string, expanded: boolean) {
+  const paths = readExpandedFolders();
+  if (expanded) paths.add(path);
+  else paths.delete(path);
+  try {
+    localStorage.setItem(EXPANDED_KEY, JSON.stringify([...paths]));
+  } catch {}
+}
+
 interface FolderTreeProps {
   onNavigate?: () => void;
 }
@@ -93,7 +113,9 @@ interface NodeProps {
 function FolderTreeNode({ node, active, depth, onNavigate }: NodeProps) {
   const { reload } = useFolders();
   const toast = useToast();
-  const [expanded, setExpanded] = useState(() => isWithinFolder(active, node.path) || depth === 0);
+  const [expanded, setExpanded] = useState(
+    () => readExpandedFolders().has(node.path) || (active !== node.path && isWithinFolder(active, node.path)),
+  );
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(node.path);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -150,7 +172,10 @@ function FolderTreeNode({ node, active, depth, onNavigate }: NodeProps) {
           <button
             type="button"
             className="folder-tree__toggle"
-            onClick={() => setExpanded((v) => !v)}
+            onClick={() => {
+              storeExpanded(node.path, !expanded);
+              setExpanded(!expanded);
+            }}
             aria-label={expanded ? "Zuklappen" : "Aufklappen"}
             hidden={!hasChildren}
           >

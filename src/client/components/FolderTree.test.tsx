@@ -4,7 +4,27 @@ import { folder, mockFetch, renderApp, type FetchMock } from "../../../test/clie
 import { FolderTree } from "./FolderTree";
 
 let fetchMock: FetchMock;
-afterEach(() => fetchMock.restore());
+afterEach(() => {
+  fetchMock.restore();
+  localStorage.clear();
+});
+
+test("folders start collapsed and remember being opened", async () => {
+  fetchMock = mockFetch({ "GET /api/folders": () => [folder(1, "wichtig", 0), folder(2, "wichtig/2026", 3)] });
+  const first = await renderApp(<FolderTree />);
+  await screen.findByText("wichtig");
+  expect(screen.queryByText("2026")).toBeNull();
+
+  fireEvent.click(screen.getByLabelText("Aufklappen"));
+  expect(screen.getByText("2026")).toBeTruthy();
+  first.unmount();
+
+  await renderApp(<FolderTree />);
+  await screen.findByText("wichtig");
+  expect(screen.getByText("2026")).toBeTruthy();
+  fireEvent.click(screen.getByLabelText("Zuklappen"));
+  expect(JSON.parse(localStorage.getItem("archivar.expandedFolders")!)).toEqual([]);
+});
 
 test("renders nested folders with counts and marks the active one", async () => {
   fetchMock = mockFetch({ "GET /api/folders": () => [folder(1, "wichtig", 0), folder(2, "wichtig/2026", 3)] });
