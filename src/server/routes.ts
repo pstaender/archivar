@@ -140,6 +140,21 @@ export function createApiRoutes(ctx: AppContext) {
       }),
     },
 
+    "/api/documents/:id/pdf": {
+      POST: handle(async (req: Req) => {
+        const body = await readJson<{ text?: unknown }>(req).catch(() => ({ text: undefined }));
+        const text = typeof body.text === "string" ? body.text : undefined;
+        const { pdf, filename } = await archive.exportPdf(userId(req), parseId(req.params.id), text);
+        return new Response(pdf, {
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+            "Cache-Control": "no-store",
+          },
+        });
+      }),
+    },
+
     "/api/documents/:id/file": {
       GET: handle((req: Req) => {
         const doc = archive.getDocument(userId(req), parseId(req.params.id));

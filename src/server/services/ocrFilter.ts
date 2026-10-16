@@ -3,9 +3,24 @@ export interface OcrWord {
   confidence: number;
 }
 
+/** Pixel rectangle in the recognized image. */
+export interface OcrBox {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
 export interface OcrLine {
   words: OcrWord[];
   confidence: number;
+  bbox?: OcrBox;
+}
+
+/** A line of the stored text and where it is in the image (if known). */
+export interface OcrTextLine {
+  text: string;
+  bbox?: OcrBox;
 }
 
 export type OcrParagraph = OcrLine[];
@@ -44,9 +59,10 @@ export function isGarbageLine(line: OcrLine): boolean {
 }
 
 /** Drops lines (and isolated words) that are most likely misread noise, e.g. image borders or textures. */
-export function filterOcrText(paragraphs: OcrParagraph[]): { text: string; removed: number } {
+export function filterOcrText(paragraphs: OcrParagraph[]): { text: string; removed: number; lines: OcrTextLine[] } {
   let removed = 0;
   const kept: string[] = [];
+  const keptLines: OcrTextLine[] = [];
   for (const paragraph of paragraphs) {
     const lines: string[] = [];
     for (const line of paragraph) {
@@ -56,9 +72,19 @@ export function filterOcrText(paragraphs: OcrParagraph[]): { text: string; remov
       }
       const words = line.words.filter((w) => !isGarbageWord(w));
       removed += line.words.length - words.length;
-      lines.push(words.map((w) => w.text).join(" "));
+      const text = words.map((w) => w.text).join(" ");
+      lines.push(text);
+      if (text.trim()) keptLines.push({ text, bbox: line.bbox });
     }
     if (lines.length > 0) kept.push(lines.join("\n"));
   }
-  return { text: kept.join("\n\n").trim(), removed };
+  return { text: kept.join("\n\n").trim(), removed, lines: keptLines };
+}
+
+/** All recognized lines, for text that was not filtered. */
+export function allOcrLines(paragraphs: OcrParagraph[]): OcrTextLine[] {
+  return paragraphs.flat().flatMap((line) => {
+    const text = line.words.map((w) => w.text).join(" ");
+    return text.trim() ? [{ text, bbox: line.bbox }] : [];
+  });
 }

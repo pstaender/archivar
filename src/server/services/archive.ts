@@ -26,6 +26,7 @@ import type { StackRepository } from "../db/stacks";
 import { HttpError } from "../http";
 import { derivedKeys, type FileStorage } from "../storage";
 import { extensionFor, type ImagingService } from "./imaging";
+import { createSearchablePdf } from "./searchablePdf";
 import { type DewarpEngine, toDewarpGrid } from "./dewarp";
 import type { OcrEngine, OcrOptions, OcrQueue } from "./ocr";
 
@@ -172,6 +173,18 @@ export class ArchiveService {
     let image = await this.imaging.loadOriginal(doc);
     if (rotation !== 0) image = image.rotate(-rotation) as JimpImage;
     return toDewarpGrid(await this.dewarp.predict(image.bitmap), rotation);
+  }
+
+  /** The edited image as a PDF page with the text (default: the stored OCR text) as a searchable layer. */
+  async exportPdf(userId: number, id: number, text?: string): Promise<{ pdf: Uint8Array<ArrayBuffer>; filename: string }> {
+    const doc = this.getDocument(userId, id);
+    if (doc.kind !== "image") throw new HttpError(400, "Only images can be exported as PDF");
+    const [jpeg] = await this.imaging.ocrImages(doc);
+    const layout = this.documents.getOcrLayout(userId, id);
+    const current = layout && JSON.stringify(layout.editSettings) === JSON.stringify(doc.editSettings) ? layout : null;
+    const title = doc.title.trim() || basename(doc.originalName, extname(doc.originalName));
+    const pdf = await createSearchablePdf(jpeg!, text ?? doc.ocrText, current, title);
+    return { pdf, filename: `${title}.pdf` };
   }
 
   async autoBw(userId: number, id: number, settings: Partial<EditSettings> = {}): Promise<BwVariant[]> {

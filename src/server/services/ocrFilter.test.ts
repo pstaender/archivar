@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { filterOcrText, isGarbageLine, isGarbageWord, type OcrLine, type OcrParagraph } from "./ocrFilter";
+import { allOcrLines, filterOcrText, isGarbageLine, isGarbageWord, type OcrLine, type OcrParagraph } from "./ocrFilter";
 
 function line(spec: string, confidence?: number): OcrLine {
   const words = spec.split(" ").map((token) => {
@@ -57,5 +57,22 @@ describe("OCR filter", () => {
     expect(isGarbageWord({ text: "|", confidence: 46 })).toBe(true);
     expect(isGarbageWord({ text: "–", confidence: 80 })).toBe(false);
     expect(isGarbageWord({ text: "Schlosser", confidence: 31 })).toBe(false);
+  });
+
+  test("keeps the position of each kept line", () => {
+    const box = (y: number) => ({ x0: 10, y0: y, x1: 300, y1: y + 20 });
+    const paragraphs: OcrParagraph[] = [
+      [{ ...line("Rechnung(95)"), bbox: box(0) }, { ...line("~~(5)"), bbox: box(30) }],
+      [{ ...line("Betrag(90) 12(92) %%(10)"), bbox: box(60) }],
+    ];
+    expect(filterOcrText(paragraphs).lines).toEqual([
+      { text: "Rechnung", bbox: box(0) },
+      { text: "Betrag 12", bbox: box(60) },
+    ]);
+    expect(allOcrLines(paragraphs).map((l) => [l.text, l.bbox?.y0])).toEqual([
+      ["Rechnung", 0],
+      ["~~", 30],
+      ["Betrag 12 %%", 60],
+    ]);
   });
 });

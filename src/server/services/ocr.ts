@@ -1,7 +1,7 @@
 import type { Rotation } from "../../shared/types";
-import type { DocumentRepository } from "../db/documents";
+import type { DocumentRepository, OcrLayout, StoredDocument } from "../db/documents";
 import type { ImagingService } from "./imaging";
-import { filterOcrText, type OcrParagraph } from "./ocrFilter";
+import { allOcrLines, filterOcrText, type OcrParagraph, type OcrTextLine } from "./ocrFilter";
 
 export interface OcrResult {
   text: string;
@@ -50,6 +50,7 @@ export class TesseractEngine implements OcrEngine {
       block.paragraphs.map((paragraph) =>
         paragraph.lines.map((line) => ({
           confidence: line.confidence,
+          bbox: line.bbox,
           words: line.words.map((word) => ({ text: word.text, confidence: word.confidence })),
         })),
       ),
@@ -124,15 +125,21 @@ export class OcrQueue {
       const results: OcrResult[] = [];
       for (const image of images) results.push(await this.engine.recognize(image));
       let removed = 0;
+      const lines: OcrTextLine[][] = [];
       const texts = results.map((result) => {
-        if (options.allText || !result.paragraphs) return result.text;
+        if (options.allText || !result.paragraphs) {
+          lines.push(allOcrLines(result.paragraphs ?? []));
+          return result.text;
+        }
         const filtered = filterOcrText(result.paragraphs);
         removed += filtered.removed;
+        lines.push(filtered.removed > 0 ? filtered.lines : allOcrLines(result.paragraphs));
         return filtered.removed > 0 ? filtered.text : result.text;
       });
       const text = texts.join("\n\n").trim();
       const confidence = results.reduce((sum, r) => sum + r.confidence, 0) / results.length;
       this.documents.setOcrResult(documentId, { status: "done", text, confidence, error: null, removed });
+      this.documents.setOcrLayout(documentId, doc.kind === "image" ? toLayout(doc, lines[0] ?? []) : null);
     } catch (error) {
       this.documents.setOcrResult(documentId, {
         status: "failed",
@@ -140,4 +147,13 @@ export class OcrQueue {
       });
     }
   }
+}
+
+function toLayout(doc: StoredDocument, lines: OcrTextLine[]): OcrLayout | null {
+  const { width, height } = doc;
+  if (!width || !height || lines.some((line) => !line.bbox)) return null;
+  return {
+    editSettings: doc.editSettings,
+    lines: lines.map(({ text, bbox }) => ({ text, box: [bbox!.x0 / width, bbox!.y0 / height, bbox!.x1 / width, bbox!.y1 / height] })),
+  };
 }

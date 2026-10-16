@@ -55,6 +55,12 @@ export interface DocumentFilter {
   stackId?: number | null;
 }
 
+/** Where the recognized lines are, as fractions (0..1) of the image rendered with `editSettings`. */
+export interface OcrLayout {
+  editSettings: EditSettings;
+  lines: { text: string; box: [x0: number, y0: number, x1: number, y1: number] }[];
+}
+
 export interface OcrResultUpdate {
   status: OcrStatus;
   text?: string;
@@ -188,6 +194,16 @@ export class DocumentRepository {
         error: result.error ?? null,
         removed: result.removed ?? 0,
       });
+  }
+
+  // Kept out of hydrate(): it is only needed for the PDF export and can be large.
+  setOcrLayout(id: number, layout: OcrLayout | null): void {
+    this.db.query("UPDATE documents SET ocr_layout = ? WHERE id = ?").run(layout ? JSON.stringify(layout) : null, id);
+  }
+
+  getOcrLayout(userId: number, id: number): OcrLayout | null {
+    const row = this.db.query("SELECT ocr_layout FROM documents WHERE user_id = ? AND id = ?").get(userId, id) as { ocr_layout: string | null } | null;
+    return row?.ocr_layout ? (JSON.parse(row.ocr_layout) as OcrLayout) : null;
   }
 
   assignToStack(userId: number, stackId: number | null, documentIds: number[]): void {

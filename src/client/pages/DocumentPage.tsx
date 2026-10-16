@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
 import type { ArchiveDocument, BwVariant, EditSettings } from "../../shared/types";
 import { api, assetUrl } from "../api";
+import { saveBlob } from "../download";
 import { ConfirmDialog } from "../components/Dialog";
 import { EditableTitle } from "../components/EditableTitle";
 import { FolderPicker } from "../components/FolderPicker";
@@ -431,6 +432,7 @@ interface TextPanelProps {
 export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
   const toast = useToast();
   const [text, setText] = useState(doc.ocrText);
+  const [exporting, setExporting] = useState(false);
   const busy = isOcrBusy(doc);
 
   useEffect(() => setText(doc.ocrText), [doc.ocrText]);
@@ -444,6 +446,19 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
     }
   };
 
+  // Exports what is in the text field, also when it is not saved yet.
+  const exportPdf = async () => {
+    setExporting(true);
+    try {
+      const { blob, filename } = await api.exportPdf(doc.id, text);
+      saveBlob(blob, filename);
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="text-panel">
       <div className="text-panel__status">
@@ -453,12 +468,17 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
           {doc.ocrStatus === "done" && doc.ocrConfidence !== null && ` · ${Math.round(doc.ocrConfidence)} % Konfidenz`}
           {doc.metadata.textSource === "pdf" && " · aus PDF übernommen"}
         </span>
-        {doc.kind !== "file" && (
-          <button type="button" className="btn btn--sm" onClick={() => onRunOcr()} disabled={busy}>
-            <ScanText size={16} />
-            {doc.ocrStatus === "none" ? "Text erkennen" : "Erneut erkennen"}
+        <div className="button-row">
+          <button type="button" className="btn btn--sm btn--ghost btn--icon" onClick={copy} disabled={!text} aria-label="Text kopieren" title="Text kopieren">
+            <Copy size={16} />
           </button>
-        )}
+          {doc.kind !== "file" && (
+            <button type="button" className="btn btn--sm" onClick={() => onRunOcr()} disabled={busy}>
+              <ScanText size={16} />
+              {doc.ocrStatus === "none" ? "Text erkennen" : "Erneut erkennen"}
+            </button>
+          )}
+        </div>
       </div>
       {doc.ocrStatus === "failed" && doc.ocrError && <div className="alert alert--error">{doc.ocrError}</div>}
       {doc.ocrStatus === "done" && doc.ocrRemoved > 0 && (
@@ -478,15 +498,22 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
         disabled={busy}
         aria-label="Erkannter Text"
       />
-      <div className="button-row">
-        <button type="button" className="btn btn--sm btn--ghost" onClick={copy} disabled={!text}>
-          <Copy size={14} />
-          Kopieren
-        </button>
-        <span className="spacer" />
+      <div className="text-panel__actions">
         <button type="button" className="btn btn--sm" onClick={() => setText(doc.ocrText)} disabled={text === doc.ocrText}>
           Verwerfen
         </button>
+        {doc.kind === "image" && (
+          <button
+            type="button"
+            className="btn btn--sm"
+            onClick={exportPdf}
+            disabled={exporting || busy}
+            title="Bild mit dem Text als durchsuchbares PDF herunterladen"
+          >
+            {exporting ? <Loader size={16} className="spin" /> : <Download size={16} />}
+            PDF
+          </button>
+        )}
         <button type="button" className="btn btn--sm btn--primary" onClick={() => onSave(text)} disabled={text === doc.ocrText}>
           Text speichern
         </button>

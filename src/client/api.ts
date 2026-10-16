@@ -95,6 +95,13 @@ export const api = {
     request<{ corners: Quad | null }>(`/api/documents/${id}/auto-crop`, jsonBody("POST", { editSettings })),
   autoBw: (id: number, editSettings: EditSettings) =>
     request<BwVariant[]>(`/api/documents/${id}/auto-bw`, jsonBody("POST", { editSettings })),
+  /** Searchable PDF of the edited image with `text` (default: the stored text) as its text layer. */
+  exportPdf: async (id: number, text?: string) => {
+    const res = await send(`/api/documents/${id}/pdf`, jsonBody("POST", { text }));
+    const disposition = res.headers.get("content-disposition") ?? "";
+    const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
+    return { blob: await res.blob(), filename: encoded ? decodeURIComponent(encoded) : `dokument-${id}.pdf` };
+  },
   renderPreview: async (id: number, editSettings: EditSettings, signal?: AbortSignal) =>
     (await send(`/api/documents/${id}/render`, { ...jsonBody("POST", { editSettings }), signal })).blob(),
   runOcr: (id: number, options: { allText?: boolean } = {}) =>

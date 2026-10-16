@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createImage, Jimp } from "../shared/image/jimp";
 import { PREVIEW_SIZE } from "../shared/preview";
 import type { ArchiveDocument, Folder, LibraryItem, StackWithDocuments } from "../shared/types";
+import { getDocumentProxy } from "unpdf";
 import { makePdf } from "../../test/pdf";
 import { derivedKeys } from "./storage";
 import { makeJpeg, startTestServer, type TestServer, uploadForm } from "../../test/server";
@@ -256,6 +257,82 @@ describe("ocr", () => {
   test("rejects OCR for plain files", async () => {
     const [doc] = await upload([{ name: "a.txt", data: new TextEncoder().encode("x"), type: "text/plain" }]);
     expect((await server.api(`/api/documents/${doc!.id}/ocr`, { method: "POST" })).status).toBe(400);
+  });
+});
+
+describe("PDF export", () => {
+  const line = (text: string, [x0, y0, x1, y1]: number[]) => ({
+    confidence: 95,
+    bbox: { x0: x0!, y0: y0!, x1: x1!, y1: y1! },
+    words: text.split(" ").map((word) => ({ text: word, confidence: 95 })),
+  });
+
+  async function ocrImage() {
+    const [doc] = await upload([{ name: "brief.jpg", data: await makeJpeg(200, 100), type: "image/jpeg" }]);
+    server.ocr.result = {
+      text: "Rechnung\nBetrag 12 EUR",
+      confidence: 95,
+      paragraphs: [[line("Rechnung", [20, 10, 120, 30])], [line("Betrag 12 EUR", [20, 60, 180, 80])]],
+    };
+    await post(`/api/documents/${doc!.id}/ocr`, {});
+    await server.ctx.ocr.idle();
+    return doc!;
+  }
+
+  async function exportPdf(id: number, body: unknown = {}) {
+    const res = await post(`/api/documents/${id}/pdf`, body);
+    expect(res.status).toBe(200);
+    const pdf = await getDocumentProxy(new Uint8Array(await res.arrayBuffer()));
+    const page = await pdf.getPage(1);
+    const [, , width, height] = page.view;
+    const items = (await page.getTextContent()).items.flatMap((item) => ("str" in item && item.str.trim() ? [item] : []));
+    return { res, width: width!, height: height!, items: items.map((i) => ({ text: i.str, x: i.transform[4] as number, y: i.transform[5] as number })) };
+  }
+
+  test("puts the recognized text invisibly onto the line positions of the image", async () => {
+    const doc = await ocrImage();
+    const { res, width, height, items } = await exportPdf(doc.id);
+    expect(res.headers.get("content-type")).toBe("application/pdf");
+    expect(res.headers.get("content-disposition")).toBe("attachment; filename*=UTF-8''brief.pdf");
+    expect([width, height]).toEqual([842, 421]);
+    expect(items.map((i) => i.text)).toEqual(["Rechnung", "Betrag 12 EUR"]);
+    expect(items[0]!.x).toBeCloseTo((20 / 200) * 842, 0);
+    expect(items[1]!.x).toBeCloseTo((20 / 200) * 842, 0);
+    expect(items[0]!.y).toBeGreaterThan(height * 0.6);
+    expect(items[1]!.y).toBeLessThan(height * 0.25);
+  });
+
+  test("uses edited text on the recognized lines when the line count still matches", async () => {
+    const doc = await ocrImage();
+    const { items } = await exportPdf(doc.id, { text: "Rechnung Nr. 7\nBetrag 12 €" });
+    expect(items.map((i) => i.text)).toEqual(["Rechnung Nr. 7", "Betrag 12 €"]);
+    expect(items[0]!.x).toBeCloseTo((20 / 200) * 842, 0);
+  });
+
+  test("spreads text over the page when it no longer matches the image or the lines", async () => {
+    const doc = await ocrImage();
+    const spread = await exportPdf(doc.id, { text: "eins\nzwei\ndrei" });
+    expect(spread.items.map((i) => i.text)).toEqual(["eins", "zwei", "drei"]);
+    expect(spread.items[0]!.x).toBeCloseTo(0.05 * spread.width, 0);
+
+    await patch(`/api/documents/${doc.id}`, { editSettings: { rotation: 90 } });
+    const rotated = await exportPdf(doc.id);
+    expect([rotated.width, rotated.height]).toEqual([421, 842]);
+    expect(rotated.items.map((i) => i.text)).toEqual(["Rechnung", "Betrag 12 EUR"]);
+    expect(rotated.items[0]!.x).toBeCloseTo(0.05 * rotated.width, 0);
+  });
+
+  test("replaces characters the PDF font cannot show", async () => {
+    const doc = await uploadImage();
+    const { items } = await exportPdf(doc.id, { text: "Łódź – Grüße 中" });
+    expect(items.map((i) => i.text)).toEqual(["?ódz – Grüße ?"]);
+  });
+
+  test("exports images without text and refuses other documents", async () => {
+    const doc = await uploadImage();
+    expect((await exportPdf(doc.id)).items).toEqual([]);
+    const [pdf] = await upload([{ name: "a.pdf", data: makePdf("Hi"), type: "application/pdf" }]);
+    expect((await post(`/api/documents/${pdf!.id}/pdf`, {})).status).toBe(400);
   });
 });
 
