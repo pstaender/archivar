@@ -1,5 +1,5 @@
 import { ArrowLeft, ChevronLeft, ChevronRight, ImagePlus, CircleMinus, Trash, Unlink } from "../icons";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import type { StackWithDocuments } from "../../shared/types";
 import { api } from "../api";
@@ -11,9 +11,12 @@ import { uploadAccept } from "../../shared/uploads";
 import { useConfig } from "../hooks/config";
 import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
-import { useUpload } from "../hooks/upload";
+import { useRefreshOnUpload, useUpload } from "../hooks/upload";
+import { usePolling } from "../hooks/usePolling";
 import { useResource } from "../hooks/useResource";
 import { documentLabel, formatDate, isOcrBusy } from "../format";
+
+const OCR_POLL_INTERVAL = 2500;
 
 export function StackPage() {
   const id = Number(useParams().id);
@@ -21,17 +24,14 @@ export function StackPage() {
   const toast = useToast();
   const { reload: reloadFolders } = useFolders();
   const { convertibleImageTypes } = useConfig();
-  const { upload, version } = useUpload();
-  const stack = useResource(() => api.stack(id), [id, version]);
+  const { upload } = useUpload();
+  const stack = useResource(() => api.stack(id), [id]);
+  useRefreshOnUpload(stack.refresh);
   const [confirm, setConfirm] = useState<"dissolve" | "delete" | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const busy = stack.data?.documents.some(isOcrBusy) ?? false;
-  useEffect(() => {
-    if (!busy) return;
-    const timer = setInterval(() => void stack.reload(), 2500);
-    return () => clearInterval(timer);
-  }, [busy, stack.reload]);
+  usePolling(busy, stack.refresh, OCR_POLL_INTERVAL);
 
   if (stack.error) {
     return (

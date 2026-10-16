@@ -9,7 +9,7 @@ import { FolderTargetDialog } from "../components/FolderTargetDialog";
 import { ItemCard, itemKey } from "../components/ItemCard";
 import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
-import { useUpload } from "../hooks/upload";
+import { useRefreshOnUpload, useUpload } from "../hooks/upload";
 import { usePolling } from "../hooks/usePolling";
 import { useResource } from "../hooks/useResource";
 import { saveBlob } from "../download";
@@ -23,8 +23,8 @@ export function LibraryPage() {
   const folder = useCurrentFolder() ?? undefined;
   const q = params.get("q") ?? undefined;
   const legacyFolder = params.get("folder");
-  const { version } = useUpload();
-  const library = useResource(() => api.library({ folder, q }), [folder, q, version]);
+  const library = useResource(() => api.library({ folder, q }), [folder, q]);
+  useRefreshOnUpload(library.refresh);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => setSelected(new Set()), [folder, q]);

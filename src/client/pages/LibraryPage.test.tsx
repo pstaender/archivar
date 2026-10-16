@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
-import { docItem, folder, makeDocument, makeStack, mockFetch, renderApp, stackItem, type FetchMock } from "../../../test/client";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { docItem, folder, makeDocument, makeStack, mockFetch, mockXhr, renderApp, stackItem, type FetchMock } from "../../../test/client";
+import type { LibraryItem } from "../../shared/types";
+import { UploadButtons } from "../components/UploadButtons";
 import { LibraryPage } from "./LibraryPage";
 
 let fetchMock: FetchMock;
@@ -215,6 +217,43 @@ describe("LibraryPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /PDF/ }));
     await waitFor(() => expect(fetchMock.calls.some((c) => c.method === "POST")).toBe(true));
     expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toEqual({ documentIds: [photo.id], title: "Urlaub" });
+  });
+
+  test("shows each uploaded file right away without reloading the page visibly", async () => {
+    const listed: LibraryItem[] = [docItem(makeDocument({ title: "Alt" }))];
+    fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [...listed] });
+    const xhr = mockXhr();
+    try {
+      await renderApp(
+        <>
+          <UploadButtons />
+          <LibraryPage />
+        </>,
+      );
+      const grid = document.querySelector(".grid")!;
+      const busyStates: string[] = [];
+      new MutationObserver(() => busyStates.push(grid.getAttribute("aria-busy")!)).observe(grid, { attributeFilter: ["aria-busy"] });
+
+      await act(async () => {
+        fireEvent.change(screen.getByTestId("file-input"), {
+          target: { files: [new File(["1"], "eins.jpg", { type: "image/jpeg" }), new File(["2"], "zwei.jpg", { type: "image/jpeg" })] },
+        });
+      });
+      const eins = makeDocument({ title: "eins" });
+      listed.unshift(docItem(eins));
+      await act(async () => xhr.uploads[0]!.respond(201, [eins]));
+      await waitFor(() => expect(screen.getByRole("link", { name: /eins/ })).toBeTruthy());
+      expect(xhr.uploads).toHaveLength(2);
+      expect(screen.getByText("2 Einträge")).toBeTruthy();
+
+      const zwei = makeDocument({ title: "zwei" });
+      listed.unshift(docItem(zwei));
+      await act(async () => xhr.uploads[1]!.respond(201, [zwei]));
+      await waitFor(() => expect(screen.getByText("3 Einträge")).toBeTruthy());
+      expect(busyStates).not.toContain("true");
+    } finally {
+      xhr.restore();
+    }
   });
 
   test("shows API errors", async () => {

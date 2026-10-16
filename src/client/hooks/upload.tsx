@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { matchPath, useLocation } from "react-router";
 import type { ArchiveDocument } from "../../shared/types";
 import { isSupportedUpload } from "../../shared/uploads";
@@ -27,6 +27,7 @@ interface UploadStats {
 
 interface UploadApi {
   progress: UploadProgress | null;
+  /** Counts the files uploaded so far, so pages can show them as soon as each one is stored. */
   version: number;
   upload: (files: File[], options?: UploadOptions) => Promise<ArchiveDocument[]>;
   uploadToCurrentTarget: (files: File[]) => Promise<ArchiveDocument[]>;
@@ -86,6 +87,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
               publish();
             });
             docs.push(...uploaded);
+            setVersion((v) => v + 1);
           } catch (error) {
             failures.push({ file, error });
           } finally {
@@ -100,7 +102,6 @@ export function UploadProvider({ children }: { children: ReactNode }) {
 
         if (docs.length > 0) {
           toast.success(docs.length === 1 ? "1 Datei hochgeladen" : `${docs.length} Dateien hochgeladen`);
-          setVersion((v) => v + 1);
           if (options.folders?.length) void reloadFolders();
         }
         const [first] = failures;
@@ -143,4 +144,15 @@ export function useUpload(): UploadApi {
   const ctx = useContext(UploadContext);
   if (!ctx) throw new Error("useUpload must be used inside UploadProvider");
   return ctx;
+}
+
+/** Calls `refresh` (a background reload) each time an upload stored another file. */
+export function useRefreshOnUpload(refresh: () => void): void {
+  const { version } = useUpload();
+  const seen = useRef(version);
+  useEffect(() => {
+    if (version === seen.current) return;
+    seen.current = version;
+    refresh();
+  }, [version, refresh]);
 }
