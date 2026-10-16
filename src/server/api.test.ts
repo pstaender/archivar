@@ -104,6 +104,21 @@ describe("documents", () => {
     expect(await previewSize()).toEqual([PREVIEW_SIZE, 35]);
   });
 
+  test("removes editor previews of other sizes", async () => {
+    const doc = await uploadImage();
+    const { storage, imaging } = server.ctx;
+    await storage.write(`derived/${doc.id}/preview.jpg`, new Uint8Array([1]));
+    await storage.write(`derived/${doc.id}/preview-2048.jpg`, new Uint8Array([1]));
+
+    expect(await imaging.removeStalePreviews()).toBe(2);
+    expect(await storage.list(`derived/${doc.id}/*`)).toEqual(
+      expect.arrayContaining([derivedKeys.preview(doc.id), derivedKeys.processed(doc.id), derivedKeys.thumbnail(doc.id)]),
+    );
+    expect(await storage.exists(`derived/${doc.id}/preview.jpg`)).toBe(false);
+    expect(await storage.exists(`derived/${doc.id}/preview-2048.jpg`)).toBe(false);
+    expect(await imaging.removeStalePreviews()).toBe(0);
+  });
+
   test("renders a PDF thumbnail", async () => {
     const [doc] = await upload([{ name: "a.pdf", data: makePdf("Hi"), type: "application/pdf" }]);
     const res = await server.api(`/api/documents/${doc!.id}/thumbnail`);

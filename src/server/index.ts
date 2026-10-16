@@ -23,14 +23,19 @@ const imageConverter = await MagickConverter.detect();
 if (imageConverter) console.log(`ImageMagick found, also accepting ${imageConverter.types().join(", ")}.`);
 else console.warn("ImageMagick not found, HEIC/AVIF/WebP/JPEG XL/JPEG 2000 uploads are not supported.");
 const ctx = createContext({ db: openDatabase(config.databasePath), storageDir: config.storageDir, ocrEngine, dewarpEngine, imageConverter });
+ctx.imaging
+  .removeStalePreviews()
+  .then((count) => count > 0 && console.log(`Removed ${count} outdated preview files.`))
+  .catch((error) => console.warn("Could not remove outdated preview files:", error));
 
+const development = process.env.NODE_ENV !== "production";
 const server = Bun.serve({
   port: config.port,
   maxRequestBodySize: config.maxUploadBytes,
-  development: process.env.NODE_ENV !== "production" && { hmr: true, console: true },
+  development: development && { hmr: true, console: true },
   routes: {
     ...createApiRoutes(ctx),
-    ...vendorRoutes(),
+    ...vendorRoutes({ development }),
     "/*": index,
   },
 });

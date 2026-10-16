@@ -1,52 +1,28 @@
 import { Loader } from "../icons";
 import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
-import { createImage, type JimpImage } from "../../shared/image/jimp";
-import { applyEdits } from "../../shared/image/pipeline";
 import type { EditSettings, Point, Quad } from "../../shared/types";
 import { type GeometryMode, moveCorner, quadOrFull, translateQuad } from "./geometry";
 import { type LensPointer, Magnifier } from "./Magnifier";
-import { loadOpenCv } from "./opencv";
 import { PreviewBar } from "./PreviewBar";
+import { PreviewRenderer, type RenderedPreview } from "./previewRenderer";
 
 // Filters behave differently on a downscaled image (thin strokes turn gray and fall below the threshold), so the
-// preview is rendered from the full base image. Slow settings (colors, denoise) show a small draft while they change.
+// preview is rendered from the full base image in a worker. Slow settings (colors, denoise) additionally get a small
+// draft from a second worker while they change, so the full render only runs once they settle.
 export const DRAFT_SIZE = 1200;
 const RENDER_DELAY = 40;
-const SETTLE_DELAY = 350;
+const SETTLE_DELAY = 250;
 const INSTANT_RENDER_MS = 250;
 
-interface PreviewImages {
-  full: JimpImage;
-  draft: JimpImage;
+interface Renderers {
+  full: PreviewRenderer;
+  draft: PreviewRenderer | null;
 }
 
-async function loadPreview(url: string): Promise<PreviewImages> {
-  const img = new Image();
-  img.decoding = "async";
-  img.src = url;
-  await img.decode();
-  const full = rasterize(img, 1);
-  const scale = DRAFT_SIZE / Math.max(img.naturalWidth, img.naturalHeight);
-  return { full, draft: scale < 1 ? rasterize(img, scale) : full };
-}
-
-function rasterize(img: HTMLImageElement, scale: number): JimpImage {
-  const width = Math.max(1, Math.round(img.naturalWidth * scale));
-  const height = Math.max(1, Math.round(img.naturalHeight * scale));
-  const canvas = document.createElement("canvas");
+function drawToCanvas(canvas: HTMLCanvasElement, { width, height, data }: RenderedPreview) {
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(img, 0, 0, width, height);
-  return createImage(width, height, ctx.getImageData(0, 0, width, height).data);
-}
-
-function drawToCanvas(canvas: HTMLCanvasElement, image: JimpImage) {
-  const { width, height, data } = image.bitmap;
-  canvas.width = width;
-  canvas.height = height;
-  const pixels = new Uint8ClampedArray(data.buffer as ArrayBuffer, data.byteOffset, data.byteLength);
-  canvas.getContext("2d")!.putImageData(new ImageData(pixels, width, height), 0, 0);
+  canvas.getContext("2d")!.putImageData(new ImageData(data, width, height), 0, 0);
 }
 
 interface ImageEditorProps {
@@ -65,47 +41,59 @@ export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const processedRef = useRef<HTMLImageElement>(null);
   const [pointer, setPointer] = useState<LensPointer | null>(null);
-  const [base, setBase] = useState<PreviewImages | null>(null);
+  const [renderers, setRenderers] = useState<Renderers | null>(null);
   const fullRenderMs = useRef(Infinity);
   const [error, setError] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    setBase(null);
+    const full = new PreviewRenderer();
+    let draft: PreviewRenderer | null = null;
+    setRenderers(null);
     fullRenderMs.current = Infinity;
-    loadPreview(src)
-      .then((image) => !cancelled && setBase(image))
-      .catch((e) => !cancelled && setError(String(e)));
+    full
+      .load(src)
+      .then(async ({ width, height }) => {
+        if (Math.max(width, height) > DRAFT_SIZE) {
+          draft = new PreviewRenderer();
+          await draft.load(src, DRAFT_SIZE);
+        }
+        if (!cancelled) setRenderers({ full, draft });
+      })
+      .catch((e) => !cancelled && setError(e instanceof Error ? e.message : String(e)));
     return () => {
       cancelled = true;
+      full.dispose();
+      draft?.dispose();
     };
   }, [src]);
 
   useEffect(() => {
-    if (!base || !canvasRef.current) return;
+    if (!renderers) return;
     setRendering(true);
     let cancelled = false;
+    let fullShown = false;
     const preview = mode === "none" ? settings : { ...settings, corners: null, denoise: 0 };
-    const render = async (image: JimpImage) => {
-      if (preview.denoise > 0) await loadOpenCv();
-      if (cancelled || !canvasRef.current) return false;
-      drawToCanvas(canvasRef.current, applyEdits(image, preview));
+    const show = (result: RenderedPreview | null) => {
+      if (!result || cancelled || !canvasRef.current) return false;
+      drawToCanvas(canvasRef.current, result);
       return true;
     };
-    const fail = (e: unknown) => setError(e instanceof Error ? e.message : String(e));
-    const instant = base.draft === base.full || fullRenderMs.current <= INSTANT_RENDER_MS;
-    const draftTimer = instant ? undefined : setTimeout(() => render(base.draft).catch(fail), RENDER_DELAY);
+    const fail = (e: unknown) => !cancelled && setError(e instanceof Error ? e.message : String(e));
+    const { full, draft } = renderers;
+    const instant = !draft || fullRenderMs.current <= INSTANT_RENDER_MS;
+    const draftTimer = instant
+      ? undefined
+      : setTimeout(() => draft.render(preview).then((result) => !fullShown && show(result), fail), RENDER_DELAY);
     const fullTimer = setTimeout(
-      async () => {
-        try {
-          const start = performance.now();
-          if (await render(base.full)) fullRenderMs.current = performance.now() - start;
-        } catch (e) {
-          fail(e);
-        }
-        if (!cancelled) setRendering(false);
-      },
+      () =>
+        full.render(preview).then((result) => {
+          if (result) fullRenderMs.current = result.ms;
+          if (!show(result)) return;
+          fullShown = true;
+          setRendering(false);
+        }, fail),
       instant ? RENDER_DELAY : SETTLE_DELAY,
     );
     return () => {
@@ -113,7 +101,7 @@ export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc
       clearTimeout(draftTimer);
       clearTimeout(fullTimer);
     };
-  }, [base, settings, mode]);
+  }, [renderers, settings, mode]);
 
   const showProcessed = Boolean(processedSrc) && mode === "none";
 
@@ -137,15 +125,15 @@ export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc
             onPointerLeave={() => setPointer(null)}
           />
         )}
-        {base && mode !== "none" && (
+        {renderers && mode !== "none" && (
           <QuadOverlay quad={quadOrFull(settings.corners)} mode={mode} onChange={onCornersChange} />
         )}
       </div>
       {showProcessed && pointer && <Magnifier source={processedRef} pointer={pointer} />}
-      {onPreview && onLive && base && mode === "none" && (
+      {onPreview && onLive && renderers && mode === "none" && (
         <PreviewBar processing={processing} showing={showProcessed} onPreview={onPreview} onLive={onLive} />
       )}
-      {(!base || rendering || processing) && (
+      {(!renderers || rendering || processing) && (
         <span className="editor-canvas__spinner" aria-label="Vorschau wird berechnet">
           <Loader size={18} className="spin" />
         </span>

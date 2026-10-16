@@ -106,6 +106,14 @@ export class ImagingService {
     return key;
   }
 
+  /** Deletes editor base images of other sizes (`preview.jpg` before sizes were versioned); returns how many. */
+  async removeStalePreviews(): Promise<number> {
+    const current = (key: string) => key === derivedKeys.preview(Number(key.split("/")[1]));
+    const stale = (await this.storage.list(derivedKeys.anyPreview)).filter((key) => !current(key));
+    for (const key of stale) await this.storage.delete(key);
+    return stale.length;
+  }
+
   private async writePreview(id: number, original: JimpImage): Promise<void> {
     await this.storage.write(derivedKeys.preview(id), await toJpeg(scaleToFit(original.clone() as JimpImage, PREVIEW_SIZE), PREVIEW_JPEG_QUALITY));
   }

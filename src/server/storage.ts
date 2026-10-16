@@ -33,12 +33,24 @@ export class FileStorage {
   async delete(key: string): Promise<void> {
     await rm(this.path(key), { recursive: true, force: true });
   }
+
+  /** Keys of the stored files matching a glob pattern (relative to the storage root). */
+  async list(pattern: string): Promise<string[]> {
+    const keys: string[] = [];
+    try {
+      for await (const key of new Bun.Glob(pattern).scan({ cwd: this.root })) keys.push(key.replaceAll("\\", "/"));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    return keys;
+  }
 }
 
 export const derivedKeys = {
   dir: (documentId: number) => `derived/${documentId}`,
   source: (documentId: number) => `derived/${documentId}/source.png`,
   preview: (documentId: number) => `derived/${documentId}/preview-${PREVIEW_SIZE}.jpg`,
+  anyPreview: "derived/*/preview*.jpg",
   processed: (documentId: number) => `derived/${documentId}/processed.jpg`,
   thumbnail: (documentId: number) => `derived/${documentId}/thumbnail.jpg`,
 };
