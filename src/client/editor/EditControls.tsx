@@ -1,5 +1,5 @@
 import { AutoCrop, AutoRotate, Contrast, Crop, Eraser, Loader, RotateCcw, RotateCw, Scan, WandSparkles } from "../icons";
-import { type CSSProperties, useId } from "react";
+import { type CSSProperties, useEffect, useId } from "react";
 import type { ColorMode, EditSettings } from "../../shared/types";
 import { boundingRect, type GeometryMode, rotateSettings } from "./geometry";
 
@@ -57,6 +57,18 @@ export function EditControls({
   onAutoCrop,
 }: EditControlsProps) {
   const set = <K extends keyof EditSettings>(key: K, value: EditSettings[K]) => onChange({ ...settings, [key]: value });
+
+  useEffect(() => {
+    if (mode === "none") return;
+    const apply = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" || event.defaultPrevented || isTextField(event.target)) return;
+      // Also keeps a focused button (e.g. „Auto-Zuschnitt“) from being clicked again.
+      event.preventDefault();
+      onModeChange("none");
+    };
+    window.addEventListener("keydown", apply);
+    return () => window.removeEventListener("keydown", apply);
+  }, [mode, onModeChange]);
 
   const rotate = (delta: 90 | -90) => onChange(rotateSettings(settings, delta));
 
@@ -132,8 +144,8 @@ export function EditControls({
         {mode !== "none" && (
           <p className="muted small">
             {mode === "crop"
-              ? "Ecken ziehen, um den Ausschnitt festzulegen."
-              : "Ecken auf die Ecken des Dokuments ziehen – es wird gerade gerückt."}
+              ? "Ecken ziehen, um den Ausschnitt festzulegen, Enter übernimmt."
+              : "Ecken auf die Ecken des Dokuments ziehen – es wird gerade gerückt. Enter übernimmt."}
             {settings.corners && (
               <>
                 {" "}
@@ -267,4 +279,10 @@ export function Slider({ label, value, min, max, step, defaultValue = 0, format 
       />
     </div>
   );
+}
+
+function isTextField(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return true;
+  return target instanceof HTMLInputElement && !["range", "checkbox", "radio", "button"].includes(target.type);
 }

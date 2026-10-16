@@ -53,6 +53,34 @@ describe("EditControls", () => {
     expect(onModeChange).toHaveBeenCalledWith("crop");
   });
 
+  test("Enter applies the corners, also when a button has focus", () => {
+    const onAutoCrop = mock();
+    const onModeChange = mock();
+    render(<EditControls settings={DEFAULT_EDIT_SETTINGS} onChange={mock()} mode="perspective" onModeChange={onModeChange} onAutoCrop={onAutoCrop} />);
+    const button = screen.getByRole("button", { name: /Auto-Zuschnitt/ });
+    button.focus();
+    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    button.dispatchEvent(event);
+    expect(onModeChange).toHaveBeenCalledWith("none");
+    expect(event.defaultPrevented).toBe(true);
+    expect(onAutoCrop).not.toHaveBeenCalled();
+  });
+
+  test("Enter is left alone without geometry editing and in text fields", () => {
+    const { onModeChange } = setup({}, "none");
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(onModeChange).not.toHaveBeenCalled();
+
+    const input = document.createElement("input");
+    document.body.append(input);
+    const crop = setup({}, "crop");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(crop.onModeChange).not.toHaveBeenCalled();
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    expect(crop.onModeChange).toHaveBeenCalledWith("none");
+    input.remove();
+  });
+
   test("clicking the active mode again leaves geometry editing", () => {
     const { onModeChange } = setup({}, "perspective");
     fireEvent.click(screen.getByRole("button", { name: /Entzerren/ }));

@@ -1,13 +1,10 @@
 import { mock } from "bun:test";
 import { act, render } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import type { ArchiveDocument, Folder, LibraryItem, Stack } from "../src/shared/types";
 import { DEFAULT_EDIT_SETTINGS } from "../src/shared/editSettings";
-import { ConfigProvider } from "../src/client/hooks/config";
-import { FoldersProvider } from "../src/client/hooks/folders";
-import { ToastProvider } from "../src/client/hooks/toast";
-import { UploadProvider } from "../src/client/hooks/upload";
+import { AppProviders } from "../src/client/App";
 
 export type Handler = (url: URL, init: RequestInit) => unknown | Response | Promise<unknown>;
 
@@ -47,23 +44,10 @@ export async function settle(): Promise<void> {
 }
 
 export async function renderApp(ui: ReactElement, { path = "/", route = "*" }: { path?: string; route?: string } = {}) {
-  const result = render(
-    <MemoryRouter initialEntries={[path]}>
-      <ConfigProvider>
-        <ToastProvider>
-          <FoldersProvider>
-            <UploadProvider>
-              <Routes>
-                <Route path={route} element={ui} />
-              </Routes>
-            </UploadProvider>
-          </FoldersProvider>
-        </ToastProvider>
-      </ConfigProvider>
-    </MemoryRouter>,
-  );
+  const router = createMemoryRouter([{ path: route, element: <AppProviders>{ui}</AppProviders> }], { initialEntries: [path] });
+  const result = render(<RouterProvider router={router} />);
   await settle();
-  return result;
+  return { ...result, router };
 }
 
 let nextId = 1;

@@ -7,6 +7,7 @@ import { api, assetUrl } from "../api";
 import { ConfirmDialog } from "../components/Dialog";
 import { EditableTitle } from "../components/EditableTitle";
 import { FolderPicker } from "../components/FolderPicker";
+import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { ZoomableImage } from "../components/ZoomableImage";
 import { type AutoBwState, EditControls } from "../editor/EditControls";
 import { type GeometryMode, withRotation } from "../editor/geometry";
@@ -15,6 +16,7 @@ import { useProcessedPreview } from "../editor/useProcessedPreview";
 import { isAxisAlignedRect } from "../../shared/image/perspective";
 import { useConfig } from "../hooks/config";
 import { useFolders } from "../hooks/folders";
+import { useLeaveGuard } from "../hooks/leaveGuard";
 import { useUpload } from "../hooks/upload";
 import { useToast } from "../hooks/toast";
 import { useResource } from "../hooks/useResource";
@@ -79,6 +81,7 @@ export function DocumentPage() {
   }, [doc?.ocrStatus, resource.reload]);
 
   const dirty = useMemo(() => doc !== undefined && JSON.stringify(draft) !== JSON.stringify(doc.editSettings), [draft, doc]);
+  const leave = useLeaveGuard(dirty);
 
   if (resource.error) {
     return (
@@ -116,7 +119,10 @@ export function DocumentPage() {
       setMode("none");
       toast.success("Bearbeitung gespeichert");
     }
+    return updated !== null;
   };
+
+  const selectTab = (next: Tab) => (tab === "edit" && next !== tab ? leave.guard(() => setTab(next)) : setTab(next));
 
   const autoDewarp = async () => {
     setDewarping(true);
@@ -204,6 +210,7 @@ export function DocumentPage() {
       await api.deleteDocument(doc.id);
       toast.success("Dokument gelöscht");
       void reloadFolders();
+      leave.skipNext();
       navigate(backHref);
     } catch (error) {
       toast.error(error);
@@ -279,14 +286,14 @@ export function DocumentPage() {
         <aside className="panel">
           <div className="tabs" role="tablist">
             {doc.kind === "image" && (
-              <TabButton tab="edit" current={tab} onSelect={setTab}>
+              <TabButton tab="edit" current={tab} onSelect={selectTab}>
                 Bearbeiten
               </TabButton>
             )}
-            <TabButton tab="text" current={tab} onSelect={setTab}>
+            <TabButton tab="text" current={tab} onSelect={selectTab}>
               Text
             </TabButton>
-            <TabButton tab="details" current={tab} onSelect={setTab}>
+            <TabButton tab="details" current={tab} onSelect={selectTab}>
               Details
             </TabButton>
           </div>
@@ -339,6 +346,19 @@ export function DocumentPage() {
         danger
         onConfirm={remove}
         onClose={() => setConfirmDelete(false)}
+      />
+      <UnsavedChangesDialog
+        open={leave.asking}
+        saving={saving}
+        onSave={async () => {
+          if (await save()) leave.proceed();
+        }}
+        onDiscard={() => {
+          setDraft(doc.editSettings);
+          setMode("none");
+          leave.proceed();
+        }}
+        onStay={leave.stay}
       />
     </div>
   );
