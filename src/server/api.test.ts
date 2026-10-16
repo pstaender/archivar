@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createImage, Jimp } from "../shared/image/jimp";
+import { PREVIEW_SIZE } from "../shared/preview";
 import type { ArchiveDocument, Folder, LibraryItem, StackWithDocuments } from "../shared/types";
 import { makePdf } from "../../test/pdf";
+import { derivedKeys } from "./storage";
 import { makeJpeg, startTestServer, type TestServer, uploadForm } from "../../test/server";
 
 let server: TestServer;
@@ -87,6 +89,19 @@ describe("documents", () => {
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toStartWith("image/jpeg");
     }
+  });
+
+  test("caps the editor preview at the preview size and recreates it when missing", async () => {
+    const [doc] = await upload([{ name: "breit.jpg", data: await makeJpeg(PREVIEW_SIZE + 400, 40) }]);
+    const previewSize = async () => {
+      const res = await server.api(`/api/documents/${doc!.id}/preview`);
+      const { width, height } = (await Jimp.read(Buffer.from(await res.arrayBuffer()))).bitmap;
+      return [width, height];
+    };
+    expect(await previewSize()).toEqual([PREVIEW_SIZE, 35]);
+
+    await server.ctx.storage.delete(derivedKeys.preview(doc!.id));
+    expect(await previewSize()).toEqual([PREVIEW_SIZE, 35]);
   });
 
   test("renders a PDF thumbnail", async () => {

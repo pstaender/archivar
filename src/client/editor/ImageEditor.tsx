@@ -8,15 +8,29 @@ import { type LensPointer, Magnifier } from "./Magnifier";
 import { loadOpenCv } from "./opencv";
 import { PreviewBar } from "./PreviewBar";
 
-export const PREVIEW_MAX_SIZE = 1400;
+// Filters behave differently on a downscaled image (thin strokes turn gray and fall below the threshold), so the
+// preview is rendered from the full base image. Slow settings (colors, denoise) show a small draft while they change.
+export const DRAFT_SIZE = 1200;
 const RENDER_DELAY = 40;
+const SETTLE_DELAY = 350;
+const INSTANT_RENDER_MS = 250;
 
-async function loadPreview(url: string, maxSize: number): Promise<JimpImage> {
+interface PreviewImages {
+  full: JimpImage;
+  draft: JimpImage;
+}
+
+async function loadPreview(url: string): Promise<PreviewImages> {
   const img = new Image();
   img.decoding = "async";
   img.src = url;
   await img.decode();
-  const scale = Math.min(1, maxSize / Math.max(img.naturalWidth, img.naturalHeight));
+  const full = rasterize(img, 1);
+  const scale = DRAFT_SIZE / Math.max(img.naturalWidth, img.naturalHeight);
+  return { full, draft: scale < 1 ? rasterize(img, scale) : full };
+}
+
+function rasterize(img: HTMLImageElement, scale: number): JimpImage {
   const width = Math.max(1, Math.round(img.naturalWidth * scale));
   const height = Math.max(1, Math.round(img.naturalHeight * scale));
   const canvas = document.createElement("canvas");
@@ -51,14 +65,16 @@ export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const processedRef = useRef<HTMLImageElement>(null);
   const [pointer, setPointer] = useState<LensPointer | null>(null);
-  const [base, setBase] = useState<JimpImage | null>(null);
+  const [base, setBase] = useState<PreviewImages | null>(null);
+  const fullRenderMs = useRef(Infinity);
   const [error, setError] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setBase(null);
-    loadPreview(src, PREVIEW_MAX_SIZE)
+    fullRenderMs.current = Infinity;
+    loadPreview(src)
       .then((image) => !cancelled && setBase(image))
       .catch((e) => !cancelled && setError(String(e)));
     return () => {
@@ -71,19 +87,31 @@ export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc
     setRendering(true);
     let cancelled = false;
     const preview = mode === "none" ? settings : { ...settings, corners: null, denoise: 0 };
-    const timer = setTimeout(async () => {
-      try {
-        if (preview.denoise > 0) await loadOpenCv();
-        if (cancelled || !canvasRef.current) return;
-        drawToCanvas(canvasRef.current, applyEdits(base, preview));
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      }
-      if (!cancelled) setRendering(false);
-    }, RENDER_DELAY);
+    const render = async (image: JimpImage) => {
+      if (preview.denoise > 0) await loadOpenCv();
+      if (cancelled || !canvasRef.current) return false;
+      drawToCanvas(canvasRef.current, applyEdits(image, preview));
+      return true;
+    };
+    const fail = (e: unknown) => setError(e instanceof Error ? e.message : String(e));
+    const instant = base.draft === base.full || fullRenderMs.current <= INSTANT_RENDER_MS;
+    const draftTimer = instant ? undefined : setTimeout(() => render(base.draft).catch(fail), RENDER_DELAY);
+    const fullTimer = setTimeout(
+      async () => {
+        try {
+          const start = performance.now();
+          if (await render(base.full)) fullRenderMs.current = performance.now() - start;
+        } catch (e) {
+          fail(e);
+        }
+        if (!cancelled) setRendering(false);
+      },
+      instant ? RENDER_DELAY : SETTLE_DELAY,
+    );
     return () => {
       cancelled = true;
-      clearTimeout(timer);
+      clearTimeout(draftTimer);
+      clearTimeout(fullTimer);
     };
   }, [base, settings, mode]);
 

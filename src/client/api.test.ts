@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mockFetch, mockXhr, type FetchMock } from "../../test/client";
+import { PREVIEW_SIZE } from "../shared/preview";
 import { api, ApiRequestError, assetUrl } from "./api";
 
 let fetchMock: FetchMock;
@@ -95,5 +96,8 @@ describe("api client", () => {
 test("assetUrl adds a cache-busting version", () => {
   expect(assetUrl({ id: 5, updatedAt: "2026-01-01T00:00:00Z" }, "thumbnail")).toBe(
     "/api/documents/5/thumbnail?v=2026-01-01T00%3A00%3A00Z",
+  );
+  expect(assetUrl({ id: 5, updatedAt: "2026-01-01T00:00:00Z" }, "preview")).toBe(
+    `/api/documents/5/preview?v=2026-01-01T00%3A00%3A00Z-${PREVIEW_SIZE}`,
   );
 });

@@ -1,3 +1,4 @@
+import { PREVIEW_SIZE } from "../shared/preview";
 import type {
   AppConfig,
   ArchiveDocument,
@@ -127,5 +128,6 @@ export const api = {
 export type DocumentAsset = "file" | "preview" | "image" | "thumbnail";
 
 export function assetUrl(doc: Pick<ArchiveDocument, "id" | "updatedAt">, asset: DocumentAsset): string {
-  return `/api/documents/${doc.id}/${asset}?v=${encodeURIComponent(doc.updatedAt)}`;
+  const version = encodeURIComponent(doc.updatedAt);
+  return `/api/documents/${doc.id}/${asset}?v=${asset === "preview" ? `${version}-${PREVIEW_SIZE}` : version}`;
 }

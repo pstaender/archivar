@@ -1,5 +1,6 @@
 import { mkdir, rm } from "node:fs/promises";
 import { dirname, join, normalize } from "node:path";
+import { PREVIEW_SIZE } from "../shared/preview";
 import { HttpError } from "./http";
 
 export class FileStorage {
@@ -37,7 +38,7 @@ export class FileStorage {
 export const derivedKeys = {
   dir: (documentId: number) => `derived/${documentId}`,
   source: (documentId: number) => `derived/${documentId}/source.png`,
-  preview: (documentId: number) => `derived/${documentId}/preview.jpg`,
+  preview: (documentId: number) => `derived/${documentId}/preview-${PREVIEW_SIZE}.jpg`,
   processed: (documentId: number) => `derived/${documentId}/processed.jpg`,
   thumbnail: (documentId: number) => `derived/${documentId}/thumbnail.jpg`,
 };

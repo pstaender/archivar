@@ -1,4 +1,5 @@
 import type { EditSettings, Quad } from "../types";
+import { adjustColor } from "./color";
 import { removeSpecks, smoothNoise } from "./denoise";
 import { createImage, type JimpImage } from "./jimp";
 import { isAxisAlignedRect, warpPerspective } from "./perspective";
@@ -55,11 +56,7 @@ export function applyEdits(source: JimpImage, settings: EditSettings): JimpImage
   applyTone(image, settings);
 
   if (settings.colorMode === "color") {
-    const actions: Parameters<JimpImage["color"]>[0] = [];
-    if (settings.saturation > 0) actions.push({ apply: "saturate", params: [settings.saturation] });
-    if (settings.saturation < 0) actions.push({ apply: "desaturate", params: [-settings.saturation] });
-    if (settings.hue !== 0) actions.push({ apply: "hue", params: [settings.hue] });
-    if (actions.length > 0) image.color(actions);
+    adjustColor(image.bitmap, settings.saturation, settings.hue);
   } else if (settings.colorMode === "grayscale") {
     image.greyscale();
   } else {

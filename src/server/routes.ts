@@ -148,9 +148,9 @@ export function createApiRoutes(ctx: AppContext) {
     },
 
     "/api/documents/:id/preview": {
-      GET: handle((req: Req) => {
+      GET: handle(async (req: Req) => {
         const doc = archive.getDocument(userId(req), parseId(req.params.id));
-        return serveFile(ctx.storage.file(derivedKeys.preview(doc.id)), "image/jpeg");
+        return serveFile(ctx.storage.file(await ctx.imaging.preview(doc)), "image/jpeg");
       }),
     },
 

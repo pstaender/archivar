@@ -2,6 +2,7 @@ import { extname } from "node:path";
 import { isDefaultEditSettings } from "../../shared/editSettings";
 import { isEditableImageType, Jimp, type JimpImage } from "../../shared/image/jimp";
 import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
+import { PREVIEW_SIZE } from "../../shared/preview";
 import type { DocumentKind, EditSettings } from "../../shared/types";
 import { convertibleTypeForExtension } from "../../shared/uploads";
 import type { StoredDocument } from "../db/documents";
@@ -9,9 +10,10 @@ import { derivedKeys, type FileStorage } from "../storage";
 import type { ImageConverter } from "./magick";
 import { inspectPdf, renderPdfPage } from "./pdf";
 
-export const PREVIEW_SIZE = 2048;
 export const THUMBNAIL_SIZE = 480;
 const JPEG_QUALITY = 90;
+// Compression artifacts in the editor's base image would show up in its threshold and contrast preview.
+const PREVIEW_JPEG_QUALITY = 95;
 const OCR_PDF_SCALE = 2.5;
 const OCR_MAX_PDF_PAGES = 50;
 
@@ -97,11 +99,15 @@ export class ImagingService {
     return image;
   }
 
-  async createPreview(doc: StoredDocument): Promise<void> {
-    if (doc.kind === "image") {
-      const original = await this.loadOriginal(doc);
-      await this.storage.write(derivedKeys.preview(doc.id), await toJpeg(scaleToFit(original, PREVIEW_SIZE)));
-    }
+  /** Storage key of the editor's base image; created on demand for documents uploaded with an older preview size. */
+  async preview(doc: StoredDocument): Promise<string> {
+    const key = derivedKeys.preview(doc.id);
+    if (doc.kind === "image" && !(await this.storage.exists(key))) await this.writePreview(doc.id, await this.loadOriginal(doc));
+    return key;
+  }
+
+  private async writePreview(id: number, original: JimpImage): Promise<void> {
+    await this.storage.write(derivedKeys.preview(id), await toJpeg(scaleToFit(original.clone() as JimpImage, PREVIEW_SIZE), PREVIEW_JPEG_QUALITY));
   }
 
   async renderJpeg(doc: StoredDocument, settings: EditSettings): Promise<Uint8Array<ArrayBuffer>> {
@@ -112,9 +118,7 @@ export class ImagingService {
   async renderDerivatives(doc: StoredDocument): Promise<{ width: number; height: number } | null> {
     if (doc.kind === "image") {
       const original = await this.loadOriginal(doc);
-      if (!(await this.storage.exists(derivedKeys.preview(doc.id)))) {
-        await this.storage.write(derivedKeys.preview(doc.id), await toJpeg(scaleToFit(original.clone() as JimpImage, PREVIEW_SIZE)));
-      }
+      if (!(await this.storage.exists(derivedKeys.preview(doc.id)))) await this.writePreview(doc.id, original);
       const processed = isDefaultEditSettings(doc.editSettings) ? original : applyEdits(original, doc.editSettings);
       const { width, height } = processed.bitmap;
       await this.storage.write(derivedKeys.processed(doc.id), await toJpeg(processed));
