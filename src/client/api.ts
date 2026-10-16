@@ -36,6 +36,25 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await res.json()) as T;
 }
 
+// fetch() cannot report upload progress, XMLHttpRequest can.
+function sendWithProgress<T>(path: string, body: FormData, onProgress?: (loaded: number, total: number) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", path);
+    xhr.responseType = "json";
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(e.loaded, e.total);
+    };
+    xhr.onload = () => {
+      const response = xhr.response as (T & { error?: string }) | null;
+      if (xhr.status >= 200 && xhr.status < 300) resolve(response as T);
+      else reject(new ApiRequestError(xhr.status, response?.error ?? (xhr.statusText || "Upload fehlgeschlagen")));
+    };
+    xhr.onerror = () => reject(new ApiRequestError(0, "Upload fehlgeschlagen"));
+    xhr.send(body);
+  });
+}
+
 const jsonBody = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
 
 function query(params: Record<string, string | undefined>): string {
@@ -68,14 +87,14 @@ export const api = {
   runOcr: (id: number, options: { allText?: boolean } = {}) =>
     request<ArchiveDocument>(`/api/documents/${id}/ocr`, jsonBody("POST", { allText: options.allText === true })),
 
-  upload(files: File[], options: UploadOptions = {}) {
+  upload(files: File[], options: UploadOptions = {}, onProgress?: (loaded: number, total: number) => void) {
     const form = new FormData();
     for (const file of files) form.append("files", file);
     if (options.folders?.length) form.append("folders", JSON.stringify(options.folders));
     if (options.stackId !== undefined) form.append("stackId", String(options.stackId));
     if (options.ocr) form.append("ocr", "true");
     if (options.ocrAllText) form.append("ocrAllText", "true");
-    return request<ArchiveDocument[]>("/api/documents", { method: "POST", body: form });
+    return sendWithProgress<ArchiveDocument[]>("/api/documents", form, onProgress);
   },
 
   stack: (id: number) => request<StackWithDocuments>(`/api/stacks/${id}`),

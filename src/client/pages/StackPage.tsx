@@ -7,7 +7,7 @@ import { ConfirmDialog } from "../components/Dialog";
 import { EditableTitle } from "../components/EditableTitle";
 import { FolderPicker } from "../components/FolderPicker";
 import { documentThumbnail, Thumbnail } from "../components/ItemCard";
-import { ACCEPTED_FILES } from "../components/UploadButtons";
+import { UPLOAD_ACCEPT } from "../../shared/uploads";
 import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
 import { useUpload } from "../hooks/upload";
@@ -106,7 +106,7 @@ export function StackPage() {
             ref={fileInput}
             type="file"
             multiple
-            accept={ACCEPTED_FILES}
+            accept={UPLOAD_ACCEPT}
             hidden
             onChange={(e) => {
               const files = Array.from(e.currentTarget.files ?? []);

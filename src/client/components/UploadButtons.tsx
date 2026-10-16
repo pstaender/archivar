@@ -1,11 +1,10 @@
 import { Camera, Loader, Upload } from "../icons";
 import { useRef } from "react";
+import { UPLOAD_ACCEPT } from "../../shared/uploads";
 import { useUpload } from "../hooks/upload";
 
-export const ACCEPTED_FILES = "image/*,application/pdf,.pdf,.tif,.tiff,.txt,.doc,.docx,.odt,.rtf";
-
 export function UploadButtons() {
-  const { uploading, uploadToCurrentTarget } = useUpload();
+  const { progress, uploadToCurrentTarget } = useUpload();
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
 
@@ -21,7 +20,7 @@ export function UploadButtons() {
         ref={fileInput}
         type="file"
         multiple
-        accept={ACCEPTED_FILES}
+        accept={UPLOAD_ACCEPT}
         hidden
         data-testid="file-input"
         onChange={(e) => onFiles(e.currentTarget)}
@@ -38,9 +37,9 @@ export function UploadButtons() {
       <button type="button" className="btn btn--icon camera-button" onClick={() => cameraInput.current?.click()} aria-label="Foto aufnehmen" title="Foto aufnehmen">
         <Camera size={18} />
       </button>
-      <button type="button" className="btn btn--primary" onClick={() => fileInput.current?.click()} disabled={uploading > 0}>
-        {uploading > 0 ? <Loader size={16} className="spin" /> : <Upload size={16} />}
-        <span className="hide-mobile">{uploading > 0 ? `Lade ${uploading} …` : "Hochladen"}</span>
+      <button type="button" className="btn btn--primary" onClick={() => fileInput.current?.click()}>
+        {progress ? <Loader size={16} className="spin" /> : <Upload size={16} />}
+        <span className="hide-mobile">Hochladen</span>
       </button>
     </div>
   );

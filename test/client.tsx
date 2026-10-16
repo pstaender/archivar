@@ -111,3 +111,48 @@ export const docItem = (document: ArchiveDocument): LibraryItem => ({ type: "doc
 export const stackItem = (stack: Stack): LibraryItem => ({ type: "stack", stack });
 
 export const folder = (id: number, path: string, documentCount = 0): Folder => ({ id, path, documentCount, stackCount: 0 });
+
+export interface XhrUpload {
+  path: string;
+  body: FormData;
+  progress(loaded: number, total: number): void;
+  respond(status: number, body: unknown): void;
+}
+
+// fetch() mocks do not cover uploads: they go through XMLHttpRequest for progress events.
+export function mockXhr(): { uploads: XhrUpload[]; restore(): void } {
+  const original = globalThis.XMLHttpRequest;
+  const uploads: XhrUpload[] = [];
+  class FakeXhr {
+    status = 0;
+    statusText = "";
+    response: unknown = null;
+    responseType = "";
+    upload: { onprogress: ((e: { lengthComputable: boolean; loaded: number; total: number }) => void) | null } = { onprogress: null };
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    private path = "";
+    open(_method: string, path: string) {
+      this.path = path;
+    }
+    send(body: FormData) {
+      uploads.push({
+        path: this.path,
+        body,
+        progress: (loaded, total) => this.upload.onprogress?.({ lengthComputable: true, loaded, total }),
+        respond: (status, response) => {
+          this.status = status;
+          this.response = response;
+          this.onload?.();
+        },
+      });
+    }
+  }
+  globalThis.XMLHttpRequest = FakeXhr as unknown as typeof XMLHttpRequest;
+  return {
+    uploads,
+    restore: () => {
+      globalThis.XMLHttpRequest = original;
+    },
+  };
+}

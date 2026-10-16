@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mockFetch, type FetchMock } from "../../test/client";
+import { mockFetch, mockXhr, type FetchMock } from "../../test/client";
 import { api, ApiRequestError, assetUrl } from "./api";
 
 let fetchMock: FetchMock;
@@ -20,19 +20,31 @@ describe("api client", () => {
     expect(fetchMock.calls[0]).toMatchObject({ method: "PATCH", body: { title: "Neu" } });
   });
 
-  test("uploads files as multipart form data", async () => {
-    let form: FormData | null = null;
-    fetchMock = mockFetch({
-      "POST /api/documents": (_url, init) => {
-        form = init.body as FormData;
-        return [];
-      },
-    });
-    await api.upload([new File(["a"], "a.jpg"), new File(["b"], "b.pdf")], { folders: ["x"], stackId: 4, ocr: true });
-    expect(form!.getAll("files")).toHaveLength(2);
-    expect(form!.get("folders")).toBe('["x"]');
-    expect(form!.get("stackId")).toBe("4");
-    expect(form!.get("ocr")).toBe("true");
+  test("uploads files as multipart form data and reports progress", async () => {
+    const xhr = mockXhr();
+    const progress: number[] = [];
+    const result = api.upload([new File(["a"], "a.jpg"), new File(["b"], "b.pdf")], { folders: ["x"], stackId: 4, ocr: true }, (loaded, total) =>
+      progress.push(loaded / total),
+    );
+    const [upload] = xhr.uploads;
+    expect(upload!.path).toBe("/api/documents");
+    expect(upload!.body.getAll("files")).toHaveLength(2);
+    expect(upload!.body.get("folders")).toBe('["x"]');
+    expect(upload!.body.get("stackId")).toBe("4");
+    expect(upload!.body.get("ocr")).toBe("true");
+    upload!.progress(50, 100);
+    upload!.respond(201, []);
+    expect(await result).toEqual([]);
+    expect(progress).toEqual([0.5]);
+    xhr.restore();
+  });
+
+  test("rejects failed uploads with the server message", async () => {
+    const xhr = mockXhr();
+    const result = api.upload([new File(["a"], "a.jpg")]).catch((e) => e);
+    xhr.uploads[0]!.respond(413, { error: "Datei zu groß" });
+    expect(await result).toMatchObject({ status: 413, message: "Datei zu groß" });
+    xhr.restore();
   });
 
   test("requests a dewarp grid for the current rotation", async () => {

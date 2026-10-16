@@ -1,0 +1,73 @@
+import { afterEach, describe, expect, test } from "bun:test";
+import { act, fireEvent, screen } from "@testing-library/react";
+import { makeDocument, mockFetch, mockXhr, renderApp, type FetchMock } from "../../../test/client";
+import { UPLOAD_ACCEPT } from "../../shared/uploads";
+import { UploadButtons } from "./UploadButtons";
+import { UploadProgress } from "./UploadProgress";
+
+let fetchMock: FetchMock;
+let xhr: ReturnType<typeof mockXhr>;
+afterEach(() => {
+  fetchMock.restore();
+  xhr.restore();
+});
+
+async function setup() {
+  fetchMock = mockFetch({ "GET /api/folders": () => [] });
+  xhr = mockXhr();
+  await renderApp(
+    <>
+      <UploadButtons />
+      <UploadProgress />
+    </>,
+  );
+  return screen.getByTestId("file-input") as HTMLInputElement;
+}
+
+const file = (name: string, type: string) => new File(["1234"], name, { type });
+
+describe("UploadButtons", () => {
+  test("only offers supported file types", async () => {
+    const input = await setup();
+    expect(input.accept).toBe(UPLOAD_ACCEPT);
+  });
+
+  test("skips unsupported files and shows the progress per file", async () => {
+    const input = await setup();
+    await act(async () => {
+      fireEvent.change(input, {
+        target: { files: [file("a.jpg", "image/jpeg"), file("notes.txt", "text/plain"), file("b.pdf", "application/pdf")] },
+      });
+    });
+
+    expect(screen.getByText("1 Datei wird nicht unterstützt und wurde übersprungen")).toBeTruthy();
+    expect(xhr.uploads).toHaveLength(1);
+    expect((xhr.uploads[0]!.body.get("files") as File).name).toBe("a.jpg");
+    expect(screen.getByText("Lade Datei 1 von 2 hoch …")).toBeTruthy();
+
+    await act(async () => xhr.uploads[0]!.progress(50, 100));
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("25");
+
+    await act(async () => xhr.uploads[0]!.progress(100, 100));
+    expect(screen.getByText("Verarbeite Datei 1 von 2 …")).toBeTruthy();
+
+    await act(async () => xhr.uploads[0]!.respond(201, [makeDocument()]));
+    expect(screen.getByText("Lade Datei 2 von 2 hoch …")).toBeTruthy();
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("50");
+
+    await act(async () => xhr.uploads[1]!.respond(201, [makeDocument()]));
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.getByText("2 Dateien hochgeladen")).toBeTruthy();
+  });
+
+  test("keeps uploading after a failed file", async () => {
+    const input = await setup();
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file("a.jpg", "image/jpeg"), file("b.jpg", "image/jpeg")] } });
+    });
+    await act(async () => xhr.uploads[0]!.respond(500, { error: "Kaputt" }));
+    await act(async () => xhr.uploads[1]!.respond(201, [makeDocument()]));
+    expect(screen.getByText("a.jpg: Kaputt")).toBeTruthy();
+    expect(screen.getByText("1 Datei hochgeladen")).toBeTruthy();
+  });
+});

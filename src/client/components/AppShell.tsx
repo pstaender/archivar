@@ -6,6 +6,7 @@ import { isLibraryPath } from "../routes";
 import { DropZone } from "./DropZone";
 import { FolderTree } from "./FolderTree";
 import { UploadButtons } from "./UploadButtons";
+import { UploadProgress } from "./UploadProgress";
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,6 +36,7 @@ export function AppShell() {
         <Outlet />
       </main>
       <DropZone />
+      <UploadProgress />
     </div>
   );
 }
