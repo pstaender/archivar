@@ -403,11 +403,22 @@ describe("settings", () => {
   const patchSettings = async (body: unknown) => (await patch("/api/settings", body)).json();
 
   test("stores the user's settings and ignores unknown values", async () => {
-    expect(await (await server.api("/api/settings")).json()).toEqual({ uploadEnhancement: "bw", pdfImageQuality: "300" });
-    expect(await patchSettings({ uploadEnhancement: "grayscale" })).toEqual({ uploadEnhancement: "grayscale", pdfImageQuality: "300" });
-    expect(await patchSettings({ pdfImageQuality: "72", uploadEnhancement: "sepia" })).toEqual({ uploadEnhancement: "grayscale", pdfImageQuality: "300" });
-    expect(await patchSettings({ pdfImageQuality: "original" })).toEqual({ uploadEnhancement: "grayscale", pdfImageQuality: "original" });
-    expect(await (await server.api("/api/settings")).json()).toEqual({ uploadEnhancement: "grayscale", pdfImageQuality: "original" });
+    const defaults = { autoOcr: true, autoDewarp: false, ocrAllText: false, uploadEnhancement: "bw", pdfImageQuality: "300" };
+    expect(await (await server.api("/api/settings")).json()).toEqual(defaults);
+    expect(await patchSettings({ uploadEnhancement: "grayscale", autoOcr: false })).toEqual({ ...defaults, uploadEnhancement: "grayscale", autoOcr: false });
+    expect(await patchSettings({ pdfImageQuality: "72", uploadEnhancement: "sepia", ocrAllText: "ja" })).toEqual({
+      ...defaults,
+      uploadEnhancement: "grayscale",
+      autoOcr: false,
+    });
+    expect(await patchSettings({ pdfImageQuality: "original", ocrAllText: true })).toMatchObject({ pdfImageQuality: "original", ocrAllText: true });
+    expect(await (await server.api("/api/settings")).json()).toEqual({
+      ...defaults,
+      uploadEnhancement: "grayscale",
+      autoOcr: false,
+      pdfImageQuality: "original",
+      ocrAllText: true,
+    });
   });
 
   test("prepares uploads with OCR as chosen in the settings", async () => {

@@ -6,11 +6,8 @@ import { api, type UploadOptions } from "../api";
 import { folderFromPathname } from "../routes";
 import { useConfig } from "./config";
 import { useFolders } from "./folders";
+import { useSettings } from "./settings";
 import { useToast } from "./toast";
-
-const AUTO_OCR_KEY = "archivar.autoOcr";
-const OCR_ALL_TEXT_KEY = "archivar.ocrAllText";
-const AUTO_DEWARP_KEY = "archivar.autoDewarp";
 
 export interface UploadProgress {
   done: number;
@@ -31,40 +28,11 @@ interface UploadStats {
 interface UploadApi {
   progress: UploadProgress | null;
   version: number;
-  autoOcr: boolean;
-  setAutoOcr: (value: boolean) => void;
-  ocrAllText: boolean;
-  setOcrAllText: (value: boolean) => void;
-  autoDewarp: boolean;
-  setAutoDewarp: (value: boolean) => void;
   upload: (files: File[], options?: UploadOptions) => Promise<ArchiveDocument[]>;
   uploadToCurrentTarget: (files: File[]) => Promise<ArchiveDocument[]>;
 }
 
 const UploadContext = createContext<UploadApi | null>(null);
-
-function readFlag(key: string, fallback: boolean): boolean {
-  try {
-    const value = localStorage.getItem(key);
-    return value === null ? fallback : value === "true";
-  } catch {
-    return fallback;
-  }
-}
-
-function useStoredFlag(key: string, fallback: boolean): [boolean, (value: boolean) => void] {
-  const [flag, setFlag] = useState(() => readFlag(key, fallback));
-  const update = useCallback(
-    (value: boolean) => {
-      setFlag(value);
-      try {
-        localStorage.setItem(key, String(value));
-      } catch {}
-    },
-    [key],
-  );
-  return [flag, update];
-}
 
 export function UploadProvider({ children }: { children: ReactNode }) {
   const toast = useToast();
@@ -73,9 +41,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [version, setVersion] = useState(0);
-  const [autoOcr, setAutoOcr] = useStoredFlag(AUTO_OCR_KEY, true);
-  const [ocrAllText, setOcrAllText] = useStoredFlag(OCR_ALL_TEXT_KEY, false);
-  const [autoDewarp, setAutoDewarp] = useStoredFlag(AUTO_DEWARP_KEY, false);
+  const { autoOcr, ocrAllText, autoDewarp } = useSettings().settings;
   const stats = useRef<UploadStats | null>(null);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
@@ -166,8 +132,8 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ progress, version, autoOcr, setAutoOcr, ocrAllText, setOcrAllText, autoDewarp, setAutoDewarp, upload, uploadToCurrentTarget }),
-    [progress, version, autoOcr, setAutoOcr, ocrAllText, setOcrAllText, autoDewarp, setAutoDewarp, upload, uploadToCurrentTarget],
+    () => ({ progress, version, upload, uploadToCurrentTarget }),
+    [progress, version, upload, uploadToCurrentTarget],
   );
 
   return <UploadContext.Provider value={value}>{children}</UploadContext.Provider>;

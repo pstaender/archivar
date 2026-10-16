@@ -278,9 +278,12 @@
   }
 }
 
+/* Keeps the dialog from jumping when switching between tabs of different length. */
 .settings {
   display: grid;
-  gap: var(--space-5);
+  align-content: start;
+  gap: var(--space-4);
+  min-height: min(410px, 55dvh);
 }
 
 .choice-group {
@@ -289,6 +292,14 @@
   margin: 0;
   padding: 0;
   border: 0;
+
+  &:disabled {
+    opacity: 0.5;
+
+    & .choice {
+      cursor: default;
+    }
+  }
 
   & legend {
     margin-bottom: var(--space-2);
@@ -345,6 +356,18 @@
 .choice__description {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
+}
+
+.switch.switch--described {
+  align-items: flex-start;
+
+  & .switch__track {
+    margin-top: 2px;
+  }
+
+  &:has(input:disabled) {
+    opacity: 0.5;
+  }
 }
 
 .switch {
@@ -513,6 +536,10 @@
       }
     }
   }
+}
+
+.tabs--dialog {
+  padding: 0;
 }
 
 .alert {

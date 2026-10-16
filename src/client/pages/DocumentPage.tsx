@@ -17,8 +17,8 @@ import { useProcessedPreview } from "../editor/useProcessedPreview";
 import { isAxisAlignedRect } from "../../shared/image/perspective";
 import { useConfig } from "../hooks/config";
 import { useFolders } from "../hooks/folders";
+import { useSettings } from "../hooks/settings";
 import { useLeaveGuard } from "../hooks/leaveGuard";
-import { useUpload } from "../hooks/upload";
 import { usePolling } from "../hooks/usePolling";
 import { useToast } from "../hooks/toast";
 import { useResource } from "../hooks/useResource";
@@ -49,7 +49,7 @@ export function DocumentPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const { reload: reloadFolders } = useFolders();
-  const { ocrAllText } = useUpload();
+  const { ocrAllText } = useSettings().settings;
   const resource = useResource(() => api.document(id), [id]);
   const config = useConfig();
   const [dewarping, setDewarping] = useState(false);

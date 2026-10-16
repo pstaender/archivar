@@ -7,14 +7,14 @@ Archive photos, scans, documents and PDFs in the browser – on desktop and on t
 - "Entrauschen" with [OpenCV.js](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html): edge-preserving smoothing (bilateral filter) and, in black & white, removal of isolated specks; clicking again increases the strength (Leicht, Mittel, Stark, Aus)
 - "Auto-Drehen" turns photos upright using Tesseract's orientation detection; "Auto-Zuschnitt" finds the page or photo outline with OpenCV and crops (or straightens) it. Uploads with OCR are turned upright automatically
 - Automatic dewarping of curved/bent pages with [UVDoc](https://github.com/tanguymagne/UVDoc), running server-side via ONNX Runtime
-- "Automatisch SW": finds brightness, contrast and threshold for black and white; clicking again cycles through variants (best guess, darker, lighter). Uploads with "Texterkennung: Nach dem Upload erkennen" are converted automatically before OCR, and also dewarped if "Automatisch entzerren" is switched on (off by default)
+- "Automatisch SW": finds brightness, contrast and threshold for black and white; clicking again cycles through variants (best guess, darker, lighter). Uploads with "Nach dem Upload erkennen" are converted automatically before OCR, and also dewarped if "Automatisch entzerren" is switched on (off by default)
 - Image view with zoom (fit, steps up to 400 %, 100 %); "Vorschau" in the editor renders the final image at full resolution with a 100 % magnifier
 - Text recognition (OCR) with Tesseract.js, editable recognized text, full-text search. Unsure, probably misread text parts are left out unless "Alle Textteile erkennen" is enabled
 - "PDF" in the text tab downloads the edited image as a searchable PDF: the (edited) text lies invisibly on the recognized line positions, so it can be searched and copied in any PDF viewer
 - Group documents into ordered stacks with a title
 - Hierarchical folders as labels (e.g. `wichtig/2026`); selected documents and stacks can be moved into or added to existing folders (or a new one), or removed from the folder being viewed
 - "PDF" for a selection downloads all its images (as searchable pages) and PDFs, including the documents of selected stacks, as one PDF
-- "Einstellungen" (sidebar): how uploads with OCR are prepared (black & white – the default –, grayscale, color only turned upright, or original) and the image resolution in exported PDFs (300 DPI for A4 by default, 150 DPI, or original). Black-and-white pages are stored as lossless 1-bit images (about 150–200 KB per A4 text page at 300 DPI), others as JPEG
+- "Einstellungen" (sidebar, stored per user on the server), in three tabs: "Bildgrößen" – the image resolution in exported PDFs (300 DPI for A4 by default, 150 DPI, or original); "Bildbearbeitung" – how uploads with OCR are prepared (black & white – the default –, grayscale, "Auto-Rotation" which only turns them upright, or original) and "Automatisch entzerren"; "OCR" – "Nach dem Upload erkennen" and "Alle Textteile erkennen". In PDFs, black-and-white pages are stored as lossless 1-bit images (about 150–200 KB per A4 text page at 300 DPI), others as JPEG
 - REST API, SQLite database, multi-user ready (currently a single default user without login)
 
 ## Getting started
@@ -54,7 +54,7 @@ Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install i
 | ------ | ----------------------------------- | --------------------------------------------- |
 | GET    | `/api/me`                           | Current user                                  |
 | GET    | `/api/config`                       | Feature flags (`dewarpAvailable`, `convertibleImageTypes`) |
-| GET    | `/api/settings`                     | User settings (`uploadEnhancement`, `pdfImageQuality`) |
+| GET    | `/api/settings`                     | User settings (`autoOcr`, `autoDewarp`, `ocrAllText`, `uploadEnhancement`, `pdfImageQuality`) |
 | PATCH  | `/api/settings`                     | Update user settings (unknown values are ignored) |
 | GET    | `/api/library?folder=&q=`           | Stacks and loose documents                    |
 | GET    | `/api/documents?folder=&q=&stackId=`| Documents                                     |
