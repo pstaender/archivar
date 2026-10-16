@@ -16,6 +16,29 @@ const JPEG_QUALITY = 90;
 const PREVIEW_JPEG_QUALITY = 95;
 const OCR_PDF_SCALE = 2.5;
 const OCR_MAX_PDF_PAGES = 50;
+// Tesseract reads text best at about 300 DPI. In 600 DPI scans the letters are so large that it splits lines and
+// misreads most words, so images are reduced to A4 at 300 DPI first.
+export const OCR_MAX_SIZE = 3508;
+
+export interface OcrImage {
+  data: Uint8Array;
+  width: number;
+  height: number;
+}
+
+async function fitForOcr(encoded: Uint8Array): Promise<OcrImage> {
+  const { createCanvas, loadImage } = await import("@napi-rs/canvas");
+  const image = await loadImage(Buffer.from(encoded));
+  const scale = Math.min(1, OCR_MAX_SIZE / Math.max(image.width, image.height));
+  if (scale === 1) return { data: encoded, width: image.width, height: image.height };
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(image, 0, 0, width, height);
+  return { data: await canvas.encode("png"), width, height };
+}
 
 export interface UploadInspection {
   kind: DocumentKind;
@@ -145,17 +168,20 @@ export class ImagingService {
     return null;
   }
 
-  async ocrImages(doc: StoredDocument): Promise<Uint8Array[]> {
-    if (doc.kind === "image") {
-      const key = derivedKeys.processed(doc.id);
-      if (!(await this.storage.exists(key))) await this.renderDerivatives(doc);
-      return [await this.storage.read(key)];
-    }
+  /** The edited image in full resolution. */
+  async processedJpeg(doc: StoredDocument): Promise<Uint8Array> {
+    const key = derivedKeys.processed(doc.id);
+    if (!(await this.storage.exists(key))) await this.renderDerivatives(doc);
+    return this.storage.read(key);
+  }
+
+  async ocrImages(doc: StoredDocument): Promise<OcrImage[]> {
+    if (doc.kind === "image") return [await fitForOcr(await this.processedJpeg(doc))];
     if (doc.kind === "pdf") {
       const data = await this.storage.read(doc.storageKey);
       const pages = Math.min(doc.pageCount ?? 1, OCR_MAX_PDF_PAGES);
-      const images: Uint8Array[] = [];
-      for (let page = 1; page <= pages; page++) images.push(await renderPdfPage(data, page, OCR_PDF_SCALE));
+      const images: OcrImage[] = [];
+      for (let page = 1; page <= pages; page++) images.push(await fitForOcr(await renderPdfPage(data, page, OCR_PDF_SCALE)));
       return images;
     }
     return [];

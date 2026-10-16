@@ -230,10 +230,10 @@ export class ArchiveService {
 
   private async pdfPart(userId: number, doc: StoredDocument, text?: string): Promise<PdfPart> {
     if (doc.kind === "pdf") return { kind: "pdf", name: doc.originalName, data: await this.storage.read(doc.storageKey) };
-    const [jpeg] = await this.imaging.ocrImages(doc);
+    const jpeg = await this.imaging.processedJpeg(doc);
     const layout = this.documents.getOcrLayout(userId, doc.id);
     const current = layout && JSON.stringify(layout.editSettings) === JSON.stringify(doc.editSettings) ? layout : null;
-    return { kind: "image", jpeg: jpeg!, bilevel: doc.editSettings.colorMode === "bw", text: text ?? doc.ocrText, layout: current };
+    return { kind: "image", jpeg, bilevel: doc.editSettings.colorMode === "bw", text: text ?? doc.ocrText, layout: current };
   }
 
   async autoBw(userId: number, id: number, settings: Partial<EditSettings> = {}): Promise<BwVariant[]> {

@@ -286,6 +286,25 @@ describe("ocr", () => {
     expect((await getDocument(doc.id)).ocrAllText).toBe(false);
   });
 
+  test("reduces high-resolution scans to A4 at 300 DPI for recognition and keeps the line positions", async () => {
+    const [scan] = await upload([{ name: "scan.jpg", data: await makeJpeg(4000, 5000), type: "image/jpeg" }]);
+    server.ocr.result = {
+      text: "Zeile",
+      confidence: 90,
+      paragraphs: [[{ confidence: 95, bbox: { x0: 351, y0: 702, x1: 1404, y1: 878 }, words: [{ text: "Zeile", confidence: 95 }] }]],
+    };
+    await post(`/api/documents/${scan!.id}/ocr`, {});
+    await server.ctx.ocr.idle();
+    const { width, height } = (await Jimp.read(Buffer.from(server.ocr.images[0]!))).bitmap;
+    expect([width, height]).toEqual([2806, 3508]);
+    expect(server.ctx.documents.getOcrLayout(1, scan!.id)?.lines[0]?.box).toEqual([351 / 2806, 702 / 3508, 1404 / 2806, 878 / 3508]);
+
+    const small = await uploadImage();
+    await post(`/api/documents/${small.id}/ocr`, {});
+    await server.ctx.ocr.idle();
+    expect((await Jimp.read(Buffer.from(server.ocr.images[1]!))).bitmap).toMatchObject({ width: 64, height: 48 });
+  }, 30_000);
+
   test("drops probable noise unless all text parts are requested", async () => {
     server.ocr.result = {
       text: "Rechnung\n\n=a nn - LL",

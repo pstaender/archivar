@@ -1,6 +1,6 @@
 import type { Rotation } from "../../shared/types";
 import type { DocumentRepository, OcrLayout, StoredDocument } from "../db/documents";
-import type { ImagingService } from "./imaging";
+import type { ImagingService, OcrImage } from "./imaging";
 import { detectLanguage } from "./language";
 import { allOcrLines, filterOcrText, type OcrParagraph, type OcrTextLine } from "./ocrFilter";
 
@@ -155,7 +155,7 @@ export class OcrQueue {
       const images = await this.imaging.ocrImages(doc);
       if (images.length === 0) throw new Error("Document type does not support OCR");
       const results: OcrResult[] = [];
-      for (const image of images) results.push(await this.recognize(image, doc.ocrLanguages ?? undefined));
+      for (const image of images) results.push(await this.recognize(image.data, doc.ocrLanguages ?? undefined));
       let removed = 0;
       const lines: OcrTextLine[][] = [];
       const texts = results.map((result) => {
@@ -171,7 +171,7 @@ export class OcrQueue {
       const text = texts.join("\n\n").trim();
       const confidence = results.reduce((sum, r) => sum + r.confidence, 0) / results.length;
       this.documents.setOcrResult(documentId, { status: "done", text, confidence, error: null, removed, language: detectLanguage(text), allText: options.allText === true });
-      this.documents.setOcrLayout(documentId, doc.kind === "image" ? toLayout(doc, lines[0] ?? []) : null);
+      this.documents.setOcrLayout(documentId, doc.kind === "image" && images[0] ? toLayout(doc, images[0], lines[0] ?? []) : null);
     } catch (error) {
       this.documents.setOcrResult(documentId, {
         status: "failed",
@@ -198,9 +198,9 @@ export class OcrQueue {
   }
 }
 
-function toLayout(doc: StoredDocument, lines: OcrTextLine[]): OcrLayout | null {
-  const { width, height } = doc;
-  if (!width || !height || lines.some((line) => !line.bbox)) return null;
+/** Line boxes relative to the recognized image (which may be smaller than the edited one). */
+function toLayout(doc: StoredDocument, { width, height }: OcrImage, lines: OcrTextLine[]): OcrLayout | null {
+  if (lines.some((line) => !line.bbox)) return null;
   return {
     editSettings: doc.editSettings,
     lines: lines.map(({ text, bbox }) => ({ text, box: [bbox!.x0 / width, bbox!.y0 / height, bbox!.x1 / width, bbox!.y1 / height] })),

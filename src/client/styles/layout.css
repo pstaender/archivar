@@ -284,6 +284,9 @@ a.folder-tree__row .folder-tree__toggle {
     flex: 1 1 14rem;
     min-width: 0;
   }
+  & > .btn {
+    flex: unset;
+  }
 }
 
 .page__header--detail {
@@ -352,7 +355,7 @@ a.folder-tree__row .folder-tree__toggle {
   position: absolute;
   z-index: 3;
   top: calc(2 * var(--space-2));
-  right: var(--space-2);
+  right: calc(2 * var(--space-2));
   display: grid;
   place-items: center;
   width: 24px;

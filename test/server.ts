@@ -15,6 +15,8 @@ export class FakeOcrEngine implements OcrEngine {
   calls = 0;
   /** Languages passed to each recognize() call (undefined: the default). */
   recognizedLanguages: (string[] | undefined)[] = [];
+  /** Images passed to recognize(). */
+  images: Uint8Array[] = [];
   result: OcrResult = { text: "Hallo Welt", confidence: 91 };
   error: Error | null = null;
   orientation: Orientation | null = { rotation: 0, confidence: 10 };
@@ -28,8 +30,9 @@ export class FakeOcrEngine implements OcrEngine {
     return this.orientation;
   }
 
-  async recognize(_image: Uint8Array, languages?: string[]): Promise<OcrResult> {
+  async recognize(image: Uint8Array, languages?: string[]): Promise<OcrResult> {
     this.calls++;
+    this.images.push(image);
     this.recognizedLanguages.push(languages);
     if (this.hang) return new Promise(() => {});
     if (this.error) throw this.error;
