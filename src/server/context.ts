@@ -45,7 +45,7 @@ export function createContext(options: ContextOptions): AppContext {
   const imaging = new ImagingService(storage, options.imageConverter ?? null);
   const ocr = new OcrQueue(documents, imaging, options.ocrEngine);
   const dewarp = options.dewarpEngine;
-  const archive = new ArchiveService(documents, stacks, folders, storage, imaging, ocr, dewarp);
+  const archive = new ArchiveService(documents, stacks, folders, storage, imaging, ocr, dewarp, options.ocrEngine);
 
   // Authentication is not implemented yet: every request acts as the default user.
   const currentUser = (_req: Request): User => {

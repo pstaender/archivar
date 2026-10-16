@@ -6,7 +6,7 @@ import { openDatabase } from "../src/server/db/database";
 import { createApiRoutes } from "../src/server/routes";
 import type { DewarpEngine } from "../src/server/services/dewarp";
 import type { ImageConverter } from "../src/server/services/magick";
-import type { OcrEngine, OcrResult } from "../src/server/services/ocr";
+import type { OcrEngine, OcrResult, Orientation } from "../src/server/services/ocr";
 import type { RawImage } from "../src/shared/image/raw";
 import { createImage } from "../src/shared/image/jimp";
 
@@ -14,6 +14,13 @@ export class FakeOcrEngine implements OcrEngine {
   calls = 0;
   result: OcrResult = { text: "Hallo Welt", confidence: 91 };
   error: Error | null = null;
+  orientation: Orientation | null = { rotation: 0, confidence: 10 };
+  orientationInputs = 0;
+
+  async detectOrientation(): Promise<Orientation | null> {
+    this.orientationInputs++;
+    return this.orientation;
+  }
 
   async recognize(): Promise<OcrResult> {
     this.calls++;

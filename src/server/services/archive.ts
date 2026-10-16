@@ -1,7 +1,9 @@
 import { basename, extname } from "node:path";
-import { isDefaultEditSettings, normalizeEditSettings } from "../../shared/editSettings";
+import { DEFAULT_EDIT_SETTINGS, isDefaultEditSettings, normalizeEditSettings } from "../../shared/editSettings";
 import { autoBwVariants } from "../../shared/image/autoBw";
+import { detectDocument } from "../../shared/image/autoCrop";
 import type { JimpImage } from "../../shared/image/jimp";
+import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
 import { normalizeFolderPath } from "../../shared/folders";
 import type {
   ArchiveDocument,
@@ -11,6 +13,7 @@ import type {
   EditSettings,
   LibraryItem,
   LibraryQuery,
+  Quad,
   Rotation,
   Stack,
   StackCreate,
@@ -24,7 +27,12 @@ import { HttpError } from "../http";
 import { derivedKeys, type FileStorage } from "../storage";
 import { extensionFor, type ImagingService } from "./imaging";
 import { type DewarpEngine, toDewarpGrid } from "./dewarp";
-import type { OcrOptions, OcrQueue } from "./ocr";
+import type { OcrEngine, OcrOptions, OcrQueue } from "./ocr";
+
+const ORIENTATION_SIZE = 2000;
+// Tesseract's orientation confidence; pages without enough text stay below this.
+const MIN_ORIENTATION_CONFIDENCE = 2;
+const CROP_ANALYSIS_SIZE = 1024;
 
 export interface UploadOptions {
   folders?: string[];
@@ -49,6 +57,7 @@ export class ArchiveService {
     private imaging: ImagingService,
     private ocr: OcrQueue,
     private dewarp: DewarpEngine,
+    private ocrEngine: OcrEngine,
   ) {}
 
   library(userId: number, query: LibraryQuery): LibraryItem[] {
@@ -171,6 +180,28 @@ export class ArchiveService {
     return autoBwVariants(await this.imaging.loadOriginal(doc), normalizeEditSettings(settings, doc.editSettings));
   }
 
+  /** Rotation of the original that turns its text upright, or null if there is not enough text to tell. */
+  async detectOrientation(userId: number, id: number): Promise<Rotation | null> {
+    const doc = this.getDocument(userId, id);
+    if (doc.kind !== "image") throw new HttpError(400, "Only images can be rotated");
+    return this.orientationOf(await this.imaging.loadOriginal(doc));
+  }
+
+  /** Corners of the page in the image after rotation and dewarping, or null if no page outline was found. */
+  async detectCrop(userId: number, id: number, settings: Partial<EditSettings> = {}): Promise<Quad | null> {
+    const doc = this.getDocument(userId, id);
+    if (doc.kind !== "image") throw new HttpError(400, "Only images can be cropped");
+    const { rotation, dewarp } = normalizeEditSettings(settings, doc.editSettings);
+    const original = scaleToFit((await this.imaging.loadOriginal(doc)).clone() as JimpImage, CROP_ANALYSIS_SIZE);
+    return detectDocument(applyEdits(original, { ...DEFAULT_EDIT_SETTINGS, rotation, dewarp }).bitmap);
+  }
+
+  private async orientationOf(original: JimpImage): Promise<Rotation | null> {
+    const image = scaleToFit(original.clone() as JimpImage, ORIENTATION_SIZE);
+    const orientation = await this.ocrEngine.detectOrientation(new Uint8Array(await image.getBuffer("image/png")));
+    return orientation && orientation.confidence >= MIN_ORIENTATION_CONFIDENCE ? orientation.rotation : null;
+  }
+
   /** Renders the full-resolution result of unsaved edit settings without storing anything. */
   async renderPreview(userId: number, id: number, settings: Partial<EditSettings> = {}): Promise<Uint8Array<ArrayBuffer>> {
     const doc = this.getDocument(userId, id);
@@ -180,10 +211,18 @@ export class ArchiveService {
 
   private async autoEnhance(doc: StoredDocument, dewarp: boolean): Promise<StoredDocument> {
     try {
-      const image = await this.imaging.loadOriginal(doc);
+      const original = await this.imaging.loadOriginal(doc);
       let settings = doc.editSettings;
-      if (dewarp && this.dewarp.available()) settings = { ...settings, dewarp: toDewarpGrid(await this.dewarp.predict(image.bitmap), settings.rotation) };
-      const [best] = autoBwVariants(image, settings);
+      const rotation = await this.orientationOf(original).catch((error) => {
+        console.warn(`Orientation detection failed for document ${doc.id}:`, error);
+        return null;
+      });
+      if (rotation !== null) settings = { ...settings, rotation };
+      if (dewarp && this.dewarp.available()) {
+        const upright = settings.rotation === 0 ? original : (original.clone().rotate(-settings.rotation) as JimpImage);
+        settings = { ...settings, dewarp: toDewarpGrid(await this.dewarp.predict(upright.bitmap), settings.rotation) };
+      }
+      const [best] = autoBwVariants(original, settings);
       if (best) settings = { ...settings, ...best, colorMode: "bw" };
       return this.documents.update(doc.userId, doc.id, { editSettings: normalizeEditSettings(settings) }) ?? doc;
     } catch (error) {

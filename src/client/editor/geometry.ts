@@ -1,5 +1,5 @@
-import { FULL_QUAD } from "../../shared/editSettings";
-import type { Point, Quad } from "../../shared/types";
+import { FULL_QUAD, rotateBy } from "../../shared/editSettings";
+import type { EditSettings, Point, Quad, Rotation } from "../../shared/types";
 
 export type GeometryMode = "none" | "crop" | "perspective";
 
@@ -58,6 +58,22 @@ export function rotateQuad(quad: Quad, delta: 90 | -90): Quad {
   }
   const r = (p: Point) => ({ x: p.y, y: 1 - p.x });
   return [r(tr), r(br), r(bl), r(tl)];
+}
+
+/** Rotates by a quarter turn; a dewarp grid only fits its rotation, so it is dropped together with corners based on it. */
+export function rotateSettings(settings: EditSettings, delta: 90 | -90): EditSettings {
+  return {
+    ...settings,
+    rotation: rotateBy(settings.rotation, delta),
+    dewarp: null,
+    corners: settings.corners && !settings.dewarp ? rotateQuad(settings.corners, delta) : null,
+  };
+}
+
+export function withRotation(settings: EditSettings, rotation: Rotation): EditSettings {
+  let next = settings;
+  while (next.rotation !== rotation) next = rotateSettings(next, 90);
+  return next;
 }
 
 export function quadOrFull(quad: Quad | null): Quad {

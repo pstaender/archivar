@@ -69,6 +69,16 @@ describe("api client", () => {
     expect(fetchMock.calls[0]!.body).toEqual({ editSettings: { colorMode: "bw" } });
   });
 
+  test("asks for the orientation and the page outline", async () => {
+    fetchMock = mockFetch({
+      "POST /api/documents/4/orientation": () => ({ rotation: 90 }),
+      "POST /api/documents/4/auto-crop": () => ({ corners: null }),
+    });
+    expect(await api.detectOrientation(4)).toEqual({ rotation: 90 });
+    expect(await api.autoCrop(4, { rotation: 90 } as never)).toEqual({ corners: null });
+    expect(fetchMock.calls[1]!.body).toEqual({ editSettings: { rotation: 90 } });
+  });
+
   test("returns undefined for 204 responses", async () => {
     fetchMock = mockFetch({ "DELETE /api/documents/1": () => undefined });
     expect(await api.deleteDocument(1)).toBeUndefined();

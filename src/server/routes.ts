@@ -114,6 +114,17 @@ export function createApiRoutes(ctx: AppContext) {
       }),
     },
 
+    "/api/documents/:id/orientation": {
+      POST: handle(async (req: Req) => json({ rotation: await archive.detectOrientation(userId(req), parseId(req.params.id)) })),
+    },
+
+    "/api/documents/:id/auto-crop": {
+      POST: handle(async (req: Req) => {
+        const body = await readJson<{ editSettings?: Partial<EditSettings> }>(req).catch(() => ({ editSettings: undefined }));
+        return json({ corners: await archive.detectCrop(userId(req), parseId(req.params.id), body.editSettings) });
+      }),
+    },
+
     "/api/documents/:id/auto-bw": {
       POST: handle(async (req: Req) => {
         const body = await readJson<{ editSettings?: Partial<EditSettings> }>(req).catch(() => ({ editSettings: undefined }));

@@ -9,9 +9,10 @@ import { EditableTitle } from "../components/EditableTitle";
 import { FolderPicker } from "../components/FolderPicker";
 import { ZoomableImage } from "../components/ZoomableImage";
 import { type AutoBwState, EditControls } from "../editor/EditControls";
-import type { GeometryMode } from "../editor/geometry";
+import { type GeometryMode, withRotation } from "../editor/geometry";
 import { ImageEditor } from "../editor/ImageEditor";
 import { useProcessedPreview } from "../editor/useProcessedPreview";
+import { isAxisAlignedRect } from "../../shared/image/perspective";
 import { useConfig } from "../hooks/config";
 import { useFolders } from "../hooks/folders";
 import { useUpload } from "../hooks/upload";
@@ -48,6 +49,8 @@ export function DocumentPage() {
   const [dewarping, setDewarping] = useState(false);
   const [bwCache, setBwCache] = useState<{ key: string; variants: BwVariant[] } | null>(null);
   const [bwLoading, setBwLoading] = useState(false);
+  const [rotating, setRotating] = useState(false);
+  const [cropping, setCropping] = useState(false);
   const stack = useResource(() => (stackId ? api.stack(stackId) : Promise.resolve(null)), [stackId]);
   const doc = resource.data;
 
@@ -125,6 +128,43 @@ export function DocumentPage() {
       toast.error(error);
     } finally {
       setDewarping(false);
+    }
+  };
+
+  const autoRotate = async () => {
+    setRotating(true);
+    try {
+      const { rotation } = await api.detectOrientation(doc.id);
+      if (rotation === null) toast.show("Ausrichtung nicht erkannt – zu wenig Text im Bild.", "warning");
+      else if (rotation === draft.rotation) toast.show("Das Bild ist bereits richtig ausgerichtet.");
+      else {
+        setDraft((current) => withRotation(current, rotation));
+        setMode("none");
+      }
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setRotating(false);
+    }
+  };
+
+  const autoCrop = async () => {
+    setCropping(true);
+    const requested = draft;
+    try {
+      const { corners } = await api.autoCrop(doc.id, requested);
+      if (!corners) toast.show("Kein Seitenrand gefunden.", "warning");
+      else {
+        // Corners are relative to the rotated and dewarped image they were detected in.
+        setDraft((current) =>
+          current.rotation === requested.rotation && current.dewarp === requested.dewarp ? { ...current, corners } : current,
+        );
+        setMode(isAxisAlignedRect(corners) ? "crop" : "perspective");
+      }
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setCropping(false);
     }
   };
 
@@ -265,6 +305,10 @@ export function DocumentPage() {
                   autoBw={bwState}
                   bwLoading={bwLoading}
                   onAutoBw={autoBw}
+                  rotating={rotating}
+                  onAutoRotate={autoRotate}
+                  cropping={cropping}
+                  onAutoCrop={autoCrop}
                 />
                 <div className="panel__footer">
                   <button type="button" className="btn btn--ghost btn--sm" onClick={() => setDraft(DEFAULT_EDIT_SETTINGS)}>

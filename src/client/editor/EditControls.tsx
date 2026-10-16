@@ -1,8 +1,7 @@
-import { Contrast, Crop, Eraser, Loader, RotateCcw, RotateCw, Scan, WandSparkles } from "../icons";
+import { AutoCrop, AutoRotate, Contrast, Crop, Eraser, Loader, RotateCcw, RotateCw, Scan, WandSparkles } from "../icons";
 import { type CSSProperties, useId } from "react";
-import { rotateBy } from "../../shared/editSettings";
 import type { ColorMode, EditSettings } from "../../shared/types";
-import { boundingRect, type GeometryMode, rotateQuad } from "./geometry";
+import { boundingRect, type GeometryMode, rotateSettings } from "./geometry";
 
 interface EditControlsProps {
   settings: EditSettings;
@@ -15,6 +14,10 @@ interface EditControlsProps {
   autoBw?: AutoBwState | null;
   bwLoading?: boolean;
   onAutoBw?: () => void;
+  rotating?: boolean;
+  onAutoRotate?: () => void;
+  cropping?: boolean;
+  onAutoCrop?: () => void;
 }
 
 export interface AutoBwState {
@@ -48,16 +51,14 @@ export function EditControls({
   autoBw,
   bwLoading,
   onAutoBw,
+  rotating,
+  onAutoRotate,
+  cropping,
+  onAutoCrop,
 }: EditControlsProps) {
   const set = <K extends keyof EditSettings>(key: K, value: EditSettings[K]) => onChange({ ...settings, [key]: value });
 
-  const rotate = (delta: 90 | -90) =>
-    onChange({
-      ...settings,
-      rotation: rotateBy(settings.rotation, delta),
-      dewarp: null,
-      corners: settings.corners && !settings.dewarp ? rotateQuad(settings.corners, delta) : null,
-    });
+  const rotate = (delta: 90 | -90) => onChange(rotateSettings(settings, delta));
 
   const toggleMode = (next: Exclude<GeometryMode, "none">) => {
     if (mode === next) return onModeChange("none");
@@ -93,7 +94,24 @@ export function EditControls({
             <Scan size={16} />
             Entzerren
           </button>
+          {onAutoRotate && (
+            <button type="button" className="btn btn--sm" onClick={onAutoRotate} disabled={rotating} title="Dreht das Bild so, dass der Text aufrecht steht">
+              {rotating ? <Loader size={16} className="spin" /> : <AutoRotate size={16} />}
+              Auto-Drehen
+            </button>
+          )}
+          {onAutoCrop && (
+            <button type="button" className="btn btn--sm" onClick={onAutoCrop} disabled={cropping} title="Sucht den Rand von Seite oder Foto und schneidet den Hintergrund ab">
+              {cropping ? <Loader size={16} className="spin" /> : <AutoCrop size={16} />}
+              Auto-Zuschnitt
+            </button>
+          )}
         </div>
+        {(rotating || cropping) && (
+          <p className="muted small" aria-live="polite">
+            {rotating ? "Textausrichtung wird erkannt …" : "Seitenrand wird gesucht …"}
+          </p>
+        )}
         {dewarpAvailable && (
           <div className="dewarp-row">
             <button

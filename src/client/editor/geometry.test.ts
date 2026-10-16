@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import type { Quad } from "../../shared/types";
-import { boundingRect, moveCorner, quadOrFull, rectQuad, rotateQuad, translateQuad } from "./geometry";
+import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
+import type { EditSettings, Quad } from "../../shared/types";
+import { boundingRect, moveCorner, quadOrFull, rectQuad, rotateQuad, rotateSettings, translateQuad, withRotation } from "./geometry";
 
 const rect = rectQuad(0.2, 0.2, 0.8, 0.8);
 
@@ -69,4 +70,21 @@ describe("rotateQuad", () => {
 test("quadOrFull", () => {
   expect(quadOrFull(null)).toEqual(rectQuad(0, 0, 1, 1));
   expect(quadOrFull(rect)).toBe(rect);
+});
+
+describe("rotation of edit settings", () => {
+  const dewarp = { rotation: 0 as const, columns: 31, rows: 45, points: [] };
+
+  test("carries corners along and drops a dewarp grid", () => {
+    const settings: EditSettings = { ...DEFAULT_EDIT_SETTINGS, corners: rectQuad(0, 0, 1, 0.5) };
+    expect(rotateSettings(settings, 90)).toMatchObject({ rotation: 90, corners: rectQuad(0.5, 0, 1, 1), dewarp: null });
+    expect(rotateSettings({ ...settings, dewarp }, -90)).toMatchObject({ rotation: 270, corners: null, dewarp: null });
+  });
+
+  test("turns to an absolute rotation", () => {
+    const settings: EditSettings = { ...DEFAULT_EDIT_SETTINGS, rotation: 90, corners: rectQuad(0, 0, 1, 0.5) };
+    expect(withRotation(settings, 270)).toMatchObject({ rotation: 270, corners: rectQuad(0, 0.5, 1, 1) });
+    expect(withRotation(settings, 0)).toMatchObject({ rotation: 0, corners: rectQuad(0, 0, 0.5, 1) });
+    expect(withRotation({ ...settings, dewarp }, 90)).toEqual({ ...settings, dewarp });
+  });
 });

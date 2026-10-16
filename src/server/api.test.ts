@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { Jimp } from "../shared/image/jimp";
+import { createImage, Jimp } from "../shared/image/jimp";
 import type { ArchiveDocument, Folder, LibraryItem, StackWithDocuments } from "../shared/types";
 import { makePdf } from "../../test/pdf";
 import { makeJpeg, startTestServer, type TestServer, uploadForm } from "../../test/server";
@@ -264,6 +264,82 @@ describe("dewarp", () => {
     server.dewarp.isAvailable = false;
     const doc = await uploadImage();
     expect((await post(`/api/documents/${doc.id}/dewarp`, {})).status).toBe(503);
+  });
+});
+
+async function pageOnBackground(width: number, height: number, page: { left: number; top: number; right: number; bottom: number }) {
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const inside = x >= page.left * width && x < page.right * width && y >= page.top * height && y < page.bottom * height;
+      data.fill(inside ? 240 : 70, (y * width + x) * 4, (y * width + x) * 4 + 3);
+      data[(y * width + x) * 4 + 3] = 255;
+    }
+  }
+  return new Uint8Array(await createImage(width, height, data).getBuffer("image/png"));
+}
+
+describe("automatic rotation and cropping", () => {
+  test("detects the orientation of the original", async () => {
+    const doc = await uploadImage();
+    server.ocr.orientation = { rotation: 270, confidence: 8 };
+    const res = await post(`/api/documents/${doc.id}/orientation`, {});
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ rotation: 270 });
+  });
+
+  test("reports no orientation when tesseract is unsure", async () => {
+    const doc = await uploadImage();
+    server.ocr.orientation = { rotation: 90, confidence: 0.5 };
+    expect(await (await post(`/api/documents/${doc.id}/orientation`, {})).json()).toEqual({ rotation: null });
+    server.ocr.orientation = null;
+    expect(await (await post(`/api/documents/${doc.id}/orientation`, {})).json()).toEqual({ rotation: null });
+  });
+
+  test("finds the page in the rotated image", async () => {
+    const data = await pageOnBackground(400, 300, { left: 0.25, top: 0.2, right: 0.75, bottom: 0.8 });
+    const [doc] = await upload([{ name: "page.png", data, type: "image/png" }]);
+    const res = await post(`/api/documents/${doc!.id}/auto-crop`, { editSettings: { rotation: 90 } });
+    expect(res.status).toBe(200);
+    const { corners } = (await res.json()) as { corners: { x: number; y: number }[] };
+    const expected = [
+      { x: 0.2, y: 0.25 },
+      { x: 0.8, y: 0.25 },
+      { x: 0.8, y: 0.75 },
+      { x: 0.2, y: 0.75 },
+    ];
+    corners.forEach((corner, i) => {
+      expect(corner.x).toBeCloseTo(expected[i]!.x, 1);
+      expect(corner.y).toBeCloseTo(expected[i]!.y, 1);
+    });
+    expect(server.ctx.documents.getById(doc!.id)?.editSettings.corners).toBeNull();
+  });
+
+  test("returns no corners when there is no page outline", async () => {
+    const doc = await uploadImage();
+    expect(await (await post(`/api/documents/${doc.id}/auto-crop`, {})).json()).toEqual({ corners: null });
+  });
+
+  test("rejects documents that are not images", async () => {
+    const [doc] = await upload([{ name: "a.pdf", data: makePdf("x"), type: "application/pdf" }]);
+    expect((await post(`/api/documents/${doc!.id}/orientation`, {})).status).toBe(400);
+    expect((await post(`/api/documents/${doc!.id}/auto-crop`, {})).status).toBe(400);
+  });
+
+  test("uploads with OCR are turned upright", async () => {
+    server.ocr.orientation = { rotation: 90, confidence: 8 };
+    const doc = await uploadImage("x.jpg", { ocr: "true", dewarp: "true" });
+    expect(doc.editSettings).toMatchObject({ rotation: 90, colorMode: "bw" });
+    expect(doc.editSettings.dewarp?.rotation).toBe(90);
+    expect(server.dewarp.inputs[0]).toMatchObject({ width: 48, height: 64 });
+    expect(doc).toMatchObject({ width: 48, height: 64 });
+  });
+
+  test("uploads without OCR are not rotated", async () => {
+    server.ocr.orientation = { rotation: 90, confidence: 8 };
+    const doc = await uploadImage();
+    expect(doc.editSettings.rotation).toBe(0);
+    expect(server.ocr.orientationInputs).toBe(0);
   });
 });
 

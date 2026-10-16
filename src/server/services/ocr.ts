@@ -1,3 +1,4 @@
+import type { Rotation } from "../../shared/types";
 import type { DocumentRepository } from "../db/documents";
 import type { ImagingService } from "./imaging";
 import { filterOcrText, type OcrParagraph } from "./ocrFilter";
@@ -12,8 +13,15 @@ export interface OcrOptions {
   allText?: boolean;
 }
 
+export interface Orientation {
+  /** Clockwise rotation that turns the text upright. */
+  rotation: Rotation;
+  confidence: number;
+}
+
 export interface OcrEngine {
   recognize(image: Uint8Array): Promise<OcrResult>;
+  detectOrientation(image: Uint8Array): Promise<Orientation | null>;
   terminate(): Promise<void>;
 }
 
@@ -21,6 +29,7 @@ type TesseractWorker = Awaited<ReturnType<typeof import("tesseract.js").createWo
 
 export class TesseractEngine implements OcrEngine {
   private worker: Promise<TesseractWorker> | null = null;
+  private osdWorker: Promise<TesseractWorker> | null = null;
 
   constructor(
     private languages: string[],
@@ -48,11 +57,27 @@ export class TesseractEngine implements OcrEngine {
     return { text: data.text.trim(), confidence: data.confidence, paragraphs };
   }
 
+  // Orientation detection only exists in the legacy engine, so it gets its own worker with the osd model.
+  private getOsdWorker(): Promise<TesseractWorker> {
+    this.osdWorker ??= import("tesseract.js").then(({ createWorker, OEM }) =>
+      createWorker("osd", OEM.TESSERACT_ONLY, { cachePath: this.cachePath, legacyCore: true, legacyLang: true }),
+    );
+    return this.osdWorker;
+  }
+
+  async detectOrientation(image: Uint8Array): Promise<Orientation | null> {
+    const worker = await this.getOsdWorker();
+    const { data } = await worker.detect(Buffer.from(image));
+    const degrees = data.orientation_degrees;
+    if (degrees !== 0 && degrees !== 90 && degrees !== 180 && degrees !== 270) return null;
+    return { rotation: degrees, confidence: data.orientation_confidence ?? 0 };
+  }
+
   async terminate(): Promise<void> {
-    if (!this.worker) return;
-    const worker = await this.worker;
+    const workers = [this.worker, this.osdWorker].filter((w) => w !== null);
     this.worker = null;
-    await worker.terminate();
+    this.osdWorker = null;
+    for (const worker of workers) await (await worker).terminate();
   }
 }
 

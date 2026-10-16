@@ -8,6 +8,7 @@ import type {
   Folder,
   LibraryItem,
   LibraryQuery,
+  Quad,
   Rotation,
   StackCreate,
   StackUpdate,
@@ -88,6 +89,9 @@ export const api = {
   deleteDocument: (id: number) => request<void>(`/api/documents/${id}`, { method: "DELETE" }),
   detectDewarp: (id: number, rotation: Rotation) =>
     request<DewarpGrid>(`/api/documents/${id}/dewarp`, jsonBody("POST", { rotation })),
+  detectOrientation: (id: number) => request<{ rotation: Rotation | null }>(`/api/documents/${id}/orientation`, jsonBody("POST", {})),
+  autoCrop: (id: number, editSettings: EditSettings) =>
+    request<{ corners: Quad | null }>(`/api/documents/${id}/auto-crop`, jsonBody("POST", { editSettings })),
   autoBw: (id: number, editSettings: EditSettings) =>
     request<BwVariant[]>(`/api/documents/${id}/auto-bw`, jsonBody("POST", { editSettings })),
   renderPreview: async (id: number, editSettings: EditSettings, signal?: AbortSignal) =>

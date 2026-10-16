@@ -132,4 +132,22 @@ describe("EditControls", () => {
     fireEvent.click(button);
     expect(onAutoBw).toHaveBeenCalled();
   });
+
+  test("automatic rotation and cropping call their handlers and show progress", () => {
+    const onAutoRotate = mock();
+    const onAutoCrop = mock();
+    const props = { settings: DEFAULT_EDIT_SETTINGS, onChange: mock(), mode: "none" as const, onModeChange: mock(), onAutoRotate, onAutoCrop };
+    const { rerender } = render(<EditControls {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: /Auto-Drehen/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Auto-Zuschnitt/ }));
+    expect(onAutoRotate).toHaveBeenCalledTimes(1);
+    expect(onAutoCrop).toHaveBeenCalledTimes(1);
+
+    rerender(<EditControls {...props} rotating />);
+    expect(screen.getByRole("button", { name: /Auto-Drehen/ }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText("Textausrichtung wird erkannt …")).toBeTruthy();
+    rerender(<EditControls {...props} cropping />);
+    expect(screen.getByRole("button", { name: /Auto-Zuschnitt/ }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText("Seitenrand wird gesucht …")).toBeTruthy();
+  });
 });

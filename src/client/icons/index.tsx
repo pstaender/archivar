@@ -27,6 +27,8 @@ function createIcon(data: IconData, name: string) {
   return Icon;
 }
 
+export const AutoCrop = createIcon(keyline("scan-search"), "AutoCrop");
+export const AutoRotate = createIcon(keyline("refresh-cw-sparkles"), "AutoRotate");
 export const ArrowLeft = createIcon(keyline("arrow-left"), "ArrowLeft");
 export const Camera = createIcon(keyline("camera"), "Camera");
 export const Check = createIcon(keyline("check"), "Check");
