@@ -1,0 +1,85 @@
+import { Database } from "bun:sqlite";
+
+export const DEFAULT_USER_NAME = "default";
+
+const migrations: string[] = [
+  `
+  CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+
+  CREATE TABLE stacks (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+
+  CREATE TABLE documents (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL DEFAULT '',
+    original_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    storage_key TEXT NOT NULL,
+    width INTEGER,
+    height INTEGER,
+    page_count INTEGER,
+    stack_id INTEGER REFERENCES stacks(id) ON DELETE SET NULL,
+    stack_position INTEGER NOT NULL DEFAULT 0,
+    edit_settings TEXT NOT NULL DEFAULT '{}',
+    ocr_text TEXT NOT NULL DEFAULT '',
+    ocr_status TEXT NOT NULL DEFAULT 'none',
+    ocr_confidence REAL,
+    ocr_error TEXT,
+    metadata TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX documents_user ON documents(user_id, updated_at);
+  CREATE INDEX documents_stack ON documents(stack_id, stack_position);
+
+  CREATE TABLE folders (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    path TEXT NOT NULL,
+    UNIQUE (user_id, path)
+  );
+
+  CREATE TABLE document_folders (
+    document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    folder_id INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
+    PRIMARY KEY (document_id, folder_id)
+  );
+
+  CREATE TABLE stack_folders (
+    stack_id INTEGER NOT NULL REFERENCES stacks(id) ON DELETE CASCADE,
+    folder_id INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
+    PRIMARY KEY (stack_id, folder_id)
+  );
+  `,
+];
+
+export function migrate(db: Database): void {
+  const { user_version: current } = db.query("PRAGMA user_version").get() as { user_version: number };
+  for (let version = current; version < migrations.length; version++) {
+    db.transaction(() => {
+      db.exec(migrations[version]!);
+      db.exec(`PRAGMA user_version = ${version + 1}`);
+    })();
+  }
+}
+
+export function openDatabase(path: string): Database {
+  const db = new Database(path, { create: true, strict: true });
+  db.exec("PRAGMA journal_mode = WAL");
+  db.exec("PRAGMA foreign_keys = ON");
+  migrate(db);
+  db.query("INSERT OR IGNORE INTO users (name) VALUES (?)").run(DEFAULT_USER_NAME);
+  return db;
+}

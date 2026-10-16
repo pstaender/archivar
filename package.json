@@ -1,0 +1,43 @@
+{
+  "name": "archivar",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^21.0.3",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
+    "@types/bun": "latest",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@jimp/core": "^1.6.1",
+    "@jimp/js-bmp": "^1.6.1",
+    "@jimp/js-gif": "^1.6.1",
+    "@jimp/js-jpeg": "^1.6.1",
+    "@jimp/js-png": "^1.6.1",
+    "@jimp/js-tiff": "^1.6.1",
+    "@jimp/plugin-color": "^1.6.1",
+    "@jimp/plugin-crop": "^1.6.1",
+    "@jimp/plugin-resize": "^1.6.1",
+    "@jimp/plugin-rotate": "^1.6.1",
+    "@jimp/types": "^1.6.1",
+    "@napi-rs/canvas": "^1.0.11",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router": "^8.4.0",
+    "tesseract.js": "^7.0.0",
+    "unpdf": "^1.9.0"
+  },
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "bun --hot src/server/index.ts",
+    "start": "NODE_ENV=production bun src/server/index.ts",
+    "test": "bun run test:server && bun run test:client",
+    "test:server": "bun test src/server src/shared",
+    "test:client": "bun test --preload ./test/happydom.ts src/client",
+    "typecheck": "tsc --noEmit"
+  }
+}

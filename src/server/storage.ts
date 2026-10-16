@@ -1,0 +1,42 @@
+import { mkdir, rm } from "node:fs/promises";
+import { dirname, join, normalize } from "node:path";
+import { HttpError } from "./http";
+
+export class FileStorage {
+  constructor(private root: string) {}
+
+  path(key: string): string {
+    const full = normalize(join(this.root, key));
+    if (!full.startsWith(normalize(this.root))) throw new HttpError(400, "Invalid storage key");
+    return full;
+  }
+
+  async write(key: string, data: Uint8Array | ArrayBuffer | Blob): Promise<void> {
+    const target = this.path(key);
+    await mkdir(dirname(target), { recursive: true });
+    await Bun.write(target, data);
+  }
+
+  file(key: string) {
+    return Bun.file(this.path(key));
+  }
+
+  async read(key: string): Promise<Uint8Array> {
+    return new Uint8Array(await this.file(key).arrayBuffer());
+  }
+
+  async exists(key: string): Promise<boolean> {
+    return this.file(key).exists();
+  }
+
+  async delete(key: string): Promise<void> {
+    await rm(this.path(key), { recursive: true, force: true });
+  }
+}
+
+export const derivedKeys = {
+  dir: (documentId: number) => `derived/${documentId}`,
+  preview: (documentId: number) => `derived/${documentId}/preview.jpg`,
+  processed: (documentId: number) => `derived/${documentId}/processed.jpg`,
+  thumbnail: (documentId: number) => `derived/${documentId}/thumbnail.jpg`,
+};
