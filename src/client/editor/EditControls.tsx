@@ -125,7 +125,7 @@ export function EditControls({
               Automatisch entzerren
             </button>
             <span className="muted small">
-              {dewarping ? "Seite wird erkannt …" : settings.dewarp ? "Gewölbte Seite geglättet." : "Glättet gewölbte Seiten (UVDoc)."}
+              {dewarping ? "Seite wird erkannt …" : settings.dewarp ? "Gewölbte Seite geglättet." : null}
             </span>
           </div>
         )}
