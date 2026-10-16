@@ -7,6 +7,7 @@ import { api, assetUrl } from "../api";
 import { ConfirmDialog } from "../components/Dialog";
 import { EditableTitle } from "../components/EditableTitle";
 import { FolderPicker } from "../components/FolderPicker";
+import { ZoomableImage } from "../components/ZoomableImage";
 import { type AutoBwState, EditControls } from "../editor/EditControls";
 import type { GeometryMode } from "../editor/geometry";
 import { ImageEditor } from "../editor/ImageEditor";
@@ -49,7 +50,7 @@ export function DocumentPage() {
   const stack = useResource(() => (stackId ? api.stack(stackId) : Promise.resolve(null)), [stackId]);
   const doc = resource.data;
 
-  const [tab, setTab] = useState<Tab>("details");
+  const [tab, setTab] = useState<Tab>("text");
   const [draft, setDraft] = useState<EditSettings>(DEFAULT_EDIT_SETTINGS);
   const [mode, setMode] = useState<GeometryMode>("none");
   const [saving, setSaving] = useState(false);
@@ -63,7 +64,7 @@ export function DocumentPage() {
   }, [doc?.id]);
 
   useEffect(() => {
-    if (doc) setTab((current) => (current === "edit" && doc.kind !== "image" ? "details" : current));
+    if (doc) setTab((current) => (current === "edit" && doc.kind !== "image" ? "text" : current));
   }, [doc?.kind]);
 
   useEffect(() => {
@@ -309,11 +310,7 @@ interface ViewerProps {
 function Viewer({ doc, editing, draft, mode, onCornersChange }: ViewerProps) {
   if (doc.kind === "image") {
     if (editing) return <ImageEditor src={assetUrl(doc, "preview")} settings={draft} mode={mode} onCornersChange={onCornersChange} />;
-    return (
-      <a href={assetUrl(doc, "image")} target="_blank" rel="noreferrer" className="viewer__image-link">
-        <img src={assetUrl(doc, "image")} alt={documentLabel(doc)} className="viewer__image" />
-      </a>
-    );
+    return <ZoomableImage src={assetUrl(doc, "image")} alt={documentLabel(doc)} />;
   }
   if (doc.kind === "pdf") {
     return (

@@ -52,6 +52,7 @@ Do not run a bare `bun test`: client tests need the happy-dom preload, server te
 - Uploads with `ocr=true` run the best auto B/W variant before rendering and OCR; with `dewarp=true` (opt-in sidebar switch „Automatisch entzerren“, off by default) they are dewarped first if the model exists.
 - OCR drops probable noise by default (`src/server/services/ocrFilter.ts`: low-confidence lines, lines without a real word, very unsure words) and stores the count in `ocr_removed`. `allText` (upload field `ocrAllText`, body of `POST /ocr`) keeps everything.
 - OCR runs asynchronously in `OcrQueue`; clients poll while status is `pending`/`running`.
+- Document page opens on the „Text“ tab. Images are shown with `ZoomableImage` (fit by default, zoom steps from `src/client/zoom.ts`, 100 %, open in new tab). While editing (no crop/perspective mode), a mouse hover shows `Magnifier`: the editor preview canvas at 100 % (one canvas pixel per CSS pixel; the preview is at most 1400 px, not the original resolution).
 - UI is German, monochrome (grays only). Colors only for error/warning/success via `--color-danger|warning|success`.
 
 ## Conventions
