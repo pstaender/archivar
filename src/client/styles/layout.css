@@ -1174,9 +1174,18 @@ a.folder-tree__row .folder-tree__toggle {
   }
 }
 
+/* Positioned out of the flow, so the indicator never makes the panel wider. */
 .saving-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  white-space: nowrap;
+  position: relative;
+  align-self: stretch;
+  overflow: hidden;
+
+  > [role="status"] {
+    position: absolute;
+    inset: 0 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    white-space: nowrap;
+  }
 }

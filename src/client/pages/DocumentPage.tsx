@@ -332,12 +332,13 @@ export function DocumentPage() {
                   <button type="button" className="btn btn--ghost btn--sm" onClick={() => setDraft(DEFAULT_EDIT_SETTINGS)}>
                     Zurücksetzen
                   </button>
-                  <span className="spacer" />
-                  {saving && (
-                    <span className="muted small saving-hint" role="status">
-                      <Loader size={14} className="spin" /> Speichert …
-                    </span>
-                  )}
+                  <span className="spacer saving-hint">
+                    {saving && (
+                      <span className="muted small" role="status">
+                        <Loader size={14} className="spin" /> Speichert …
+                      </span>
+                    )}
+                  </span>
                   <button type="button" className="btn btn--sm" onClick={() => setDraft(doc.editSettings)} disabled={!dirty}>
                     Verwerfen
                   </button>
