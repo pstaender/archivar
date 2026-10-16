@@ -47,6 +47,7 @@ export const FileText = createIcon(keyline("file-text"), "FileText");
 export const Folder = createIcon(keyline("folder"), "Folder");
 export const FolderOpen = createIcon(keyline("folder-open"), "FolderOpen");
 export const FolderPlus = createIcon(keyline("folder-plus"), "FolderPlus");
+export const FolderMinus = createIcon(keyline("folder-minus"), "FolderMinus");
 export const ImagePlus = createIcon(keyline("image-plus"), "ImagePlus");
 export const Inbox = createIcon(keyline("inbox"), "Inbox");
 export const Layers = createIcon(keyline("layers"), "Layers");

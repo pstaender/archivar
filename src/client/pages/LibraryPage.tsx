@@ -1,4 +1,4 @@
-import { Download, FolderPlus, Layers, Loader, Trash, Upload, X } from "../icons";
+import { Download, FolderMinus, FolderPlus, Layers, Loader, Trash, Upload, X } from "../icons";
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { moveToFolders } from "../../shared/folders";
@@ -181,6 +181,20 @@ export function SelectionBar({ items, onClear, onDone }: SelectionBarProps) {
       onDone();
     });
 
+  const removeFromFolder = (folder: string) =>
+    run(async () => {
+      for (const item of items) {
+        const current = item.type === "document" ? item.document.folders : item.stack.folders;
+        const next = moveToFolders(current, folder, []);
+        if (next.length === current.length) continue;
+        if (item.type === "document") await api.updateDocument(item.document.id, { folders: next });
+        else await api.updateStack(item.stack.id, { folders: next });
+      }
+      await reloadFolders();
+      toast.success(`Aus „${folder}“ entfernt`);
+      onDone();
+    });
+
   const exportPdf = () =>
     run(async () => {
       setExporting(true);
@@ -212,10 +226,25 @@ export function SelectionBar({ items, onClear, onDone }: SelectionBarProps) {
           <Layers size={16} />
           <span className="hide-mobile">Stapeln</span>
         </button>
-        <button type="button" className="btn" onClick={() => setFolderDialog(true)} disabled={working}>
+        <button type="button" className="btn" onClick={() => setFolderDialog(true)} disabled={working} title="In Ordner ablegen">
           <FolderPlus size={16} />
           <span className="hide-mobile">Ordner</span>
         </button>
+        {from && (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => removeFromFolder(from)}
+            disabled={working}
+            aria-label={`Aus „${from}“ entfernen`}
+            title={`Aus „${from}“ entfernen`}
+          >
+            <FolderMinus size={16} />
+            <span className="hide-mobile" aria-hidden>
+              Ordner
+            </span>
+          </button>
+        )}
         <button type="button" className="btn" onClick={exportPdf} disabled={working || !exportable} title="Bilder und PDFs der Auswahl als ein PDF herunterladen">
           {exporting ? <Loader size={16} className="spin" /> : <Download size={16} />}
           <span className="hide-mobile">PDF</span>

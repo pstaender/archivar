@@ -143,6 +143,38 @@ describe("LibraryPage", () => {
     await waitFor(() => expect(patches()).toEqual([[`/api/documents/${a.id}`, { folders: ["steuer/2026"] }]]));
   });
 
+  test("removes the selection from the folder being viewed, including its sub-folders", async () => {
+    const a = makeDocument({ title: "Brief", folders: ["privat", "wichtig/2026"] });
+    const stack = makeStack({ title: "Mappe", folders: ["wichtig"], documentIds: [70] });
+    fetchMock = mockFetch({
+      "GET /api/folders": folders,
+      "GET /api/library": () => [docItem(a), stackItem(stack)],
+      [`PATCH /api/documents/${a.id}`]: () => a,
+      [`PATCH /api/stacks/${stack.id}`]: () => stack,
+    });
+    await renderApp(<LibraryPage />, { path: "/folders/wichtig" });
+
+    fireEvent.click(screen.getByLabelText("Brief auswählen"));
+    fireEvent.click(screen.getByLabelText("Mappe auswählen"));
+    fireEvent.click(screen.getByRole("button", { name: "Aus „wichtig“ entfernen" }));
+
+    await waitFor(() =>
+      expect(patches()).toEqual([
+        [`/api/documents/${a.id}`, { folders: ["privat"] }],
+        [`/api/stacks/${stack.id}`, { folders: [] }],
+      ]),
+    );
+    await waitFor(() => expect(screen.getByText("Aus „wichtig“ entfernt")).toBeTruthy());
+  });
+
+  test("offers removing from a folder only inside a folder", async () => {
+    const a = makeDocument({ title: "Brief", folders: ["privat"] });
+    fetchMock = mockFetch({ "GET /api/folders": folders, "GET /api/library": () => [docItem(a)] });
+    await renderApp(<LibraryPage />);
+    fireEvent.click(screen.getByLabelText("Brief auswählen"));
+    expect(screen.queryByRole("button", { name: /entfernen/ })).toBeNull();
+  });
+
   test("downloads the selected documents and stacks as one PDF", async () => {
     const a = makeDocument({ title: "Seite A" });
     const stack = makeStack({ title: "Alt", documentIds: [50, 51] });

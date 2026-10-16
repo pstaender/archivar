@@ -42,7 +42,7 @@ Do not run a bare `bun test`: client tests need the happy-dom preload, server te
 ## Domain rules
 
 - Multi-user data model (`user_id` on every table) but no login yet: `context.currentUser()` always returns the `default` user. Keep every query scoped by user id.
-- Folders are labels with hierarchical paths (`wichtig/2026`). Filtering by a folder includes its sub-folders. Documents and stacks can have many folders. The selection's „Ordner“ dialog (`FolderTargetDialog`) picks existing or new folders: „Hinzufügen“ adds them, „Verschieben“ (`moveToFolders`) removes the folder being viewed and its sub-folders first (in the overview: all folders).
+- Folders are labels with hierarchical paths (`wichtig/2026`). Filtering by a folder includes its sub-folders. Documents and stacks can have many folders. The selection's „Ordner“ dialog (`FolderTargetDialog`) picks existing or new folders: „Hinzufügen“ adds them, „Verschieben“ (`moveToFolders`) removes the folder being viewed and its sub-folders first (in the overview: all folders). Inside a folder, the „Ordner“ button with the minus icon removes the selection from that folder and its sub-folders.
 - A stack groups documents in order. Empty stacks are deleted automatically.
 - Edit settings are stored as JSON on the document and always pass through `normalizeEditSettings`. The original file is never modified; derived files (`preview-<size>.jpg`, `processed.jpg`, `thumbnail.jpg`) live in `data/files/derived/<id>/`.
 - Pipeline order: rotate → dewarp grid → crop/perspective → denoise (smoothing) → levels/brightness/contrast → color → speck removal (B/W only, when denoise > 0). Denoise parameters scale with the image size so the preview matches the final render.
