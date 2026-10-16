@@ -171,6 +171,13 @@ export class ArchiveService {
     return autoBwVariants(await this.imaging.loadOriginal(doc), normalizeEditSettings(settings, doc.editSettings));
   }
 
+  /** Renders the full-resolution result of unsaved edit settings without storing anything. */
+  async renderPreview(userId: number, id: number, settings: Partial<EditSettings> = {}): Promise<Uint8Array<ArrayBuffer>> {
+    const doc = this.getDocument(userId, id);
+    if (doc.kind !== "image") throw new HttpError(400, "Only images can be edited");
+    return this.imaging.renderJpeg(doc, normalizeEditSettings(settings, doc.editSettings));
+  }
+
   private async autoEnhance(doc: StoredDocument, dewarp: boolean): Promise<StoredDocument> {
     try {
       const image = await this.imaging.loadOriginal(doc);

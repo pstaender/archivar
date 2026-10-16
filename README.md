@@ -7,7 +7,7 @@ Archive photos, scans, documents and PDFs in the browser – on desktop and on t
 - "Entrauschen" with [OpenCV.js](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html): edge-preserving smoothing (bilateral filter) and, in black & white, removal of isolated specks; clicking again increases the strength (Leicht, Mittel, Stark, Aus)
 - Automatic dewarping of curved/bent pages with [UVDoc](https://github.com/tanguymagne/UVDoc), running server-side via ONNX Runtime
 - "Automatisch SW": finds brightness, contrast and threshold for black and white; clicking again cycles through variants (best guess, darker, lighter). Uploads with "Texterkennung: Nach dem Upload erkennen" are converted automatically before OCR, and also dewarped if "Automatisch entzerren" is switched on (off by default)
-- Image view with zoom (fit, steps up to 400 %, 100 %)
+- Image view with zoom (fit, steps up to 400 %, 100 %); "Vorschau" in the editor renders the final image at full resolution with a 100 % magnifier
 - Text recognition (OCR) with Tesseract.js, editable recognized text, full-text search. Unsure, probably misread text parts are left out unless "Alle Textteile erkennen" is enabled
 - Group documents into ordered stacks with a title
 - Hierarchical folders as labels (e.g. `wichtig/2026`)
@@ -59,6 +59,7 @@ Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install i
 | POST   | `/api/documents/:id/ocr`            | Queue OCR; `{ allText: true }` keeps unsure text parts |
 | POST   | `/api/documents/:id/dewarp`         | Predict UVDoc grid for `{ rotation }` (store it via `editSettings.dewarp`) |
 | POST   | `/api/documents/:id/auto-bw`        | Black-and-white variants `{ brightness, contrast, bwThreshold }[]` for `{ editSettings }`, best first |
+| POST   | `/api/documents/:id/render`         | Full-resolution JPEG of unsaved `{ editSettings }` (not stored) |
 | GET    | `/api/documents/:id/{file,preview,image,thumbnail}` | Original, editor preview, edited image, thumbnail |
 | GET    | `/api/stacks`                       | Stacks                                        |
 | POST   | `/api/stacks`                       | Create from `documentIds`                     |

@@ -281,6 +281,18 @@ describe("automatic black and white", () => {
   test("rejects documents that are not images", async () => {
     const [doc] = await upload([{ name: "a.pdf", data: makePdf("x"), type: "application/pdf" }]);
     expect((await post(`/api/documents/${doc!.id}/auto-bw`, {})).status).toBe(400);
+    expect((await post(`/api/documents/${doc!.id}/render`, {})).status).toBe(400);
+  });
+
+  test("renders unsaved settings at full resolution without saving them", async () => {
+    const [doc] = await upload([{ name: "a.jpg", data: await makeJpeg(80, 60), type: "image/jpeg" }]);
+    const res = await post(`/api/documents/${doc!.id}/render`, { editSettings: { rotation: 90, colorMode: "bw" } });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/jpeg");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    const image = await Jimp.read(Buffer.from(await res.arrayBuffer()));
+    expect(image.bitmap).toMatchObject({ width: 60, height: 80 });
+    expect(server.ctx.documents.getById(doc!.id)?.editSettings).toMatchObject({ rotation: 0, colorMode: "color" });
   });
 
   test("uploads with OCR are turned black and white but not dewarped by default", async () => {

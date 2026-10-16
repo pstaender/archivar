@@ -62,6 +62,13 @@ describe("api client", () => {
     expect(fetchMock.calls[0]!.body).toEqual({ rotation: 90 });
   });
 
+  test("renders a preview of unsaved settings as an image", async () => {
+    fetchMock = mockFetch({ "POST /api/documents/4/render": () => new Response("jpeg", { headers: { "Content-Type": "image/jpeg" } }) });
+    const blob = await api.renderPreview(4, { colorMode: "bw" } as never);
+    expect(await blob.text()).toBe("jpeg");
+    expect(fetchMock.calls[0]!.body).toEqual({ editSettings: { colorMode: "bw" } });
+  });
+
   test("returns undefined for 204 responses", async () => {
     fetchMock = mockFetch({ "DELETE /api/documents/1": () => undefined });
     expect(await api.deleteDocument(1)).toBeUndefined();

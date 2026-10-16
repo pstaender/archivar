@@ -11,6 +11,7 @@ import { ZoomableImage } from "../components/ZoomableImage";
 import { type AutoBwState, EditControls } from "../editor/EditControls";
 import type { GeometryMode } from "../editor/geometry";
 import { ImageEditor } from "../editor/ImageEditor";
+import { useProcessedPreview } from "../editor/useProcessedPreview";
 import { useConfig } from "../hooks/config";
 import { useFolders } from "../hooks/folders";
 import { useUpload } from "../hooks/upload";
@@ -55,6 +56,7 @@ export function DocumentPage() {
   const [mode, setMode] = useState<GeometryMode>("none");
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const processed = useProcessedPreview(doc?.id, draft, toast.error);
 
   useEffect(() => {
     if (!doc) return;
@@ -224,7 +226,14 @@ export function DocumentPage() {
 
       <div className="document-layout">
         <div className="viewer">
-          <Viewer doc={doc} editing={tab === "edit"} draft={draft} mode={mode} onCornersChange={(corners) => setDraft({ ...draft, corners })} />
+          <Viewer
+            doc={doc}
+            editing={tab === "edit"}
+            draft={draft}
+            mode={mode}
+            onCornersChange={(corners) => setDraft({ ...draft, corners })}
+            processed={processed}
+          />
         </div>
 
         <aside className="panel">
@@ -305,11 +314,25 @@ interface ViewerProps {
   draft: EditSettings;
   mode: GeometryMode;
   onCornersChange: (corners: NonNullable<EditSettings["corners"]>) => void;
+  processed: ReturnType<typeof useProcessedPreview>;
 }
 
-function Viewer({ doc, editing, draft, mode, onCornersChange }: ViewerProps) {
+function Viewer({ doc, editing, draft, mode, onCornersChange, processed }: ViewerProps) {
   if (doc.kind === "image") {
-    if (editing) return <ImageEditor src={assetUrl(doc, "preview")} settings={draft} mode={mode} onCornersChange={onCornersChange} />;
+    if (editing) {
+      return (
+        <ImageEditor
+          src={assetUrl(doc, "preview")}
+          settings={draft}
+          mode={mode}
+          onCornersChange={onCornersChange}
+          processedSrc={processed.src}
+          processing={processed.processing}
+          onPreview={() => void processed.request()}
+          onLive={processed.clear}
+        />
+      );
+    }
     return <ZoomableImage src={assetUrl(doc, "image")} alt={documentLabel(doc)} />;
   }
   if (doc.kind === "pdf") {

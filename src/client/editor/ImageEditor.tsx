@@ -4,7 +4,9 @@ import { createImage, type JimpImage } from "../../shared/image/jimp";
 import { applyEdits } from "../../shared/image/pipeline";
 import type { EditSettings, Point, Quad } from "../../shared/types";
 import { type GeometryMode, moveCorner, quadOrFull, translateQuad } from "./geometry";
+import { type LensPointer, Magnifier } from "./Magnifier";
 import { loadOpenCv } from "./opencv";
+import { PreviewBar } from "./PreviewBar";
 
 export const PREVIEW_MAX_SIZE = 1400;
 const RENDER_DELAY = 40;
@@ -38,10 +40,17 @@ interface ImageEditorProps {
   settings: EditSettings;
   mode: GeometryMode;
   onCornersChange: (corners: Quad) => void;
+  /** Full-resolution render of the current settings; replaces the live preview while set. */
+  processedSrc?: string | null;
+  processing?: boolean;
+  onPreview?: () => void;
+  onLive?: () => void;
 }
 
-export function ImageEditor({ src, settings, mode, onCornersChange }: ImageEditorProps) {
+export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc, processing = false, onPreview, onLive }: ImageEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const processedRef = useRef<HTMLImageElement>(null);
+  const [pointer, setPointer] = useState<LensPointer | null>(null);
   const [base, setBase] = useState<JimpImage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
@@ -78,17 +87,37 @@ export function ImageEditor({ src, settings, mode, onCornersChange }: ImageEdito
     };
   }, [base, settings, mode]);
 
+  const showProcessed = Boolean(processedSrc) && mode === "none";
+
+  useEffect(() => {
+    if (!showProcessed) setPointer(null);
+  }, [showProcessed]);
+
   if (error) return <div className="alert alert--error">Vorschau konnte nicht geladen werden: {error}</div>;
 
   return (
     <div className="editor-canvas">
       <div className="editor-canvas__stage">
-        <canvas ref={canvasRef} className="editor-canvas__image" />
+        <canvas ref={canvasRef} className="editor-canvas__image" hidden={showProcessed} />
+        {showProcessed && (
+          <img
+            ref={processedRef}
+            src={processedSrc!}
+            alt="Vorschau in voller Auflösung"
+            className="editor-canvas__image is-inspecting"
+            onPointerMove={(e) => e.pointerType === "mouse" && setPointer({ clientX: e.clientX, clientY: e.clientY })}
+            onPointerLeave={() => setPointer(null)}
+          />
+        )}
         {base && mode !== "none" && (
           <QuadOverlay quad={quadOrFull(settings.corners)} mode={mode} onChange={onCornersChange} />
         )}
       </div>
-      {(!base || rendering) && (
+      {showProcessed && pointer && <Magnifier source={processedRef} pointer={pointer} />}
+      {onPreview && onLive && base && mode === "none" && (
+        <PreviewBar processing={processing} showing={showProcessed} onPreview={onPreview} onLive={onLive} />
+      )}
+      {(!base || rendering || processing) && (
         <span className="editor-canvas__spinner" aria-label="Vorschau wird berechnet">
           <Loader size={18} className="spin" />
         </span>

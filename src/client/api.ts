@@ -24,7 +24,7 @@ export class ApiRequestError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function send(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   if (typeof init.body === "string") headers.set("Content-Type", "application/json");
   const res = await fetch(path, { ...init, headers });
@@ -32,6 +32,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     throw new ApiRequestError(res.status, body?.error ?? res.statusText);
   }
+  return res;
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await send(path, init);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
@@ -85,6 +90,8 @@ export const api = {
     request<DewarpGrid>(`/api/documents/${id}/dewarp`, jsonBody("POST", { rotation })),
   autoBw: (id: number, editSettings: EditSettings) =>
     request<BwVariant[]>(`/api/documents/${id}/auto-bw`, jsonBody("POST", { editSettings })),
+  renderPreview: async (id: number, editSettings: EditSettings, signal?: AbortSignal) =>
+    (await send(`/api/documents/${id}/render`, { ...jsonBody("POST", { editSettings }), signal })).blob(),
   runOcr: (id: number, options: { allText?: boolean } = {}) =>
     request<ArchiveDocument>(`/api/documents/${id}/ocr`, jsonBody("POST", { allText: options.allText === true })),
 

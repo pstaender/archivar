@@ -121,6 +121,14 @@ export function createApiRoutes(ctx: AppContext) {
       }),
     },
 
+    "/api/documents/:id/render": {
+      POST: handle(async (req: Req) => {
+        const body = await readJson<{ editSettings?: Partial<EditSettings> }>(req).catch(() => ({ editSettings: undefined }));
+        const jpeg = await archive.renderPreview(userId(req), parseId(req.params.id), body.editSettings);
+        return new Response(jpeg, { headers: { "Content-Type": "image/jpeg", "Cache-Control": "no-store" } });
+      }),
+    },
+
     "/api/documents/:id/file": {
       GET: handle((req: Req) => {
         const doc = archive.getDocument(userId(req), parseId(req.params.id));

@@ -39,6 +39,7 @@ export const Copy = createIcon(keyline("copy"), "Copy");
 export const Crop = createIcon(keyline("frame"), "Crop");
 export const Download = createIcon(keyline("download"), "Download");
 export const Eraser = createIcon(keyline("eraser-sparkles"), "Eraser");
+export const Eye = createIcon(keyline("eye"), "Eye");
 export const ExternalLink = createIcon(keyline("square-arrow-up-right"), "ExternalLink");
 export const FileText = createIcon(keyline("file-text"), "FileText");
 export const Folder = createIcon(keyline("folder"), "Folder");

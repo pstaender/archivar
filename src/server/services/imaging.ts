@@ -2,7 +2,7 @@ import { extname } from "node:path";
 import { isDefaultEditSettings } from "../../shared/editSettings";
 import { isEditableImageType, Jimp, type JimpImage } from "../../shared/image/jimp";
 import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
-import type { DocumentKind } from "../../shared/types";
+import type { DocumentKind, EditSettings } from "../../shared/types";
 import { convertibleTypeForExtension } from "../../shared/uploads";
 import type { StoredDocument } from "../db/documents";
 import { derivedKeys, type FileStorage } from "../storage";
@@ -37,7 +37,7 @@ export function extensionFor(name: string, mimeType: string): string {
   return mimeType === "application/pdf" ? ".pdf" : mimeType.startsWith("image/") ? `.${mimeType.slice(6)}` : ".bin";
 }
 
-async function toJpeg(image: JimpImage, quality = JPEG_QUALITY): Promise<Uint8Array> {
+async function toJpeg(image: JimpImage, quality = JPEG_QUALITY): Promise<Uint8Array<ArrayBuffer>> {
   return new Uint8Array(await image.getBuffer("image/jpeg", { quality }));
 }
 
@@ -102,6 +102,11 @@ export class ImagingService {
       const original = await this.loadOriginal(doc);
       await this.storage.write(derivedKeys.preview(doc.id), await toJpeg(scaleToFit(original, PREVIEW_SIZE)));
     }
+  }
+
+  async renderJpeg(doc: StoredDocument, settings: EditSettings): Promise<Uint8Array<ArrayBuffer>> {
+    const original = await this.loadOriginal(doc);
+    return toJpeg(isDefaultEditSettings(settings) ? original : applyEdits(original, settings));
   }
 
   async renderDerivatives(doc: StoredDocument): Promise<{ width: number; height: number } | null> {
