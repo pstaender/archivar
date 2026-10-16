@@ -4,6 +4,7 @@ import { createImage, type JimpImage } from "../../shared/image/jimp";
 import { applyEdits } from "../../shared/image/pipeline";
 import type { EditSettings, Point, Quad } from "../../shared/types";
 import { type GeometryMode, moveCorner, quadOrFull, translateQuad } from "./geometry";
+import { loadOpenCv } from "./opencv";
 
 export const PREVIEW_MAX_SIZE = 1400;
 const RENDER_DELAY = 40;
@@ -59,16 +60,22 @@ export function ImageEditor({ src, settings, mode, onCornersChange }: ImageEdito
   useEffect(() => {
     if (!base || !canvasRef.current) return;
     setRendering(true);
-    const timer = setTimeout(() => {
-      const preview = mode === "none" ? settings : { ...settings, corners: null, denoise: 0 };
+    let cancelled = false;
+    const preview = mode === "none" ? settings : { ...settings, corners: null, denoise: 0 };
+    const timer = setTimeout(async () => {
       try {
-        drawToCanvas(canvasRef.current!, applyEdits(base, preview));
+        if (preview.denoise > 0) await loadOpenCv();
+        if (cancelled || !canvasRef.current) return;
+        drawToCanvas(canvasRef.current, applyEdits(base, preview));
       } catch (e) {
-        setError(String(e));
+        setError(e instanceof Error ? e.message : String(e));
       }
-      setRendering(false);
+      if (!cancelled) setRendering(false);
     }, RENDER_DELAY);
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [base, settings, mode]);
 
   if (error) return <div className="alert alert--error">Vorschau konnte nicht geladen werden: {error}</div>;

@@ -1,5 +1,5 @@
 import type { EditSettings, Quad } from "../types";
-import { medianFilter } from "./denoise";
+import { removeSpecks, smoothNoise } from "./denoise";
 import { createImage, type JimpImage } from "./jimp";
 import { isAxisAlignedRect, warpPerspective } from "./perspective";
 import { unwarpWithGrid } from "./unwarp";
@@ -48,7 +48,7 @@ export function applyEdits(source: JimpImage, settings: EditSettings): JimpImage
   if (settings.corners) image = applyGeometry(image, settings.corners);
 
   if (settings.denoise > 0) {
-    const filtered = medianFilter(image.bitmap, settings.denoise);
+    const filtered = smoothNoise(image.bitmap, settings.denoise);
     image = createImage(filtered.width, filtered.height, filtered.data);
   }
 
@@ -64,6 +64,7 @@ export function applyEdits(source: JimpImage, settings: EditSettings): JimpImage
     image.greyscale();
   } else {
     binarize(image, settings.bwThreshold);
+    if (settings.denoise > 0) removeSpecks(image.bitmap, settings.denoise);
   }
 
   return image;

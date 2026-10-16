@@ -98,7 +98,20 @@ describe("EditControls", () => {
 
   test("denoise shows a readable level", () => {
     setup({ denoise: 2 });
-    expect(screen.getByText("Mittel")).toBeTruthy();
+    expect(screen.getByText(/Stärke: Mittel/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Entrauschen/ }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  test("the denoise button increases the strength", () => {
+    const { onChange } = setup({ denoise: 1 });
+    fireEvent.click(screen.getByRole("button", { name: /Entrauschen/ }));
+    expect(onChange.mock.calls[0]![0].denoise).toBe(2);
+  });
+
+  test("the denoise button turns off after the strongest level", () => {
+    const { onChange } = setup({ denoise: 3 });
+    fireEvent.click(screen.getByRole("button", { name: /Entrauschen/ }));
+    expect(onChange.mock.calls[0]![0].denoise).toBe(0);
   });
 
   test("auto black and white shows the current variant", () => {

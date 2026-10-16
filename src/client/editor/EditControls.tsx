@@ -1,4 +1,4 @@
-import { Contrast, Crop, Loader, RotateCcw, RotateCw, Scan, WandSparkles } from "../icons";
+import { Contrast, Crop, Eraser, Loader, RotateCcw, RotateCw, Scan, WandSparkles } from "../icons";
 import { type CSSProperties, useId } from "react";
 import { rotateBy } from "../../shared/editSettings";
 import type { ColorMode, EditSettings } from "../../shared/types";
@@ -191,15 +191,22 @@ export function EditControls({
 
       <section className="control-group">
         <h3>Störungen entfernen</h3>
-        <Slider
-          label="Entrauschen"
-          value={settings.denoise}
-          min={0}
-          max={3}
-          step={1}
-          format={(v) => DENOISE_LABELS[v] ?? String(v)}
-          onChange={(v) => set("denoise", v)}
-        />
+        <div className="dewarp-row">
+          <button
+            type="button"
+            className={`btn btn--sm ${settings.denoise > 0 ? "is-active" : ""}`}
+            aria-pressed={settings.denoise > 0}
+            onClick={() => set("denoise", (settings.denoise + 1) % DENOISE_LABELS.length)}
+          >
+            <Eraser size={16} />
+            Entrauschen
+          </button>
+          <span className="muted small" aria-live="polite">
+            {settings.denoise > 0
+              ? `Stärke: ${DENOISE_LABELS[settings.denoise]} – ${settings.denoise < DENOISE_LABELS.length - 1 ? "erneut klicken für stärker." : "erneut klicken zum Ausschalten."}`
+              : "Glättet Rauschen und entfernt im S/W-Modus einzelne Punkte."}
+          </span>
+        </div>
       </section>
     </div>
   );

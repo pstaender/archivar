@@ -87,10 +87,19 @@ describe("applyEdits", () => {
     expect(g!).toBeGreaterThan(r!);
   });
 
-  test("denoise removes isolated pixels", () => {
-    const src = solid(5, 5, [100, 100, 100, 255]);
-    src.bitmap.data.set([255, 255, 255, 255], 12 * 4);
-    expect(applyEdits(src, settings({ denoise: 1 })).bitmap.data[12 * 4]).toBe(100);
+  test("denoise smooths single noisy pixels", () => {
+    const src = solid(2000, 9, [100, 100, 100, 255]);
+    const at = (4 * 2000 + 1000) * 4;
+    src.bitmap.data.set([130, 130, 130, 255], at);
+    expect(applyEdits(src, settings({ denoise: 2 })).bitmap.data[at]).toBeLessThan(110);
+  });
+
+  test("denoise removes specks after black and white", () => {
+    const src = solid(2000, 60, [240, 240, 240, 255]);
+    const at = (30 * 2000 + 1000) * 4;
+    for (const dx of [0, 1]) for (const dy of [0, 1]) src.bitmap.data.set([10, 10, 10, 255], at + (dy * 2000 + dx) * 4);
+    const out = applyEdits(src, settings({ colorMode: "bw", bwThreshold: 128, denoise: 1 }));
+    expect(out.bitmap.data[at]).toBe(255);
   });
 });
 

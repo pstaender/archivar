@@ -13,6 +13,7 @@ Web app for archiving photos, scans, documents and PDFs: upload (incl. phone cam
 - Images: **Jimp** assembled from its `@jimp/*` packages in `src/shared/image/jimp.ts` (the `jimp` meta package ships a broken browser build). The same pipeline (`src/shared/image/pipeline.ts`) renders the live preview in the browser and the final image on the server.
 - OCR: **tesseract.js** on the server (`deu+eng` by default, language data cached in `data/tessdata`).
 - PDFs: **unpdf** (text extraction, page rendering via `@napi-rs/canvas`).
+- Denoise: **OpenCV.js** (`@techstark/opencv-js`, ~11 MB). `src/shared/image/denoise.ts` uses `bilateralFilter` and, after B/W, `connectedComponentsWithStats` to drop isolated specks (marks near text are kept). The server loads it at startup (`src/server/opencv.ts`), the browser loads it on demand as a script from `/vendor/opencv-<version>.js` (`src/client/editor/opencv.ts`, served gzipped by `src/server/vendor.ts`) – never import the package in client code. Never `await` the OpenCV module (it is a self-resolving thenable); use `initOpenCv()`. Server tests preload `test/opencv.ts`. The prebuilt OpenCV.js has no `fastNlMeansDenoising`.
 - Optional image formats: **ImageMagick** CLI, detected at startup (`MagickConverter.detect()`); tests use `FakeImageConverter` (accepts `image/webp`).
 - Automatic dewarping: **UVDoc** exported to ONNX (`models/uvdoc.onnx`, not in git, create with `bun run setup:uvdoc`), run with **onnxruntime-node** in `src/server/services/dewarp.ts`. The model only predicts a 2×45×31 grid; `src/shared/image/unwarp.ts` ports UVDoc's `bilinear_unwarping` (interpolate + grid_sample, `align_corners=True`) so the browser preview uses the same grid. Without the model the feature is hidden (`/api/config`).
 
@@ -33,7 +34,7 @@ Do not run a bare `bun test`: client tests need the happy-dom preload, server te
 
 ## Layout
 
-- `src/shared/` – code used by client and server: types (API DTOs), edit settings normalization, folder path helpers, image pipeline (perspective warp, median denoise).
+- `src/shared/` – code used by client and server: types (API DTOs), edit settings normalization, folder path helpers, image pipeline (perspective warp, OpenCV denoise).
 - `src/server/` – `index.ts` (entry), `routes.ts` (REST API), `context.ts` (wiring + current user), `db/` (migrations + repositories), `services/` (archive logic, imaging, OCR queue, PDF), `storage.ts` (files under `data/files`).
 - `src/client/` – `pages/`, `components/`, `editor/` (canvas preview, corner overlay, controls), `hooks/` (contexts for toasts, folders, uploads).
 - `test/` – test helpers (`server.ts` starts an API server on a random port with in-memory SQLite and a fake OCR engine; `client.tsx` has fetch mocks and render helpers).
@@ -44,7 +45,7 @@ Do not run a bare `bun test`: client tests need the happy-dom preload, server te
 - Folders are labels with hierarchical paths (`wichtig/2026`). Filtering by a folder includes its sub-folders. Documents and stacks can have many folders.
 - A stack groups documents in order. Empty stacks are deleted automatically.
 - Edit settings are stored as JSON on the document and always pass through `normalizeEditSettings`. The original file is never modified; derived files (`preview.jpg`, `processed.jpg`, `thumbnail.jpg`) live in `data/files/derived/<id>/`.
-- Pipeline order: rotate → dewarp grid → crop/perspective → denoise → levels/brightness/contrast → color.
+- Pipeline order: rotate → dewarp grid → crop/perspective → denoise (smoothing) → levels/brightness/contrast → color → speck removal (B/W only, when denoise > 0). Denoise parameters scale with the image size so the preview matches the final render.
 - A dewarp grid is stored in the edit settings together with the rotation it was predicted for; it is dropped when the rotation changes. Crop/perspective corners are normalized (0..1) relative to the rotated (and dewarped) image.
 - Auto B/W (`src/shared/image/autoBw.ts`) analyses the image after geometry/denoise: brightness/contrast stretch the luma range, variants differ only in the threshold (Otsu first, then darker, then lighter). The client caches variants per geometry and cycles through them on repeated clicks.
 - Supported uploads are the Jimp image types and PDF (`src/shared/uploads.ts`, used for the file inputs' `accept` and to skip dropped files). If ImageMagick is installed (`magick`, or IM6 `convert`), HEIC/HEIF/AVIF/WebP/JPEG XL/JPEG 2000 are accepted too (`/api/config` → `convertibleImageTypes`): `src/server/services/magick.ts` converts them to PNG with an explicit coder prefix, the result is cached as `derived/<id>/source.png` and everything else (editor preview, OCR) works on that. The client uploads files one request at a time via `XMLHttpRequest` to show progress; client tests mock it with `mockXhr()`.

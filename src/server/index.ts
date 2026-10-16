@@ -5,12 +5,16 @@ import { createContext } from "./context";
 import { openDatabase } from "./db/database";
 import { createApiRoutes } from "./routes";
 import { UvdocEngine } from "./services/dewarp";
+import { loadOpenCv } from "./opencv";
 import { MagickConverter } from "./services/magick";
 import { TesseractEngine } from "./services/ocr";
+import { vendorRoutes } from "./vendor";
 
 const config = loadConfig();
 await mkdir(config.storageDir, { recursive: true });
 await mkdir(config.ocrCacheDir, { recursive: true });
+
+await loadOpenCv();
 
 const ocrEngine = new TesseractEngine(config.ocrLanguages, config.ocrCacheDir);
 const dewarpEngine = new UvdocEngine(config.uvdocModelPath);
@@ -26,6 +30,7 @@ const server = Bun.serve({
   development: process.env.NODE_ENV !== "production" && { hmr: true, console: true },
   routes: {
     ...createApiRoutes(ctx),
+    ...vendorRoutes(),
     "/*": index,
   },
 });
