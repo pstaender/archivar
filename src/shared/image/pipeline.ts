@@ -2,6 +2,7 @@ import type { EditSettings, Quad } from "../types";
 import { medianFilter } from "./denoise";
 import { createImage, type JimpImage } from "./jimp";
 import { isAxisAlignedRect, warpPerspective } from "./perspective";
+import { unwarpWithGrid } from "./unwarp";
 
 function applyGeometry(image: JimpImage, corners: Quad): JimpImage {
   const { width, height } = image.bitmap;
@@ -31,6 +32,10 @@ export function applyEdits(source: JimpImage, settings: EditSettings): JimpImage
   let image = source.clone() as JimpImage;
 
   if (settings.rotation !== 0) image = image.rotate(-settings.rotation) as JimpImage;
+  if (settings.dewarp) {
+    const unwarped = unwarpWithGrid(image.bitmap, settings.dewarp);
+    image = createImage(unwarped.width, unwarped.height, unwarped.data);
+  }
   if (settings.corners) image = applyGeometry(image, settings.corners);
 
   if (settings.denoise > 0) {

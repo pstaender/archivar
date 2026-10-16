@@ -35,6 +35,12 @@ describe("api client", () => {
     expect(form!.get("ocr")).toBe("true");
   });
 
+  test("requests a dewarp grid for the current rotation", async () => {
+    fetchMock = mockFetch({ "POST /api/documents/2/dewarp": () => ({ rotation: 90 }) });
+    await api.detectDewarp(2, 90);
+    expect(fetchMock.calls[0]!.body).toEqual({ rotation: 90 });
+  });
+
   test("returns undefined for 204 responses", async () => {
     fetchMock = mockFetch({ "DELETE /api/documents/1": () => undefined });
     expect(await api.deleteDocument(1)).toBeUndefined();

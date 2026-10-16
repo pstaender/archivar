@@ -4,6 +4,7 @@ Archive photos, scans, documents and PDFs in the browser – on desktop and on t
 
 - Upload one or many files via button or drag & drop, or take a photo with the phone camera
 - Edit images: crop, perspective correction, rotation, brightness, contrast, saturation, hue, grayscale, black & white, noise removal, auto levels – with live preview
+- Automatic dewarping of curved/bent pages with [UVDoc](https://github.com/tanguymagne/UVDoc), running server-side via ONNX Runtime
 - Text recognition (OCR) with Tesseract.js, editable recognized text, full-text search
 - Group documents into ordered stacks with a title
 - Hierarchical folders as labels (e.g. `wichtig/2026`)
@@ -19,6 +20,14 @@ bun run dev
 Open http://localhost:3000. Data is stored in `./data` (database, files, OCR language data).
 On first OCR run the language data (`deu`, `eng`) is downloaded once.
 
+For automatic dewarping, export the UVDoc model once (needs `git` and [`uv`](https://docs.astral.sh/uv/); Python is only used for the export):
+
+```sh
+bun run setup:uvdoc
+```
+
+Without `models/uvdoc.onnx` the app works normally, the "Automatisch entzerren" button is just hidden.
+
 ## Configuration
 
 | Variable                 | Default                    | Description                    |
@@ -28,12 +37,14 @@ On first OCR run the language data (`deu`, `eng`) is downloaded once.
 | `ARCHIVAR_DATABASE`      | `<data>/archivar.sqlite`   | SQLite file                    |
 | `ARCHIVAR_OCR_LANGS`     | `deu+eng`                  | Tesseract languages            |
 | `ARCHIVAR_MAX_UPLOAD_MB` | `512`                      | Max request body size          |
+| `ARCHIVAR_UVDOC_MODEL`   | `models/uvdoc.onnx`        | UVDoc ONNX model               |
 
 ## API
 
 | Method | Path                                | Description                                   |
 | ------ | ----------------------------------- | --------------------------------------------- |
 | GET    | `/api/me`                           | Current user                                  |
+| GET    | `/api/config`                       | Feature flags (`dewarpAvailable`)             |
 | GET    | `/api/library?folder=&q=`           | Stacks and loose documents                    |
 | GET    | `/api/documents?folder=&q=&stackId=`| Documents                                     |
 | POST   | `/api/documents`                    | Upload (`multipart`: `files[]`, `folders`, `stackId`, `ocr`) |
@@ -41,6 +52,7 @@ On first OCR run the language data (`deu`, `eng`) is downloaded once.
 | PATCH  | `/api/documents/:id`                | Update `title`, `editSettings`, `ocrText`, `folders` |
 | DELETE | `/api/documents/:id`                | Delete document and files                     |
 | POST   | `/api/documents/:id/ocr`            | Queue OCR                                     |
+| POST   | `/api/documents/:id/dewarp`         | Predict UVDoc grid for `{ rotation }` (store it via `editSettings.dewarp`) |
 | GET    | `/api/documents/:id/{file,preview,image,thumbnail}` | Original, editor preview, edited image, thumbnail |
 | GET    | `/api/stacks`                       | Stacks                                        |
 | POST   | `/api/stacks`                       | Create from `documentIds`                     |

@@ -59,6 +59,28 @@ describe("normalizeEditSettings", () => {
   });
 });
 
+describe("dewarp grid", () => {
+  const points = new Array(2 * 31 * 45).fill(0.5);
+  const dewarp = { rotation: 0, columns: 31, rows: 45, points };
+
+  test("keeps a valid grid", () => {
+    expect(normalizeEditSettings({ dewarp }).dewarp).toEqual(dewarp as never);
+  });
+
+  test("drops grids with the wrong shape or values", () => {
+    expect(normalizeEditSettings({ dewarp: { ...dewarp, points: points.slice(1) } }).dewarp).toBeNull();
+    expect(normalizeEditSettings({ dewarp: { ...dewarp, columns: 30 } }).dewarp).toBeNull();
+    expect(normalizeEditSettings({ dewarp: { ...dewarp, points: [...points.slice(1), Number.NaN] } }).dewarp).toBeNull();
+    expect(normalizeEditSettings({ dewarp: { ...dewarp, points: [...points.slice(1), 9] } }).dewarp).toBeNull();
+  });
+
+  test("drops a grid computed for another rotation", () => {
+    expect(normalizeEditSettings({ dewarp, rotation: 90 }).dewarp).toBeNull();
+    const base = normalizeEditSettings({ dewarp });
+    expect(normalizeEditSettings({ rotation: 180 }, base).dewarp).toBeNull();
+  });
+});
+
 test("isDefaultEditSettings", () => {
   expect(isDefaultEditSettings(DEFAULT_EDIT_SETTINGS)).toBe(true);
   expect(isDefaultEditSettings({ ...DEFAULT_EDIT_SETTINGS, hue: 10 })).toBe(false);

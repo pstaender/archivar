@@ -1,7 +1,8 @@
-import type { ColorMode, EditSettings, Point, Quad, Rotation } from "./types";
+import type { ColorMode, DewarpGrid, EditSettings, Point, Quad, Rotation } from "./types";
 
 export const DEFAULT_EDIT_SETTINGS: EditSettings = Object.freeze({
   rotation: 0,
+  dewarp: null,
   corners: null,
   brightness: 0,
   contrast: 0,
@@ -52,12 +53,27 @@ export function isFullQuad(quad: Quad): boolean {
   });
 }
 
+export const DEWARP_GRID_COLUMNS = 31;
+export const DEWARP_GRID_ROWS = 45;
+
+export function normalizeDewarpGrid(value: unknown): DewarpGrid | null {
+  if (!value || typeof value !== "object") return null;
+  const { rotation, columns, rows, points } = value as Record<string, unknown>;
+  if (!ROTATIONS.includes(rotation as Rotation)) return null;
+  if (columns !== DEWARP_GRID_COLUMNS || rows !== DEWARP_GRID_ROWS || !Array.isArray(points)) return null;
+  if (points.length !== 2 * DEWARP_GRID_COLUMNS * DEWARP_GRID_ROWS) return null;
+  if (!points.every((p) => typeof p === "number" && Number.isFinite(p) && Math.abs(p) <= 2)) return null;
+  return { rotation: rotation as Rotation, columns, rows, points: points as number[] };
+}
+
 export function normalizeEditSettings(input: unknown, base: EditSettings = DEFAULT_EDIT_SETTINGS): EditSettings {
   const src = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
   const rotation = ROTATIONS.includes(src.rotation as Rotation) ? (src.rotation as Rotation) : base.rotation;
   const colorMode = COLOR_MODES.includes(src.colorMode as ColorMode) ? (src.colorMode as ColorMode) : base.colorMode;
+  const dewarp = "dewarp" in src ? normalizeDewarpGrid(src.dewarp) : base.dewarp;
   return {
     rotation,
+    dewarp: dewarp && dewarp.rotation === rotation ? dewarp : null,
     corners: "corners" in src ? normalizeQuad(src.corners) : base.corners,
     brightness: clamp(src.brightness ?? base.brightness, -1, 1, base.brightness),
     contrast: clamp(src.contrast ?? base.contrast, -1, 1, base.contrast),

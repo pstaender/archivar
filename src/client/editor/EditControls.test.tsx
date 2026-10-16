@@ -6,13 +6,25 @@ import { EditControls } from "./EditControls";
 import { rectQuad } from "./geometry";
 
 
-function setup(overrides: Partial<EditSettings> = {}, mode: "none" | "crop" | "perspective" = "none") {
+function setup(overrides: Partial<EditSettings> = {}, mode: "none" | "crop" | "perspective" = "none", dewarpAvailable = false) {
   const onChange = mock();
   const onModeChange = mock();
+  const onAutoDewarp = mock();
   const settings = { ...DEFAULT_EDIT_SETTINGS, ...overrides };
-  render(<EditControls settings={settings} onChange={onChange} mode={mode} onModeChange={onModeChange} />);
-  return { onChange, onModeChange, settings };
+  render(
+    <EditControls
+      settings={settings}
+      onChange={onChange}
+      mode={mode}
+      onModeChange={onModeChange}
+      dewarpAvailable={dewarpAvailable}
+      onAutoDewarp={onAutoDewarp}
+    />,
+  );
+  return { onChange, onModeChange, onAutoDewarp, settings };
 }
+
+const dewarp = { rotation: 0 as const, columns: 31, rows: 45, points: new Array(2790).fill(0) };
 
 describe("EditControls", () => {
   test("rotating also rotates an existing crop", () => {
@@ -59,6 +71,29 @@ describe("EditControls", () => {
     expect(screen.queryByLabelText("Farbton")).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: "Graustufen" }));
     expect(onChange.mock.calls[0]![0].colorMode).toBe("grayscale");
+  });
+
+  test("auto dewarp is hidden without the model", () => {
+    setup();
+    expect(screen.queryByRole("button", { name: /Automatisch entzerren/ })).toBeNull();
+  });
+
+  test("auto dewarp requests a grid", () => {
+    const { onAutoDewarp } = setup({}, "none", true);
+    fireEvent.click(screen.getByRole("button", { name: /Automatisch entzerren/ }));
+    expect(onAutoDewarp).toHaveBeenCalled();
+  });
+
+  test("clicking active auto dewarp removes it together with the crop", () => {
+    const { onChange } = setup({ dewarp, corners: rectQuad(0.1, 0.1, 0.9, 0.9) }, "none", true);
+    fireEvent.click(screen.getByRole("button", { name: /Automatisch entzerren/ }));
+    expect(onChange.mock.calls[0]![0]).toMatchObject({ dewarp: null, corners: null });
+  });
+
+  test("rotating discards the dewarp grid", () => {
+    const { onChange } = setup({ dewarp }, "none", true);
+    fireEvent.click(screen.getByLabelText("Nach rechts drehen"));
+    expect(onChange.mock.calls[0]![0]).toMatchObject({ rotation: 90, dewarp: null });
   });
 
   test("denoise shows a readable level", () => {

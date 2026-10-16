@@ -25,6 +25,8 @@ export function DocumentPage() {
   const toast = useToast();
   const { reload: reloadFolders } = useFolders();
   const resource = useResource(() => api.document(id), [id]);
+  const config = useResource(() => api.config(), []);
+  const [dewarping, setDewarping] = useState(false);
   const stack = useResource(() => (stackId ? api.stack(stackId) : Promise.resolve(null)), [stackId]);
   const doc = resource.data;
 
@@ -87,6 +89,19 @@ export function DocumentPage() {
     if (updated) {
       setMode("none");
       toast.success("Bearbeitung gespeichert");
+    }
+  };
+
+  const autoDewarp = async () => {
+    setDewarping(true);
+    try {
+      const dewarp = await api.detectDewarp(doc.id, draft.rotation);
+      setDraft((current) => ({ ...current, dewarp, corners: null }));
+      setMode("none");
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setDewarping(false);
     }
   };
 
@@ -187,7 +202,15 @@ export function DocumentPage() {
           <div className="panel__body" role="tabpanel">
             {tab === "edit" && doc.kind === "image" && (
               <>
-                <EditControls settings={draft} onChange={setDraft} mode={mode} onModeChange={setMode} />
+                <EditControls
+                  settings={draft}
+                  onChange={setDraft}
+                  mode={mode}
+                  onModeChange={setMode}
+                  dewarpAvailable={config.data?.dewarpAvailable}
+                  dewarping={dewarping}
+                  onAutoDewarp={autoDewarp}
+                />
                 <div className="panel__footer">
                   <button type="button" className="btn btn--ghost btn--sm" onClick={() => setDraft(DEFAULT_EDIT_SETTINGS)}>
                     Zurücksetzen

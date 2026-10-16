@@ -8,6 +8,7 @@ export interface Config {
   ocrLanguages: string[];
   ocrCacheDir: string;
   maxUploadBytes: number;
+  uvdocModelPath: string;
 }
 
 export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
@@ -20,5 +21,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     ocrLanguages: (env.ARCHIVAR_OCR_LANGS ?? "deu+eng").split("+").filter(Boolean),
     ocrCacheDir: join(dataDir, "tessdata"),
     maxUploadBytes: Number(env.ARCHIVAR_MAX_UPLOAD_MB ?? 512) * 1024 * 1024,
+    uvdocModelPath: resolve(env.ARCHIVAR_UVDOC_MODEL ?? "models/uvdoc.onnx"),
   };
 }

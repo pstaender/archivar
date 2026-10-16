@@ -9,8 +9,16 @@ export type ColorMode = "color" | "grayscale" | "bw";
 
 export type Rotation = 0 | 90 | 180 | 270;
 
+export interface DewarpGrid {
+  rotation: Rotation;
+  columns: number;
+  rows: number;
+  points: number[];
+}
+
 export interface EditSettings {
   rotation: Rotation;
+  dewarp: DewarpGrid | null;
   corners: Quad | null;
   brightness: number;
   contrast: number;
@@ -101,6 +109,10 @@ export interface StackUpdate {
 export interface LibraryQuery {
   folder?: string;
   q?: string;
+}
+
+export interface AppConfig {
+  dewarpAvailable: boolean;
 }
 
 export interface ApiError {

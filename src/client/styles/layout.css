@@ -695,6 +695,13 @@ a.folder-tree__row .folder-tree__toggle {
   background: var(--color-surface);
 }
 
+.dewarp-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
 .edit-controls {
   display: grid;
   gap: var(--space-5);

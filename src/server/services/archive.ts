@@ -1,11 +1,14 @@
 import { basename, extname } from "node:path";
 import { normalizeEditSettings } from "../../shared/editSettings";
+import type { JimpImage } from "../../shared/image/jimp";
 import { normalizeFolderPath } from "../../shared/folders";
 import type {
   ArchiveDocument,
+  DewarpGrid,
   DocumentUpdate,
   LibraryItem,
   LibraryQuery,
+  Rotation,
   Stack,
   StackCreate,
   StackUpdate,
@@ -17,6 +20,7 @@ import type { StackRepository } from "../db/stacks";
 import { HttpError } from "../http";
 import { derivedKeys, type FileStorage } from "../storage";
 import { extensionFor, type ImagingService } from "./imaging";
+import { type DewarpEngine, toDewarpGrid } from "./dewarp";
 import type { OcrQueue } from "./ocr";
 
 export interface UploadOptions {
@@ -39,6 +43,7 @@ export class ArchiveService {
     private storage: FileStorage,
     private imaging: ImagingService,
     private ocr: OcrQueue,
+    private dewarp: DewarpEngine,
   ) {}
 
   library(userId: number, query: LibraryQuery): LibraryItem[] {
@@ -142,6 +147,15 @@ export class ArchiveService {
     if (doc.kind === "file") throw new HttpError(400, "OCR is only available for images and PDFs");
     this.ocr.enqueue(id);
     return toPublicDocument(this.documents.get(userId, id)!);
+  }
+
+  async detectDewarp(userId: number, id: number, rotation: Rotation): Promise<DewarpGrid> {
+    const doc = this.getDocument(userId, id);
+    if (doc.kind !== "image") throw new HttpError(400, "Only images can be dewarped");
+    if (!this.dewarp.available()) throw new HttpError(503, "Dewarping model is not installed");
+    let image = await this.imaging.loadOriginal(doc);
+    if (rotation !== 0) image = image.rotate(-rotation) as JimpImage;
+    return toDewarpGrid(await this.dewarp.predict(image.bitmap), rotation);
   }
 
   getStack(userId: number, id: number): Stack {

@@ -1,9 +1,12 @@
 import type {
+  AppConfig,
   ArchiveDocument,
+  DewarpGrid,
   DocumentUpdate,
   Folder,
   LibraryItem,
   LibraryQuery,
+  Rotation,
   StackCreate,
   StackUpdate,
   StackWithDocuments,
@@ -48,12 +51,15 @@ export interface UploadOptions {
 
 export const api = {
   me: () => request<User>("/api/me"),
+  config: () => request<AppConfig>("/api/config"),
 
   library: (params: LibraryQuery = {}) => request<LibraryItem[]>(`/api/library${query({ folder: params.folder, q: params.q })}`),
 
   document: (id: number) => request<ArchiveDocument>(`/api/documents/${id}`),
   updateDocument: (id: number, update: DocumentUpdate) => request<ArchiveDocument>(`/api/documents/${id}`, jsonBody("PATCH", update)),
   deleteDocument: (id: number) => request<void>(`/api/documents/${id}`, { method: "DELETE" }),
+  detectDewarp: (id: number, rotation: Rotation) =>
+    request<DewarpGrid>(`/api/documents/${id}/dewarp`, jsonBody("POST", { rotation })),
   runOcr: (id: number) => request<ArchiveDocument>(`/api/documents/${id}/ocr`, { method: "POST" }),
 
   upload(files: File[], options: UploadOptions = {}) {

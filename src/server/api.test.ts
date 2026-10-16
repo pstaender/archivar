@@ -181,6 +181,44 @@ describe("ocr", () => {
   });
 });
 
+describe("dewarp", () => {
+  test("reports whether the model is available", async () => {
+    expect(await (await server.api("/api/config")).json()).toEqual({ dewarpAvailable: true });
+    server.dewarp.isAvailable = false;
+    expect(await (await server.api("/api/config")).json()).toEqual({ dewarpAvailable: false });
+  });
+
+  test("predicts a grid on the rotated original", async () => {
+    const doc = await uploadImage();
+    const res = await post(`/api/documents/${doc.id}/dewarp`, { rotation: 90 });
+    expect(res.status).toBe(200);
+    const grid = (await res.json()) as { rotation: number; columns: number; rows: number; points: number[] };
+    expect(grid).toMatchObject({ rotation: 90, columns: 31, rows: 45 });
+    expect(grid.points).toHaveLength(2790);
+    expect(server.dewarp.inputs[0]).toMatchObject({ width: 48, height: 64 });
+  });
+
+  test("saved grids are applied to the processed image", async () => {
+    const doc = await uploadImage();
+    const grid = await (await post(`/api/documents/${doc.id}/dewarp`, {})).json();
+    const res = await patch(`/api/documents/${doc.id}`, { editSettings: { dewarp: grid } });
+    const updated = (await res.json()) as ArchiveDocument;
+    expect(updated.editSettings.dewarp?.rows).toBe(45);
+    expect(updated).toMatchObject({ width: 64, height: 48 });
+  });
+
+  test("rejects documents that are not images", async () => {
+    const [doc] = await upload([{ name: "a.pdf", data: makePdf("x"), type: "application/pdf" }]);
+    expect((await post(`/api/documents/${doc!.id}/dewarp`, {})).status).toBe(400);
+  });
+
+  test("returns 503 without a model", async () => {
+    server.dewarp.isAvailable = false;
+    const doc = await uploadImage();
+    expect((await post(`/api/documents/${doc.id}/dewarp`, {})).status).toBe(503);
+  });
+});
+
 describe("stacks", () => {
   test("creates a stack and hides its documents from the library root", async () => {
     const a = await uploadImage("a.jpg");

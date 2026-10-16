@@ -1,4 +1,4 @@
-import { Crop, RotateCcw, RotateCw, Scan } from "lucide-react";
+import { Crop, Loader2, RotateCcw, RotateCw, Scan, WandSparkles } from "lucide-react";
 import { type CSSProperties, useId } from "react";
 import { rotateBy } from "../../shared/editSettings";
 import type { ColorMode, EditSettings } from "../../shared/types";
@@ -9,6 +9,9 @@ interface EditControlsProps {
   onChange: (settings: EditSettings) => void;
   mode: GeometryMode;
   onModeChange: (mode: GeometryMode) => void;
+  dewarpAvailable?: boolean;
+  dewarping?: boolean;
+  onAutoDewarp?: () => void;
 }
 
 const COLOR_MODES: { value: ColorMode; label: string }[] = [
@@ -19,14 +22,15 @@ const COLOR_MODES: { value: ColorMode; label: string }[] = [
 
 const DENOISE_LABELS = ["Aus", "Leicht", "Mittel", "Stark"];
 
-export function EditControls({ settings, onChange, mode, onModeChange }: EditControlsProps) {
+export function EditControls({ settings, onChange, mode, onModeChange, dewarpAvailable, dewarping, onAutoDewarp }: EditControlsProps) {
   const set = <K extends keyof EditSettings>(key: K, value: EditSettings[K]) => onChange({ ...settings, [key]: value });
 
   const rotate = (delta: 90 | -90) =>
     onChange({
       ...settings,
       rotation: rotateBy(settings.rotation, delta),
-      corners: settings.corners ? rotateQuad(settings.corners, delta) : null,
+      dewarp: null,
+      corners: settings.corners && !settings.dewarp ? rotateQuad(settings.corners, delta) : null,
     });
 
   const toggleMode = (next: Exclude<GeometryMode, "none">) => {
@@ -60,6 +64,23 @@ export function EditControls({ settings, onChange, mode, onModeChange }: EditCon
             Entzerren
           </button>
         </div>
+        {dewarpAvailable && (
+          <div className="dewarp-row">
+            <button
+              type="button"
+              className={`btn btn--sm ${settings.dewarp ? "is-active" : ""}`}
+              aria-pressed={Boolean(settings.dewarp)}
+              onClick={() => (settings.dewarp ? onChange({ ...settings, dewarp: null, corners: null }) : onAutoDewarp?.())}
+              disabled={dewarping}
+            >
+              {dewarping ? <Loader2 size={16} className="spin" /> : <WandSparkles size={16} />}
+              Automatisch entzerren
+            </button>
+            <span className="muted small">
+              {dewarping ? "Seite wird erkannt …" : settings.dewarp ? "Gewölbte Seite geglättet." : "Glättet gewölbte Seiten (UVDoc)."}
+            </span>
+          </div>
+        )}
         {mode !== "none" && (
           <p className="muted small">
             {mode === "crop"

@@ -1,5 +1,5 @@
 import type { BunRequest } from "bun";
-import type { DocumentUpdate, StackCreate, StackUpdate } from "../shared/types";
+import type { AppConfig, DocumentUpdate, Rotation, StackCreate, StackUpdate } from "../shared/types";
 import type { AppContext } from "./context";
 import { toPublicDocument } from "./db/documents";
 import { handle, HttpError, json, noContent, parseId, readJson } from "./http";
@@ -31,6 +31,10 @@ export function createApiRoutes(ctx: AppContext) {
   return {
     "/api/me": {
       GET: handle((req: Req) => json(ctx.currentUser(req))),
+    },
+
+    "/api/config": {
+      GET: handle(() => json({ dewarpAvailable: ctx.dewarp.available() } satisfies AppConfig)),
     },
 
     "/api/library": {
@@ -95,6 +99,14 @@ export function createApiRoutes(ctx: AppContext) {
 
     "/api/documents/:id/ocr": {
       POST: handle((req: Req) => json(archive.requestOcr(userId(req), parseId(req.params.id)), 202)),
+    },
+
+    "/api/documents/:id/dewarp": {
+      POST: handle(async (req: Req) => {
+        const body = await readJson<{ rotation?: number }>(req).catch(() => ({ rotation: 0 }));
+        const rotation = [0, 90, 180, 270].includes(Number(body.rotation)) ? (Number(body.rotation) as Rotation) : 0;
+        return json(await archive.detectDewarp(userId(req), parseId(req.params.id), rotation));
+      }),
     },
 
     "/api/documents/:id/file": {

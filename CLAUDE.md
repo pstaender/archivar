@@ -11,6 +11,7 @@ Web app for archiving photos, scans, documents and PDFs: upload (incl. phone cam
 - Images: **Jimp** assembled from its `@jimp/*` packages in `src/shared/image/jimp.ts` (the `jimp` meta package ships a broken browser build). The same pipeline (`src/shared/image/pipeline.ts`) renders the live preview in the browser and the final image on the server.
 - OCR: **tesseract.js** on the server (`deu+eng` by default, language data cached in `data/tessdata`).
 - PDFs: **unpdf** (text extraction, page rendering via `@napi-rs/canvas`).
+- Automatic dewarping: **UVDoc** exported to ONNX (`models/uvdoc.onnx`, not in git, create with `bun run setup:uvdoc`), run with **onnxruntime-node** in `src/server/services/dewarp.ts`. The model only predicts a 2×45×31 grid; `src/shared/image/unwarp.ts` ports UVDoc's `bilinear_unwarping` (interpolate + grid_sample, `align_corners=True`) so the browser preview uses the same grid. Without the model the feature is hidden (`/api/config`).
 
 ## Commands
 
@@ -22,6 +23,7 @@ bun run test         # server + shared tests, then client tests
 bun run test:server  # src/server + src/shared
 bun run test:client  # src/client with happy-dom preload
 bun run typecheck
+bun run setup:uvdoc  # one-time: export UVDoc to models/uvdoc.onnx (needs uv + git)
 ```
 
 Do not run a bare `bun test`: client tests need the happy-dom preload, server tests must run without it (happy-dom replaces `fetch`/`Request`).
@@ -39,7 +41,8 @@ Do not run a bare `bun test`: client tests need the happy-dom preload, server te
 - Folders are labels with hierarchical paths (`wichtig/2026`). Filtering by a folder includes its sub-folders. Documents and stacks can have many folders.
 - A stack groups documents in order. Empty stacks are deleted automatically.
 - Edit settings are stored as JSON on the document and always pass through `normalizeEditSettings`. The original file is never modified; derived files (`preview.jpg`, `processed.jpg`, `thumbnail.jpg`) live in `data/files/derived/<id>/`.
-- Crop/perspective corners are normalized (0..1) relative to the *rotated* image.
+- Pipeline order: rotate → dewarp grid → crop/perspective → denoise → levels/brightness/contrast → color.
+- A dewarp grid is stored in the edit settings together with the rotation it was predicted for; it is dropped when the rotation changes. Crop/perspective corners are normalized (0..1) relative to the rotated (and dewarped) image.
 - OCR runs asynchronously in `OcrQueue`; clients poll while status is `pending`/`running`.
 - UI is German, monochrome (grays only). Colors only for error/warning/success via `--color-danger|warning|success`.
 

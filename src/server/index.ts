@@ -4,6 +4,7 @@ import { loadConfig } from "./config";
 import { createContext } from "./context";
 import { openDatabase } from "./db/database";
 import { createApiRoutes } from "./routes";
+import { UvdocEngine } from "./services/dewarp";
 import { TesseractEngine } from "./services/ocr";
 
 const config = loadConfig();
@@ -11,7 +12,9 @@ await mkdir(config.storageDir, { recursive: true });
 await mkdir(config.ocrCacheDir, { recursive: true });
 
 const ocrEngine = new TesseractEngine(config.ocrLanguages, config.ocrCacheDir);
-const ctx = createContext({ db: openDatabase(config.databasePath), storageDir: config.storageDir, ocrEngine });
+const dewarpEngine = new UvdocEngine(config.uvdocModelPath);
+if (!dewarpEngine.available()) console.warn(`UVDoc model not found at ${config.uvdocModelPath}, automatic dewarping is disabled.`);
+const ctx = createContext({ db: openDatabase(config.databasePath), storageDir: config.storageDir, ocrEngine, dewarpEngine });
 
 const server = Bun.serve({
   port: config.port,
