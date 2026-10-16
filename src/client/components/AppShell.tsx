@@ -77,7 +77,7 @@ function SearchField() {
       <input
         type="search"
         className="search__input"
-        placeholder="Suchen in Titeln und Text …"
+        placeholder="Suchen …"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         aria-label="Suche"
