@@ -112,8 +112,8 @@ export const api = {
     request<{ corners: Quad | null }>(`/api/documents/${id}/auto-crop`, jsonBody("POST", { editSettings })),
   autoBw: (id: number, editSettings: EditSettings) =>
     request<BwVariant[]>(`/api/documents/${id}/auto-bw`, jsonBody("POST", { editSettings })),
-  /** The settings after applying a preset on top of `editSettings`; nothing is saved. */
-  applyPreset: (id: number, presetId: number, editSettings: EditSettings) =>
+  /** The settings after applying a preset on top of `editSettings` (default: the stored ones); nothing is saved. */
+  applyPreset: (id: number, presetId: number, editSettings?: EditSettings) =>
     request<{ editSettings: EditSettings }>(`/api/documents/${id}/apply-preset`, jsonBody("POST", { presetId, editSettings })),
   /** Searchable PDF of the edited image with `text` (default: the stored text) as its text layer. */
   exportPdf: async (id: number, text?: string) => download(await send(`/api/documents/${id}/pdf`, jsonBody("POST", { text })), `dokument-${id}.pdf`),

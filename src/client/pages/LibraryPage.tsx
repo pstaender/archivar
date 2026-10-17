@@ -1,9 +1,10 @@
-import { Download, FolderMinus, FolderPlus, Layers, Loader, Trash, Upload, X } from "../icons";
+import { Download, FolderMinus, FolderPlus, Layers, Loader, SquareCheck, Trash, Upload, Wand, X } from "../icons";
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { moveToFolders } from "../../shared/folders";
 import { LIBRARY_SORTS, type LibraryItem, type LibrarySort } from "../../shared/types";
 import { api } from "../api";
+import { BatchDialog } from "../components/BatchDialog";
 import { ConfirmDialog } from "../components/Dialog";
 import { FolderTargetDialog } from "../components/FolderTargetDialog";
 import { ItemCard, itemKey } from "../components/ItemCard";
@@ -154,6 +155,8 @@ export function LibraryPage() {
       {selectedItems.length > 0 && (
         <SelectionBar
           items={selectedItems}
+          allSelected={selectedItems.length === items.length}
+          onSelectAll={() => setSelected(new Set(items.map(itemKey)))}
           onClear={() => setSelected(new Set())}
           onDone={() => {
             setSelected(new Set());
@@ -196,17 +199,20 @@ function EmptyLibrary({ filtered }: { filtered: boolean }) {
 
 interface SelectionBarProps {
   items: LibraryItem[];
+  allSelected: boolean;
+  onSelectAll: () => void;
   onClear: () => void;
   onDone: () => void;
 }
 
-export function SelectionBar({ items, onClear, onDone }: SelectionBarProps) {
+export function SelectionBar({ items, allSelected, onSelectAll, onClear, onDone }: SelectionBarProps) {
   const toast = useToast();
   const navigate = useNavigate();
   const { reload: reloadFolders } = useFolders();
   const from = useCurrentFolder();
   const [folderDialog, setFolderDialog] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [batchDialog, setBatchDialog] = useState(false);
   const [working, setWorking] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -292,6 +298,14 @@ export function SelectionBar({ items, onClear, onDone }: SelectionBarProps) {
       </button>
       <span className="selection-bar__count">{items.length} ausgewählt</span>
       <div className="selection-bar__actions">
+        <button type="button" className="btn" onClick={onSelectAll} disabled={working || allSelected} title="Alle markieren">
+          <SquareCheck size={16} />
+          <span className="hide-mobile">Alle markieren</span>
+        </button>
+        <button type="button" className="btn" onClick={() => setBatchDialog(true)} disabled={working} title="Bildeinstellung und Texterkennung auf die Auswahl anwenden">
+          <Wand size={16} />
+          <span className="hide-mobile">Stapelverarbeitung</span>
+        </button>
         <button type="button" className="btn" onClick={stack} disabled={working || documentIds.length === 0}>
           <Layers size={16} />
           <span className="hide-mobile">Stapeln</span>
@@ -333,6 +347,8 @@ export function SelectionBar({ items, onClear, onDone }: SelectionBarProps) {
         onAdd={(targets) => fileFolders(targets, false)}
         onClose={() => setFolderDialog(false)}
       />
+
+      <BatchDialog open={batchDialog} items={items} onClose={() => setBatchDialog(false)} onDone={onDone} />
 
       <ConfirmDialog
         open={confirmDelete}

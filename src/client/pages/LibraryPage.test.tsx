@@ -78,6 +78,83 @@ describe("LibraryPage", () => {
     expect(screen.queryByRole("toolbar")).toBeNull();
   });
 
+  test("marks all items once one is selected", async () => {
+    const items = [docItem(makeDocument({ title: "Eins" })), docItem(makeDocument({ title: "Zwei" })), stackItem(makeStack({ title: "Drei" }))];
+    fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => items });
+    await renderApp(<LibraryPage />);
+
+    fireEvent.click(screen.getByLabelText("Eins auswählen"));
+    fireEvent.click(screen.getByRole("button", { name: /Alle markieren/ }));
+    expect(screen.getByText("3 ausgewählt")).toBeTruthy();
+    expect((screen.getByRole("button", { name: /Alle markieren/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  test("batch processing applies the preset to images and recognizes the text of images and PDFs", async () => {
+    const photo = makeDocument({ title: "Foto" });
+    const pdf = makeDocument({ title: "Brief", kind: "pdf" });
+    const note = makeDocument({ title: "Notiz", kind: "file" });
+    const page = makeDocument({ id: 50, title: "Seite" });
+    const stack = makeStack({ id: 8, title: "Mappe", documentIds: [50] });
+    const settings = { ...photo.editSettings, colorMode: "bw" };
+    fetchMock = mockFetch({
+      "GET /api/folders": () => [],
+      "GET /api/library": () => [docItem(photo), docItem(pdf), docItem(note), stackItem(stack)],
+      "GET /api/presets": () => [{ id: 7, name: "OCR Optimiert", steps: { autoBw: true }, createdAt: "" }],
+      "GET /api/stacks/8": () => ({ ...stack, documents: [page] }),
+      [`POST /api/documents/${photo.id}/apply-preset`]: () => ({ editSettings: settings }),
+      "POST /api/documents/50/apply-preset": () => ({ editSettings: settings }),
+      [`PATCH /api/documents/${photo.id}`]: () => ({ ...photo, editSettings: settings }),
+      "PATCH /api/documents/50": () => ({ ...page, editSettings: settings }),
+      [`POST /api/documents/${photo.id}/ocr`]: () => photo,
+      [`POST /api/documents/${pdf.id}/ocr`]: () => pdf,
+      "POST /api/documents/50/ocr": () => page,
+    });
+    await renderApp(<LibraryPage />);
+
+    fireEvent.click(screen.getByLabelText("Foto auswählen"));
+    fireEvent.click(screen.getByRole("button", { name: /Alle markieren/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Stapelverarbeitung/ }));
+    fireEvent.change(screen.getByLabelText("Bildeinstellung"), { target: { value: "7" } });
+    fireEvent.change(screen.getByLabelText("Sprache"), { target: { value: "fra" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Alle Textteile erkennen/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Anwenden" }));
+
+    await waitFor(() => expect(screen.getByText("4 Dokumente verarbeitet")).toBeTruthy());
+    const posts = fetchMock.calls.filter((c) => c.method !== "GET").map((c) => [c.method, c.path, c.body]);
+    expect(posts).toEqual([
+      ["POST", `/api/documents/${photo.id}/apply-preset`, { presetId: 7 }],
+      ["PATCH", `/api/documents/${photo.id}`, { editSettings: settings }],
+      ["POST", `/api/documents/${photo.id}/ocr`, { allText: true, languages: ["fra"] }],
+      ["POST", `/api/documents/${pdf.id}/ocr`, { allText: true, languages: ["fra"] }],
+      ["POST", "/api/documents/50/apply-preset", { presetId: 7 }],
+      ["PATCH", "/api/documents/50", { editSettings: settings }],
+      ["POST", "/api/documents/50/ocr", { allText: true, languages: ["fra"] }],
+    ]);
+    expect(screen.queryByRole("toolbar")).toBeNull();
+  });
+
+  test("batch processing recognizes text with the default languages and needs something to do", async () => {
+    const photo = makeDocument({ title: "Foto" });
+    fetchMock = mockFetch({
+      "GET /api/folders": () => [],
+      "GET /api/library": () => [docItem(photo)],
+      [`POST /api/documents/${photo.id}/ocr`]: () => photo,
+    });
+    await renderApp(<LibraryPage />);
+    fireEvent.click(screen.getByLabelText("Foto auswählen"));
+    fireEvent.click(screen.getByRole("button", { name: /Stapelverarbeitung/ }));
+
+    const apply = screen.getByRole("button", { name: "Anwenden" }) as HTMLButtonElement;
+    fireEvent.click(screen.getByRole("checkbox", { name: /Text erkennen/ }));
+    expect(apply.disabled).toBe(true);
+    expect((screen.getByLabelText("Sprache") as HTMLSelectElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("checkbox", { name: /Text erkennen/ }));
+    fireEvent.click(apply);
+
+    await waitFor(() => expect(screen.getByText("1 Dokument verarbeitet")).toBeTruthy());
+    expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toEqual({ allText: false, languages: null });
+  });
+
   const folders = () => [folder(1, "privat"), folder(2, "wichtig"), folder(3, "wichtig/2026")];
   const patches = () => fetchMock.calls.filter((c) => c.method === "PATCH").map((c) => [c.path, c.body]);
 

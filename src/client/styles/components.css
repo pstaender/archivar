@@ -838,3 +838,7 @@
     margin-bottom: 0;
   }
 }
+
+.settings--compact {
+  min-height: 0;
+}

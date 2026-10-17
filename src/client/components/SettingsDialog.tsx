@@ -1,5 +1,5 @@
 import { Loader } from "../icons";
-import { type ReactNode, useEffect, useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { describePreset } from "../../shared/presets";
 import { DEFAULT_USER_SETTINGS, type PdfImageQuality, type UserSettings } from "../../shared/settings";
 import { usePresets } from "../hooks/presets";
@@ -7,6 +7,7 @@ import { useSettings } from "../hooks/settings";
 import { useToast } from "../hooks/toast";
 import { Dialog } from "./Dialog";
 import { FolderPicker } from "./FolderPicker";
+import { Switch } from "./Switch";
 
 type Tab = "sizes" | "import";
 
@@ -58,25 +59,6 @@ function ChoiceGroup<T extends string>({ legend, name, choices, value, disabled,
         </label>
       ))}
     </fieldset>
-  );
-}
-
-function Switch({ checked, disabled, onChange, children, hint }: {
-  checked: boolean;
-  disabled?: boolean;
-  onChange: (checked: boolean) => void;
-  children: ReactNode;
-  hint: string;
-}) {
-  return (
-    <label className="switch switch--described">
-      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
-      <span className="switch__track" aria-hidden />
-      <span className="choice__text">
-        <span className="choice__label">{children}</span>
-        <span className="choice__description">{hint}</span>
-      </span>
-    </label>
   );
 }
 
