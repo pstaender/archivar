@@ -10,8 +10,9 @@ afterEach(() => {
   localStorage.clear();
 });
 
-function mockSettings(stored = {}, presets: unknown[] = []) {
+function mockSettings(stored = {}, presets: unknown[] = [], routes: Parameters<typeof mockFetch>[0] = {}) {
   return mockFetch({
+    ...routes,
     "GET /api/presets": () => presets,
     "GET /api/folders": () => [],
     "GET /api/config": () => ({ dewarpAvailable: true, convertibleImageTypes: [] }),
@@ -30,7 +31,7 @@ describe("SettingsDialog", () => {
     const onClose = mock();
     await renderApp(<SettingsDialog open onClose={onClose} />);
 
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import"]);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import", "API"]);
     expect(radio(/^Original.*voller Auflösung/).checked).toBe(true);
     expect(screen.getByText("Standard")).toBeTruthy();
     fireEvent.click(radio(/^150 DPI/));
@@ -95,5 +96,28 @@ describe("SettingsDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(fetchMock.calls.find((c) => c.method === "PATCH")?.body).toMatchObject({ importPresetId: 4, importFolders: ["eingang/2026"] });
+  });
+
+  test("creates API tokens, shows the new one once and deletes them", async () => {
+    const existing = { id: 1, name: "Alt", prefix: "arch_abcdef", createdAt: "2026-10-01T10:00:00.000Z", lastUsedAt: null };
+    fetchMock = mockSettings({}, [], {
+      "GET /api/tokens": () => [existing],
+      "POST /api/tokens": (_url, init) => ({ id: 2, name: JSON.parse(String(init.body)).name, prefix: "arch_xyz123", token: "arch_xyz123secret", createdAt: "2026-10-17T10:00:00.000Z", lastUsedAt: null }),
+      "DELETE /api/tokens/1": () => undefined,
+    });
+    await renderApp(<SettingsDialog open onClose={() => {}} />);
+    tab("API");
+    await screen.findByText("Alt");
+    expect(screen.getByText("noch nicht benutzt", { exact: false })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Neuer Token", { selector: "input:not([readonly])" }), { target: { value: "Scanner" } });
+    fireEvent.click(screen.getByRole("button", { name: "Erstellen" }));
+    const value = (await screen.findByDisplayValue("arch_xyz123secret")) as HTMLInputElement;
+    expect(value.readOnly).toBe(true);
+    expect(screen.getByText("Scanner")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Token „Alt“ löschen" }));
+    await waitFor(() => expect(screen.queryByText("Alt") === null).toBe(true));
+    expect(fetchMock.calls.filter((c) => c.method === "POST" || c.method === "DELETE").map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/tokens", "DELETE /api/tokens/1"]);
   });
 });

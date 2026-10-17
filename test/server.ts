@@ -93,7 +93,10 @@ export interface TestServer {
   close(): Promise<void>;
 }
 
-/** `importPreset: false` (default) turns off the import preset every user starts with, so uploads stay untouched. */
+/**
+ * `importPreset: false` (default) turns off the import preset every user starts with, so uploads stay untouched. OCR on
+ * upload is off too, so uploads without an `ocr` field skip it.
+ */
 export async function startTestServer({ ocrPageTimeoutMs, importPreset = false }: { ocrPageTimeoutMs?: number; importPreset?: boolean } = {}): Promise<TestServer> {
   const dir = await mkdtemp(join(tmpdir(), "archivar-test-"));
   const ocr = new FakeOcrEngine();
@@ -107,7 +110,7 @@ export async function startTestServer({ ocrPageTimeoutMs, importPreset = false }
     imageConverter: converter,
     ocrPageTimeoutMs,
   });
-  if (!importPreset) ctx.users.updateSettings(ctx.users.findByName("default")!.id, { importPresetId: null });
+  ctx.users.updateSettings(ctx.users.findByName("default")!.id, importPreset ? { autoOcr: false } : { autoOcr: false, importPresetId: null });
   const server = Bun.serve({ port: 0, routes: createApiRoutes(ctx) });
   const url = server.url.toString().replace(/\/$/, "");
   return {

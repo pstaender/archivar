@@ -2,6 +2,7 @@ import { PREVIEW_SIZE } from "../shared/preview";
 import type { Job, JobCreate } from "../shared/jobs";
 import type { ImagePreset, ImagePresetInput } from "../shared/presets";
 import type { UserSettings } from "../shared/settings";
+import type { ApiToken, CreatedApiToken } from "../shared/tokens";
 import type {
   AppConfig,
   ArchiveDocument,
@@ -159,6 +160,10 @@ export const api = {
   createPreset: (input: ImagePresetInput) => request<ImagePreset>("/api/presets", jsonBody("POST", input)),
   updatePreset: (id: number, input: ImagePresetInput) => request<ImagePreset>(`/api/presets/${id}`, jsonBody("PATCH", input)),
   deletePreset: (id: number) => request<void>(`/api/presets/${id}`, { method: "DELETE" }),
+
+  tokens: () => request<ApiToken[]>("/api/tokens"),
+  createToken: (name: string) => request<CreatedApiToken>("/api/tokens", jsonBody("POST", { name })),
+  deleteToken: (id: number) => request<void>(`/api/tokens/${id}`, { method: "DELETE" }),
 
   folders: () => request<Folder[]>("/api/folders"),
   createFolder: (path: string) => request<Folder>("/api/folders", jsonBody("POST", { path })),

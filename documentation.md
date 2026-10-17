@@ -61,7 +61,7 @@ Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install i
 | GET    | `/api/library?folder=&q=&sort=`     | Stacks and loose documents; `sort`: `updated` (default), `created-desc`, `created-asc`, `title-asc`, `title-desc`, `custom` |
 | PUT    | `/api/folders/order`                | Store the own order `{ folder, items: [{ type, id }] }` of a folder |
 | GET    | `/api/documents?folder=&q=&stackId=`| Documents                                     |
-| POST   | `/api/documents`                    | Upload (`multipart`: `files[]`, `folders`, `stackId`, `ocr`) |
+| POST   | `/api/documents`                    | Upload (`multipart`: `files[]`, `folders`, `stackId`, `ocr`, `ocrAllText`; left-out OCR fields follow the user's settings) |
 | GET    | `/api/documents/:id`                | Document                                      |
 | PATCH  | `/api/documents/:id`                | Update `title`, `editSettings`, `ocrText`, `folders` |
 | DELETE | `/api/documents/:id`                | Delete document and files                     |
@@ -84,6 +84,27 @@ Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install i
 | POST   | `/api/folders`                      | Create folder                                 |
 | PATCH  | `/api/folders/:id`                  | Rename (incl. sub-folders, merges on conflict)|
 | DELETE | `/api/folders/:id`                  | Delete folder and sub-folders                 |
+| GET    | `/api/tokens`                       | API tokens (name, prefix, created, last used) |
+| POST   | `/api/tokens`                       | Create `{ name }`; the response contains the `token`, shown only once |
+| DELETE | `/api/tokens/:id`                   | Revoke a token                                |
+
+### Using the API from scripts
+
+Create a token under „Einstellungen" → „API" and send it as `Authorization: Bearer <token>`. Requests with an unknown or revoked token get `401`. Only a SHA-256 hash of each token is stored.
+There is no login yet, so requests without a token still act as the default user – do not expose archivar to untrusted networks.
+
+[`scripts/upload.sh`](scripts/upload.sh) uploads files with `curl`:
+
+```sh
+ARCHIVAR_TOKEN=arch_… scripts/upload.sh scan.jpg brief.pdf
+ARCHIVAR_URL=http://nas:3000 ARCHIVAR_FOLDER=wichtig/2026 ARCHIVAR_OCR=false scripts/upload.sh *.jpg
+```
+
+The same with plain `curl`:
+
+```sh
+curl -H "Authorization: Bearer $ARCHIVAR_TOKEN" -F "files=@scan.jpg" -F "folders=wichtig/2026" http://localhost:3000/api/documents
+```
 
 ## Tests
 

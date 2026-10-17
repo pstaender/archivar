@@ -3,6 +3,7 @@ import { createImage, Jimp } from "../shared/image/jimp";
 import { PREVIEW_SIZE } from "../shared/preview";
 import type { Job } from "../shared/jobs";
 import type { ImagePreset } from "../shared/presets";
+import type { ApiToken, CreatedApiToken } from "../shared/tokens";
 import type { ArchiveDocument, EditSettings, Folder, LibraryItem, StackWithDocuments, UploadedDocument } from "../shared/types";
 import { getDocumentProxy } from "unpdf";
 import { makePdf } from "../../test/pdf";
@@ -503,12 +504,12 @@ describe("settings", () => {
   const patchSettings = async (body: unknown) => (await patch("/api/settings", body)).json();
 
   test("stores the user's settings and ignores unknown values", async () => {
-    const defaults = { autoOcr: true, ocrAllText: false, pdfImageQuality: "300", importPresetId: null, importFolders: [] };
+    const defaults = { autoOcr: false, ocrAllText: false, pdfImageQuality: "300", importPresetId: null, importFolders: [] };
     expect(await (await server.api("/api/settings")).json()).toEqual(defaults);
-    expect(await patchSettings({ autoOcr: false, uploadEnhancement: "grayscale" })).toEqual({ ...defaults, autoOcr: false });
-    expect(await patchSettings({ pdfImageQuality: "72", ocrAllText: "ja", importPresetId: -3 })).toEqual({ ...defaults, autoOcr: false });
+    expect(await patchSettings({ autoOcr: true, uploadEnhancement: "grayscale" })).toEqual({ ...defaults, autoOcr: true });
+    expect(await patchSettings({ pdfImageQuality: "72", ocrAllText: "ja", importPresetId: -3 })).toEqual({ ...defaults, autoOcr: true });
     expect(await patchSettings({ pdfImageQuality: "original", ocrAllText: true })).toMatchObject({ pdfImageQuality: "original", ocrAllText: true });
-    expect(await (await server.api("/api/settings")).json()).toEqual({ ...defaults, autoOcr: false, pdfImageQuality: "original", ocrAllText: true });
+    expect(await (await server.api("/api/settings")).json()).toEqual({ ...defaults, autoOcr: true, pdfImageQuality: "original", ocrAllText: true });
   });
 
   test("every user starts with black and white, auto levels and rotation as import preset, also without OCR", async () => {
@@ -1055,4 +1056,46 @@ test("unknown API routes return JSON 404", async () => {
   const res = await server.api("/api/nope");
   expect(res.status).toBe(404);
   expect(await res.json()).toEqual({ error: "Not found" });
+});
+
+describe("API tokens", () => {
+  const createToken = async (name = "Scanner") => {
+    const res = await post("/api/tokens", { name });
+    expect(res.status).toBe(201);
+    return (await res.json()) as CreatedApiToken;
+  };
+
+  test("creates a token that is shown once and listed without its secret", async () => {
+    const created = await createToken();
+    expect(created.token).toStartWith(created.prefix);
+    expect(created.token.length).toBeGreaterThan(40);
+    const list = (await (await server.api("/api/tokens")).json()) as ApiToken[];
+    expect(list).toEqual([{ id: created.id, name: "Scanner", prefix: created.prefix, createdAt: created.createdAt, lastUsedAt: null }]);
+    expect(JSON.stringify(list)).not.toContain(created.token);
+    expect((await post("/api/tokens", { name: " " })).status).toBe(400);
+  });
+
+  test("authenticates requests with a bearer token and records its use", async () => {
+    const { id, token } = await createToken();
+    const form = uploadForm([{ name: "scan.jpg", data: await makeJpeg(), type: "image/jpeg" }]);
+    const res = await server.api("/api/documents", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form });
+    expect(res.status).toBe(201);
+    const me = await (await server.api("/api/me", { headers: { Authorization: `Bearer ${token}` } })).json();
+    expect(me).toMatchObject({ name: "default" });
+    const [listed] = (await (await server.api("/api/tokens")).json()) as ApiToken[];
+    expect(listed!.lastUsedAt).not.toBeNull();
+
+    expect((await server.api(`/api/tokens/${id}`, { method: "DELETE" })).status).toBe(204);
+    const rejected = await server.api("/api/library", { headers: { Authorization: `Bearer ${token}` } });
+    expect(rejected.status).toBe(401);
+    expect((await server.api("/api/library", { headers: { Authorization: "Bearer nope" } })).status).toBe(401);
+  });
+
+  test("uploads without OCR fields follow the user's settings", async () => {
+    await patch("/api/settings", { autoOcr: true });
+    const [doc] = await upload([{ name: "scan.jpg", data: await makeJpeg(), type: "image/jpeg" }]);
+    expect(doc!.ocrStatus).toBe("pending");
+    const [explicit] = await upload([{ name: "scan.jpg", data: await makeJpeg(), type: "image/jpeg" }], { ocr: "false" });
+    expect(explicit!.ocrStatus).toBe("none");
+  });
 });

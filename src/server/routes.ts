@@ -20,6 +20,11 @@ function parseFolderList(value: FormDataEntryValue | null): string[] {
   }
 }
 
+/** Scripts may leave a switch out; it then follows the user's settings. */
+function formFlag(value: FormDataEntryValue | null, fallback: boolean): boolean {
+  return typeof value === "string" ? value === "true" : fallback;
+}
+
 function parseSort(value: string | null): LibrarySort | undefined {
   if (value === null) return undefined;
   if (!LIBRARY_SORTS.includes(value as LibrarySort)) throw new HttpError(400, "Unknown sort");
@@ -117,8 +122,8 @@ export function createApiRoutes(ctx: AppContext) {
         const docs = await archive.upload(userId(req), files, {
           folders: [...new Set([...parseFolderList(form.get("folders")), ...settings.importFolders])],
           stackId: typeof stackId === "string" && stackId ? parseId(stackId) : undefined,
-          runOcr: form.get("ocr") === "true",
-          ocrAllText: form.get("ocrAllText") === "true",
+          runOcr: formFlag(form.get("ocr"), settings.autoOcr),
+          ocrAllText: formFlag(form.get("ocrAllText"), settings.ocrAllText),
           preset: preset?.steps,
         }).catch((error: unknown) => {
           if (tracked) ctx.jobs.updateItem(tracked.id, { status: "failed", error: error instanceof Error ? error.message : String(error) });
@@ -267,6 +272,23 @@ export function createApiRoutes(ctx: AppContext) {
       POST: handle(async (req: Req) => {
         const body = await readJson<{ documentIds: number[] }>(req);
         return json(archive.addToStack(userId(req), parseId(req.params.id), body.documentIds));
+      }),
+    },
+
+    "/api/tokens": {
+      GET: handle((req: Req) => json(ctx.tokens.list(userId(req)))),
+      POST: handle(async (req: Req) => {
+        const body = await readJson<{ name?: unknown }>(req);
+        const name = typeof body.name === "string" ? body.name.trim().slice(0, 100) : "";
+        if (!name) throw new HttpError(400, "Name required");
+        return json(ctx.tokens.create(userId(req), name), 201);
+      }),
+    },
+
+    "/api/tokens/:id": {
+      DELETE: handle((req: Req) => {
+        if (!ctx.tokens.delete(userId(req), parseId(req.params.id))) throw new HttpError(404, "Token not found");
+        return noContent();
       }),
     },
 

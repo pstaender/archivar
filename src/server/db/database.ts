@@ -121,6 +121,18 @@ const migrations: string[] = [
   CREATE INDEX documents_sha256 ON documents(user_id, sha256);
   `,
   `ALTER TABLE job_items ADD COLUMN note TEXT;`,
+  `
+  CREATE TABLE api_tokens (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    prefix TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    last_used_at TEXT
+  );
+  CREATE INDEX api_tokens_user ON api_tokens(user_id, id);
+  `,
 ];
 
 export function migrate(db: Database): void {

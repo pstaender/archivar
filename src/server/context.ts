@@ -6,6 +6,7 @@ import { FolderRepository } from "./db/folders";
 import { JobRepository } from "./db/jobs";
 import { PresetRepository } from "./db/presets";
 import { StackRepository } from "./db/stacks";
+import { TokenRepository } from "./db/tokens";
 import { UserRepository } from "./db/users";
 import { HttpError } from "./http";
 import { ArchiveService } from "./services/archive";
@@ -25,6 +26,7 @@ export interface AppContext {
   stacks: StackRepository;
   presets: PresetRepository;
   jobs: JobRepository;
+  tokens: TokenRepository;
   jobQueue: JobQueue;
   ocr: OcrQueue;
   dewarp: DewarpEngine;
@@ -52,18 +54,26 @@ export function createContext(options: ContextOptions): AppContext {
   const stacks = new StackRepository(db, folders);
   const presets = new PresetRepository(db);
   const jobs = new JobRepository(db);
+  const tokens = new TokenRepository(db);
   const imaging = new ImagingService(storage, options.imageConverter ?? null);
   const ocr = new OcrQueue(documents, imaging, options.ocrEngine, options.ocrPageTimeoutMs);
   const dewarp = options.dewarpEngine;
   const archive = new ArchiveService(documents, stacks, folders, storage, imaging, ocr, dewarp, options.ocrEngine);
   const jobQueue = new JobQueue(jobs, archive);
 
-  // Authentication is not implemented yet: every request acts as the default user.
-  const currentUser = (_req: Request): User => {
+  // There is no login yet: requests without a bearer token act as the default user.
+  const currentUser = (req: Request): User => {
+    const bearer = req.headers.get("Authorization")?.match(/^Bearer\s+(\S+)$/i)?.[1];
+    if (bearer) {
+      const userId = tokens.authenticate(bearer);
+      const user = userId === null ? null : users.find(userId);
+      if (!user) throw new HttpError(401, "Invalid API token");
+      return user;
+    }
     const user = users.findByName(DEFAULT_USER_NAME);
     if (!user) throw new HttpError(500, "Default user missing");
     return user;
   };
 
-  return { db, storage, users, folders, documents, stacks, presets, jobs, jobQueue, ocr, ocrEngine: options.ocrEngine, dewarp, imaging, archive, currentUser };
+  return { db, storage, users, folders, documents, stacks, presets, jobs, tokens, jobQueue, ocr, ocrEngine: options.ocrEngine, dewarp, imaging, archive, currentUser };
 }

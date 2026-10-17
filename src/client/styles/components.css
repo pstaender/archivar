@@ -842,3 +842,41 @@
 .settings--compact {
   min-height: 0;
 }
+
+.token-form {
+  display: flex;
+  gap: var(--space-2);
+
+  & .input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.token-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.token-list {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.token-list__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+}
+
+.token-list__text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}

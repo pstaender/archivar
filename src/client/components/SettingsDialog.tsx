@@ -5,15 +5,17 @@ import { DEFAULT_USER_SETTINGS, type PdfImageQuality, type UserSettings } from "
 import { usePresets } from "../hooks/presets";
 import { useSettings } from "../hooks/settings";
 import { useToast } from "../hooks/toast";
+import { ApiTokens } from "./ApiTokens";
 import { Dialog } from "./Dialog";
 import { FolderPicker } from "./FolderPicker";
 import { Switch } from "./Switch";
 
-type Tab = "sizes" | "import";
+type Tab = "sizes" | "import" | "api";
 
 const TABS: { tab: Tab; label: string }[] = [
   { tab: "sizes", label: "Bildgrößen" },
   { tab: "import", label: "Import" },
+  { tab: "api", label: "API" },
 ];
 
 interface Choice<T extends string> {
@@ -168,6 +170,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               </div>
             </>
           )}
+          {tab === "api" && <ApiTokens />}
         </div>
       )}
     </Dialog>
