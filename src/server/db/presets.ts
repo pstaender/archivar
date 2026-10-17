@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { type ImagePreset, normalizePresetSteps, type PresetSteps } from "../../shared/presets";
+import { DEFAULT_IMPORT_PRESET, describePreset, type ImagePreset, normalizePresetSteps, type PresetSteps } from "../../shared/presets";
 
 interface PresetRow {
   id: number;
@@ -48,4 +48,45 @@ export class PresetRepository {
   delete(userId: number, id: number): boolean {
     return this.db.query("DELETE FROM image_presets WHERE user_id = ? AND id = ?").run(userId, id).changes > 0;
   }
+}
+
+/**
+ * Image preparation on import used to be a fixed choice tied to OCR (`uploadEnhancement`, `autoDewarp`). It is now an
+ * import preset, so every user gets the default one once, and older settings become a preset with the same effect.
+ */
+function legacyImportSteps(stored: Record<string, unknown>): PresetSteps | null {
+  if (stored.autoOcr === false) return null;
+  const steps: PresetSteps = {};
+  switch (stored.uploadEnhancement ?? "bw") {
+    case "bw":
+      Object.assign(steps, DEFAULT_IMPORT_PRESET.steps);
+      break;
+    case "grayscale":
+      Object.assign(steps, { autoRotate: true, colorMode: "grayscale", autoLevels: true });
+      break;
+    case "color":
+      steps.autoRotate = true;
+      break;
+  }
+  if (stored.autoDewarp === true) steps.autoDewarp = true;
+  return Object.keys(steps).length ? steps : null;
+}
+
+export function seedImportPresets(db: Database): void {
+  const users = db.query("SELECT id, settings FROM users WHERE import_preset_seeded = 0").all() as { id: number; settings: string }[];
+  if (users.length === 0) return;
+  const presets = new PresetRepository(db);
+  db.transaction(() => {
+    for (const user of users) {
+      const stored = JSON.parse(user.settings) as Record<string, unknown>;
+      const fresh = Object.keys(stored).length === 0;
+      const defaultPreset = presets.create(user.id, DEFAULT_IMPORT_PRESET.name, DEFAULT_IMPORT_PRESET.steps);
+      const legacy = fresh ? DEFAULT_IMPORT_PRESET.steps : legacyImportSteps(stored);
+      let importPresetId: number | null = null;
+      if (legacy && JSON.stringify(normalizePresetSteps(legacy)) === JSON.stringify(defaultPreset.steps)) importPresetId = defaultPreset.id;
+      else if (legacy) importPresetId = presets.create(user.id, describePreset(legacy), normalizePresetSteps(legacy)).id;
+      const { uploadEnhancement: _, autoDewarp: __, ...kept } = stored;
+      db.query("UPDATE users SET settings = ?, import_preset_seeded = 1 WHERE id = ?").run(JSON.stringify({ ...kept, importPresetId }), user.id);
+    }
+  })();
 }

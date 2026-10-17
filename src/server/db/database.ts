@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import { seedImportPresets } from "./presets";
 
 export const DEFAULT_USER_NAME = "default";
 
@@ -90,6 +91,7 @@ const migrations: string[] = [
   );
   CREATE INDEX image_presets_user ON image_presets(user_id);
   `,
+  `ALTER TABLE users ADD COLUMN import_preset_seeded INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 export function migrate(db: Database): void {
@@ -108,5 +110,6 @@ export function openDatabase(path: string): Database {
   db.exec("PRAGMA foreign_keys = ON");
   migrate(db);
   db.query("INSERT OR IGNORE INTO users (name) VALUES (?)").run(DEFAULT_USER_NAME);
+  seedImportPresets(db);
   return db;
 }

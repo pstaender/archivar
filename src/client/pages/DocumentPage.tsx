@@ -33,10 +33,10 @@ type Tab = "edit" | "text" | "details";
 
 const OCR_POLL_INTERVAL = 2000;
 
-const bwKey = (s: EditSettings) => JSON.stringify([s.rotation, s.dewarp, s.corners, s.denoise]);
+const bwKey = (s: EditSettings) => JSON.stringify([s.rotation, s.dewarp, s.corners, s.denoise, s.autoLevels]);
 
 const isBwVariant = (s: EditSettings, v: BwVariant) =>
-  s.colorMode === "bw" && !s.autoLevels && s.brightness === v.brightness && s.contrast === v.contrast && s.bwThreshold === v.bwThreshold;
+  s.colorMode === "bw" && s.brightness === v.brightness && s.contrast === v.contrast && s.bwThreshold === v.bwThreshold;
 
 export function autoBwState(draft: EditSettings, cache: { key: string; variants: BwVariant[] } | null): AutoBwState | null {
   if (!cache || cache.key !== bwKey(draft)) return null;
@@ -204,7 +204,7 @@ export function DocumentPage() {
   const bwState = autoBwState(draft, bwCache);
   const applyBw = (variant: BwVariant) => {
     setAutoValues((current) => ({ ...current, bw: variant }));
-    setDraft((current) => ({ ...current, ...variant, colorMode: "bw", autoLevels: false }));
+    setDraft((current) => ({ ...current, ...variant, colorMode: "bw" }));
   };
 
   const presetCandidates = presetStepsFromSettings(draft, {

@@ -41,14 +41,6 @@ describe("api client", () => {
     xhr.restore();
   });
 
-  test("asks for automatic dewarping only when enabled", async () => {
-    const xhr = mockXhr();
-    void api.upload([new File(["a"], "a.jpg")], { ocr: true, autoDewarp: true });
-    expect(xhr.uploads[0]!.body.get("dewarp")).toBe("true");
-    xhr.uploads[0]!.respond(201, []);
-    xhr.restore();
-  });
-
   test("rejects failed uploads with the server message", async () => {
     const xhr = mockXhr();
     const result = api.upload([new File(["a"], "a.jpg")]).catch((e) => e);

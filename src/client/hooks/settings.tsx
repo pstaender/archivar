@@ -3,11 +3,12 @@ import { DEFAULT_USER_SETTINGS, type UserSettings } from "../../shared/settings"
 import { api } from "../api";
 
 // The OCR switches used to be stored per browser; their values are moved to the server once.
-const LEGACY_FLAGS: Record<"autoOcr" | "ocrAllText" | "autoDewarp", string> = {
+const LEGACY_FLAGS: Record<"autoOcr" | "ocrAllText", string> = {
   autoOcr: "archivar.autoOcr",
   ocrAllText: "archivar.ocrAllText",
-  autoDewarp: "archivar.autoDewarp",
 };
+// Replaced by import presets.
+const OBSOLETE_KEYS = ["archivar.autoDewarp"];
 
 function takeLegacyFlags(): Partial<UserSettings> {
   const flags: Partial<UserSettings> = {};
@@ -22,7 +23,7 @@ function takeLegacyFlags(): Partial<UserSettings> {
 
 function forgetLegacyFlags() {
   try {
-    for (const key of Object.values(LEGACY_FLAGS)) localStorage.removeItem(key);
+    for (const key of [...Object.values(LEGACY_FLAGS), ...OBSOLETE_KEYS]) localStorage.removeItem(key);
   } catch {}
 }
 

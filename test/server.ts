@@ -93,7 +93,8 @@ export interface TestServer {
   close(): Promise<void>;
 }
 
-export async function startTestServer({ ocrPageTimeoutMs }: { ocrPageTimeoutMs?: number } = {}): Promise<TestServer> {
+/** `importPreset: false` (default) turns off the import preset every user starts with, so uploads stay untouched. */
+export async function startTestServer({ ocrPageTimeoutMs, importPreset = false }: { ocrPageTimeoutMs?: number; importPreset?: boolean } = {}): Promise<TestServer> {
   const dir = await mkdtemp(join(tmpdir(), "archivar-test-"));
   const ocr = new FakeOcrEngine();
   const dewarp = new FakeDewarpEngine();
@@ -106,6 +107,7 @@ export async function startTestServer({ ocrPageTimeoutMs }: { ocrPageTimeoutMs?:
     imageConverter: converter,
     ocrPageTimeoutMs,
   });
+  if (!importPreset) ctx.users.updateSettings(ctx.users.findByName("default")!.id, { importPresetId: null });
   const server = Bun.serve({ port: 0, routes: createApiRoutes(ctx) });
   const url = server.url.toString().replace(/\/$/, "");
   return {

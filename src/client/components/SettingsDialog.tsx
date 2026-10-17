@@ -1,19 +1,17 @@
 import { Loader } from "../icons";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { describePreset } from "../../shared/presets";
-import { DEFAULT_USER_SETTINGS, type PdfImageQuality, type UploadEnhancement, type UserSettings } from "../../shared/settings";
-import { useConfig } from "../hooks/config";
+import { DEFAULT_USER_SETTINGS, type PdfImageQuality, type UserSettings } from "../../shared/settings";
 import { usePresets } from "../hooks/presets";
 import { useSettings } from "../hooks/settings";
 import { useToast } from "../hooks/toast";
 import { Dialog } from "./Dialog";
 import { FolderPicker } from "./FolderPicker";
 
-type Tab = "sizes" | "editing" | "import";
+type Tab = "sizes" | "import";
 
 const TABS: { tab: Tab; label: string }[] = [
   { tab: "sizes", label: "Bildgrößen" },
-  { tab: "editing", label: "Bildbearbeitung" },
   { tab: "import", label: "Import" },
 ];
 
@@ -23,13 +21,6 @@ interface Choice<T extends string> {
   description: string;
 }
 
-const ENHANCEMENTS: Choice<UploadEnhancement>[] = [
-  { value: "bw", label: "Schwarzweiß", description: "Dreht das Bild und wählt Helligkeit, Kontrast und Schwelle automatisch – am besten für Text." },
-  { value: "grayscale", label: "Graustufen", description: "Dreht das Bild und wählt Helligkeit und Kontrast automatisch." },
-  { value: "color", label: "Auto-Rotation", description: "Das Bild wird richtig gedreht." },
-  { value: "original", label: "Original", description: "Lässt das Bild unverändert." },
-];
-
 const PDF_QUALITIES: Choice<PdfImageQuality>[] = [
   { value: "300", label: "300 DPI", description: "Für A4 verkleinert und komprimiert, gut zum Drucken. Eine Schwarzweiß-Seite hat etwa 150–200 KB." },
   { value: "150", label: "150 DPI", description: "Kleinere Dateien zum Lesen am Bildschirm oder für E-Mails." },
@@ -38,7 +29,7 @@ const PDF_QUALITIES: Choice<PdfImageQuality>[] = [
 
 function ChoiceGroup<T extends string>({ legend, name, choices, value, disabled, onChange }: {
   legend: string;
-  name: "uploadEnhancement" | "pdfImageQuality";
+  name: "pdfImageQuality";
   choices: Choice<T>[];
   value: T;
   disabled?: boolean;
@@ -91,7 +82,6 @@ function Switch({ checked, disabled, onChange, children, hint }: {
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
-  const config = useConfig();
   const { settings: stored, loaded, save } = useSettings();
   const { presets } = usePresets();
   const presetSelectId = useId();
@@ -119,12 +109,6 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   };
 
   const importPreset = presets.find((preset) => preset.id === draft.importPresetId);
-  const editingHint = importPreset ? (
-    <p className="muted small">Bei Imports wird stattdessen die Bildeinstellung „{importPreset.name}“ angewendet (siehe „Import“).</p>
-  ) : draft.autoOcr ? null : (
-    <p className="muted small">Gilt nur, wenn unter „Import“ „Text nach dem Upload erkennen“ eingeschaltet ist.</p>
-  );
-  const editingDisabled = !draft.autoOcr || importPreset !== undefined;
 
   return (
     <Dialog
@@ -165,29 +149,6 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               onChange={(value) => set("pdfImageQuality", value)}
             />
           )}
-          {tab === "editing" && (
-            <>
-              <ChoiceGroup
-                legend="Bildbearbeitung bei automatischer Texterkennung"
-                name="uploadEnhancement"
-                choices={ENHANCEMENTS}
-                value={draft.uploadEnhancement}
-                disabled={editingDisabled}
-                onChange={(value) => set("uploadEnhancement", value)}
-              />
-              {config.dewarpAvailable && (
-                <Switch
-                  checked={draft.autoDewarp}
-                  disabled={editingDisabled}
-                  onChange={(value) => set("autoDewarp", value)}
-                  hint="Glättet gewölbte Seiten in Fotos vor der Texterkennung."
-                >
-                  Automatisch entzerren
-                </Switch>
-              )}
-              {editingHint}
-            </>
-          )}
           {tab === "import" && (
             <>
               <Switch checked={draft.autoOcr} onChange={(value) => set("autoOcr", value)} hint="Erkennt den Text von Bildern und PDFs direkt beim Hochladen.">
@@ -206,7 +167,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                   value={draft.importPresetId ?? ""}
                   onChange={(e) => set("importPresetId", e.target.value ? Number(e.target.value) : null)}
                 >
-                  <option value="">Keine – Bildbearbeitung wie unter „Bildbearbeitung“</option>
+                  <option value="">Keine – Bilder bleiben unverändert</option>
                   {presets.map((preset) => (
                     <option key={preset.id} value={preset.id}>
                       {preset.name}
@@ -216,9 +177,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 <p className="muted small">
                   {importPreset
                     ? describePreset(importPreset.steps)
-                    : presets.length
-                      ? "Wird auf jedes hochgeladene Bild angewendet, auch ohne Texterkennung."
-                      : "Bildeinstellungen werden im Tab „Bearbeiten“ eines Bildes gespeichert."}
+                    : "Wird vor der Texterkennung auf jedes hochgeladene Bild angewendet. Bildeinstellungen werden im Tab „Bearbeiten“ eines Bildes gespeichert."}
                 </p>
               </div>
               <div className="settings__field">

@@ -102,11 +102,11 @@ export function distinctThresholds(candidates: number[]): number[] {
  * then one closer to the paper level (keeps faint lines) and one closer to the ink level (less noise).
  * Brightness/contrast stretch the luma range so that the variants differ only in their threshold.
  * Pages without distinct ink are not stretched, otherwise paper noise would turn into speckles.
+ * With `autoLevels` the analysis starts from the normalized image, as the pipeline normalizes before brightness/contrast.
  */
 export function autoBwVariants(source: JimpImage, settings: EditSettings): BwVariant[] {
   const prepared = applyEdits(scaleToFit(source.clone() as JimpImage, ANALYSIS_SIZE), {
     ...settings,
-    autoLevels: false,
     brightness: 0,
     contrast: 0,
     colorMode: "color",
@@ -126,19 +126,4 @@ export function autoBwVariants(source: JimpImage, settings: EditSettings): BwVar
   const ink = modeBetween(hist, 0, otsu);
   const thresholds = distinctThresholds([otsu, (otsu + paper) / 2, (otsu + ink) / 2]);
   return thresholds.map((bwThreshold) => ({ ...tone, bwThreshold }));
-}
-
-/** Brightness/contrast that stretch the luma range of the image after geometry and denoise (for grayscale). */
-export function autoTone(source: JimpImage, settings: EditSettings): Pick<BwVariant, "brightness" | "contrast"> {
-  const prepared = applyEdits(scaleToFit(source.clone() as JimpImage, ANALYSIS_SIZE), {
-    ...settings,
-    autoLevels: false,
-    brightness: 0,
-    contrast: 0,
-    colorMode: "grayscale",
-    saturation: 0,
-    hue: 0,
-  });
-  const hist = lumaHistogram(prepared);
-  return stretchTone(percentile(hist, STRETCH_CLIP), percentile(hist, 1 - STRETCH_CLIP));
 }

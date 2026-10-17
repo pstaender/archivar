@@ -1,13 +1,13 @@
 import { basename, extname } from "node:path";
 import { DEFAULT_EDIT_SETTINGS, isDefaultEditSettings, normalizeEditSettings } from "../../shared/editSettings";
-import { autoBwVariants, autoTone } from "../../shared/image/autoBw";
+import { autoBwVariants } from "../../shared/image/autoBw";
 import { detectDocument } from "../../shared/image/autoCrop";
 import type { JimpImage } from "../../shared/image/jimp";
 import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
 import { normalizeFolderPath } from "../../shared/folders";
 import { isOcrLanguage } from "../../shared/languages";
 import { applyFixedSteps, type PresetSteps } from "../../shared/presets";
-import type { PdfImageQuality, UploadEnhancement } from "../../shared/settings";
+import type { PdfImageQuality } from "../../shared/settings";
 import type {
   ArchiveDocument,
   BwVariant,
@@ -46,9 +46,6 @@ export interface UploadOptions {
   stackId?: number;
   runOcr?: boolean;
   ocrAllText?: boolean;
-  autoDewarp?: boolean;
-  /** How images are prepared before OCR (only with `runOcr` and without `preset`). */
-  enhancement?: UploadEnhancement;
   /** Image preset applied to every uploaded image. */
   preset?: PresetSteps;
 }
@@ -122,7 +119,6 @@ export class ArchiveService {
       });
       if (options.folders?.length) this.folders.setForDocument(userId, doc.id, options.folders);
       if (doc.kind === "image" && options.preset) doc = await this.applyPresetOnUpload(doc, options.preset);
-      else if (options.runOcr && doc.kind === "image") doc = await this.autoEnhance(doc, options.autoDewarp === true, options.enhancement ?? "bw");
       const size = await this.imaging.renderDerivatives(doc);
       if (size && !isDefaultEditSettings(doc.editSettings)) this.documents.update(userId, doc.id, size);
       doc = this.documents.get(userId, doc.id)!;
@@ -296,7 +292,7 @@ export class ArchiveService {
     settings = applyFixedSteps(settings, steps);
     if (steps.autoBw) {
       const [best] = autoBwVariants(original, settings);
-      if (best) settings = { ...settings, ...best, colorMode: "bw", autoLevels: false };
+      if (best) settings = { ...settings, ...best, colorMode: "bw" };
     }
     return normalizeEditSettings(settings);
   }
@@ -322,35 +318,6 @@ export class ArchiveService {
     const doc = this.getDocument(userId, id);
     if (doc.kind !== "image") throw new HttpError(400, "Only images can be edited");
     return this.imaging.renderJpeg(doc, normalizeEditSettings(settings, doc.editSettings));
-  }
-
-  private async autoEnhance(doc: StoredDocument, dewarp: boolean, enhancement: UploadEnhancement): Promise<StoredDocument> {
-    if (enhancement === "original" && !dewarp) return doc;
-    try {
-      const original = await this.imaging.loadOriginal(doc);
-      let settings = doc.editSettings;
-      if (enhancement !== "original") {
-        const rotation = await this.orientationOf(original).catch((error) => {
-          console.warn(`Orientation detection failed for document ${doc.id}:`, error);
-          return null;
-        });
-        if (rotation !== null) settings = { ...settings, rotation };
-      }
-      if (dewarp && this.dewarp.available()) {
-        const upright = settings.rotation === 0 ? original : (original.clone().rotate(-settings.rotation) as JimpImage);
-        settings = { ...settings, dewarp: toDewarpGrid(await this.dewarp.predict(upright.bitmap), settings.rotation) };
-      }
-      if (enhancement === "bw") {
-        const [best] = autoBwVariants(original, settings);
-        if (best) settings = { ...settings, ...best, colorMode: "bw" };
-      } else if (enhancement === "grayscale") {
-        settings = { ...settings, ...autoTone(original, settings), colorMode: "grayscale" };
-      }
-      return this.documents.update(doc.userId, doc.id, { editSettings: normalizeEditSettings(settings) }) ?? doc;
-    } catch (error) {
-      console.warn(`Automatic enhancement failed for document ${doc.id}:`, error);
-      return doc;
-    }
   }
 
   getStack(userId: number, id: number): Stack {

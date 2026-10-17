@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { DEFAULT_EDIT_SETTINGS } from "../editSettings";
-import type { Quad } from "../types";
+import type { EditSettings, Quad } from "../types";
 import {
   autoBwVariants,
   distinctThresholds,
@@ -70,12 +70,11 @@ describe("stretchTone", () => {
 });
 
 describe("autoBwVariants", () => {
-  test("first variant separates ink from paper", () => {
+  const wrongPixels = (settings: EditSettings) => {
     const { image, isInk } = scannedPage();
-    const variants = autoBwVariants(image, DEFAULT_EDIT_SETTINGS);
+    const variants = autoBwVariants(image, settings);
     expect(variants.length).toBeGreaterThanOrEqual(2);
-
-    const out = applyEdits(image, { ...DEFAULT_EDIT_SETTINGS, ...variants[0]!, colorMode: "bw" });
+    const out = applyEdits(image, { ...settings, ...variants[0]!, colorMode: "bw" });
     let wrong = 0;
     for (let y = 0; y < image.bitmap.height; y++) {
       for (let x = 0; x < image.bitmap.width; x++) {
@@ -83,7 +82,19 @@ describe("autoBwVariants", () => {
         if (black !== isInk(x, y)) wrong++;
       }
     }
-    expect(wrong / (image.bitmap.width * image.bitmap.height)).toBeLessThan(0.01);
+    return wrong / (image.bitmap.width * image.bitmap.height);
+  };
+
+  test("first variant separates ink from paper", () => {
+    expect(wrongPixels(DEFAULT_EDIT_SETTINGS)).toBeLessThan(0.01);
+  });
+
+  test("works out the tone after auto levels, which the pipeline applies first", () => {
+    const leveled = { ...DEFAULT_EDIT_SETTINGS, autoLevels: true };
+    expect(wrongPixels(leveled)).toBeLessThan(0.01);
+    const [plain] = autoBwVariants(scannedPage().image, DEFAULT_EDIT_SETTINGS);
+    const [afterLevels] = autoBwVariants(scannedPage().image, leveled);
+    expect(afterLevels!.contrast).toBeLessThan(plain!.contrast);
   });
 
   test("variants share the tone; the second is darker, the third lighter", () => {

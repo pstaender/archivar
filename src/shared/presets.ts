@@ -31,6 +31,12 @@ export interface ImagePreset {
   createdAt: string;
 }
 
+/** Created for every user and applied on import until they choose otherwise. */
+export const DEFAULT_IMPORT_PRESET: { name: string; steps: PresetSteps } = {
+  name: "SW + Auto-Tonwerte + automatisch drehen",
+  steps: { autoRotate: true, autoBw: true, autoLevels: true },
+};
+
 export interface ImagePresetInput {
   name?: string;
   steps?: PresetSteps;
@@ -58,7 +64,7 @@ export const AUTO_STEPS: PresetStep[] = ["autoRotate", "autoDewarp", "autoCrop",
 /** Steps an automatic step replaces, because it sets those values itself. */
 const REPLACED_BY: Partial<Record<PresetStep, PresetStep[]>> = {
   autoRotate: ["rotation"],
-  autoBw: ["colorMode", "brightness", "contrast", "bwThreshold", "autoLevels"],
+  autoBw: ["colorMode", "brightness", "contrast", "bwThreshold"],
 };
 
 const ROTATIONS: Rotation[] = [0, 90, 180, 270];
@@ -117,8 +123,8 @@ export function presetStepsFromSettings(settings: EditSettings, auto: AutoApplie
     if (settings.brightness !== d.brightness) steps.brightness = settings.brightness;
     if (settings.contrast !== d.contrast) steps.contrast = settings.contrast;
     if (settings.colorMode === "bw" && settings.bwThreshold !== d.bwThreshold) steps.bwThreshold = settings.bwThreshold;
-    if (settings.autoLevels) steps.autoLevels = true;
   }
+  if (settings.autoLevels) steps.autoLevels = true;
   if (settings.colorMode === "color") {
     if (settings.saturation !== d.saturation) steps.saturation = settings.saturation;
     if (settings.hue !== d.hue) steps.hue = settings.hue;
@@ -167,7 +173,7 @@ export function describeStep(steps: PresetSteps, step: PresetStep): string {
     case "bwThreshold":
       return `Schwelle ${steps.bwThreshold}`;
     case "autoLevels":
-      return steps.autoLevels ? "Tonwerte automatisch" : "Tonwerte manuell";
+      return steps.autoLevels ? "Auto-Tonwerte" : "Tonwerte manuell";
     case "denoise":
       return `Entrauschen: ${DENOISE_LABELS[steps.denoise!]}`;
   }

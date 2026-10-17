@@ -42,7 +42,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [version, setVersion] = useState(0);
-  const { autoOcr, ocrAllText, autoDewarp } = useSettings().settings;
+  const { autoOcr, ocrAllText } = useSettings().settings;
   const stats = useRef<UploadStats | null>(null);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
@@ -82,7 +82,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
           s.currentBytes = 0;
           publish();
           try {
-            const uploaded = await api.upload([file], { ocr: autoOcr, ocrAllText, autoDewarp: autoOcr && autoDewarp, ...options }, (loaded, total) => {
+            const uploaded = await api.upload([file], { ocr: autoOcr, ocrAllText, ...options }, (loaded, total) => {
               s.currentBytes = file.size * (loaded / total);
               publish();
             });
@@ -117,7 +117,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       queue.current = result.catch(() => undefined);
       return result;
     },
-    [autoOcr, ocrAllText, autoDewarp, convertibleImageTypes, toast, reloadFolders, publish],
+    [autoOcr, ocrAllText, convertibleImageTypes, toast, reloadFolders, publish],
   );
 
   const stackMatch = matchPath("/stacks/:id", location.pathname);

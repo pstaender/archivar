@@ -113,8 +113,6 @@ export function createApiRoutes(ctx: AppContext) {
           stackId: typeof stackId === "string" && stackId ? parseId(stackId) : undefined,
           runOcr: form.get("ocr") === "true",
           ocrAllText: form.get("ocrAllText") === "true",
-          autoDewarp: form.get("dewarp") === "true",
-          enhancement: settings.uploadEnhancement,
           preset: preset?.steps,
         });
         return json(docs, 201);

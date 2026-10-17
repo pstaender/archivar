@@ -25,20 +25,15 @@ const radio = (name: RegExp) => screen.getByRole("radio", { name }) as HTMLInput
 const checkbox = (name: RegExp) => screen.getByRole("checkbox", { name }) as HTMLInputElement;
 
 describe("SettingsDialog", () => {
-  test("shows image sizes, image editing and import on separate tabs and saves all of them", async () => {
+  test("shows image sizes and import on separate tabs and saves both", async () => {
     fetchMock = mockSettings({ pdfImageQuality: "original" });
     const onClose = mock();
     await renderApp(<SettingsDialog open onClose={onClose} />);
 
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Bildbearbeitung", "Import"]);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import"]);
     expect(radio(/^Original.*voller Auflösung/).checked).toBe(true);
     expect(screen.getByText("Standard")).toBeTruthy();
     fireEvent.click(radio(/^150 DPI/));
-
-    tab("Bildbearbeitung");
-    expect(radio(/^Schwarzweiß/).checked).toBe(true);
-    fireEvent.click(radio(/^Graustufen/));
-    fireEvent.click(checkbox(/Automatisch entzerren/));
 
     tab("Import");
     expect(checkbox(/Text nach dem Upload erkennen/).checked).toBe(true);
@@ -49,33 +44,17 @@ describe("SettingsDialog", () => {
     expect(fetchMock.calls.find((c) => c.method === "PATCH")?.body).toEqual({
       ...DEFAULT_USER_SETTINGS,
       pdfImageQuality: "150",
-      uploadEnhancement: "grayscale",
-      autoDewarp: true,
       ocrAllText: true,
     });
     expect(screen.getByText("Einstellungen gespeichert")).toBeTruthy();
-  });
-
-  test("disables image editing while text is not recognized after uploading", async () => {
-    fetchMock = mockSettings({ autoOcr: false });
-    await renderApp(<SettingsDialog open onClose={mock()} />);
-    tab("Bildbearbeitung");
-    expect(radio(/^Auto-Rotation/).disabled).toBe(true);
-    expect(checkbox(/Automatisch entzerren/).disabled).toBe(true);
-    expect(screen.getByText(/Gilt nur, wenn unter „Import“/)).toBeTruthy();
-
-    tab("Import");
-    fireEvent.click(checkbox(/Text nach dem Upload erkennen/));
-    tab("Bildbearbeitung");
-    expect(radio(/^Auto-Rotation/).disabled).toBe(false);
   });
 
   test("closes without saving on Abbrechen", async () => {
     fetchMock = mockSettings();
     const onClose = mock();
     await renderApp(<SettingsDialog open onClose={onClose} />);
-    tab("Bildbearbeitung");
-    fireEvent.click(radio(/^Auto-Rotation/));
+    tab("Import");
+    fireEvent.click(checkbox(/Alle Textteile erkennen/));
     fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
     expect(onClose).toHaveBeenCalled();
     expect(fetchMock.calls.some((c) => c.method === "PATCH")).toBe(false);
@@ -93,21 +72,25 @@ describe("SettingsDialog", () => {
     expect(checkbox(/Alle Textteile erkennen/).checked).toBe(true);
   });
 
-  test("applies an image preset and adds folders on import", async () => {
-    const presets = [{ id: 4, name: "Beleg", steps: { autoDewarp: true, autoBw: true }, createdAt: "" }];
-    fetchMock = mockSettings({}, presets);
+  test("chooses the image preset applied on import, or none, and folders to add uploads to", async () => {
+    const presets = [
+      { id: 3, name: "SW + Auto-Tonwerte + automatisch drehen", steps: { autoRotate: true, autoBw: true, autoLevels: true }, createdAt: "" },
+      { id: 4, name: "Beleg", steps: { autoDewarp: true, autoBw: true }, createdAt: "" },
+    ];
+    fetchMock = mockSettings({ importPresetId: 3 }, presets);
     const onClose = mock();
     await renderApp(<SettingsDialog open onClose={onClose} />);
     tab("Import");
-    fireEvent.change(screen.getByLabelText("Bildeinstellung anwenden"), { target: { value: "4" } });
+    const select = screen.getByLabelText("Bildeinstellung anwenden") as HTMLSelectElement;
+    expect(select.value).toBe("3");
+    expect(screen.getByText("Automatisch drehen, Automatisch SW, Auto-Tonwerte")).toBeTruthy();
+    fireEvent.change(select, { target: { value: "" } });
+    expect(screen.getByText(/Wird vor der Texterkennung/)).toBeTruthy();
+    fireEvent.change(select, { target: { value: "4" } });
     expect(screen.getByText("Automatisch entzerren, Automatisch SW")).toBeTruthy();
     const folderInput = screen.getByLabelText("Zu Ordnern hinzufügen");
     fireEvent.change(folderInput, { target: { value: "eingang/ 2026 " } });
     fireEvent.keyDown(folderInput, { key: "Enter" });
-
-    tab("Bildbearbeitung");
-    expect(radio(/^Graustufen/).disabled).toBe(true);
-    expect(screen.getByText(/stattdessen die Bildeinstellung „Beleg“/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());

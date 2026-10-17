@@ -477,47 +477,31 @@ describe("settings", () => {
   const patchSettings = async (body: unknown) => (await patch("/api/settings", body)).json();
 
   test("stores the user's settings and ignores unknown values", async () => {
-    const defaults = { autoOcr: true, autoDewarp: false, ocrAllText: false, uploadEnhancement: "bw", pdfImageQuality: "300", importPresetId: null, importFolders: [] };
+    const defaults = { autoOcr: true, ocrAllText: false, pdfImageQuality: "300", importPresetId: null, importFolders: [] };
     expect(await (await server.api("/api/settings")).json()).toEqual(defaults);
-    expect(await patchSettings({ uploadEnhancement: "grayscale", autoOcr: false })).toEqual({ ...defaults, uploadEnhancement: "grayscale", autoOcr: false });
-    expect(await patchSettings({ pdfImageQuality: "72", uploadEnhancement: "sepia", ocrAllText: "ja" })).toEqual({
-      ...defaults,
-      uploadEnhancement: "grayscale",
-      autoOcr: false,
-    });
+    expect(await patchSettings({ autoOcr: false, uploadEnhancement: "grayscale" })).toEqual({ ...defaults, autoOcr: false });
+    expect(await patchSettings({ pdfImageQuality: "72", ocrAllText: "ja", importPresetId: -3 })).toEqual({ ...defaults, autoOcr: false });
     expect(await patchSettings({ pdfImageQuality: "original", ocrAllText: true })).toMatchObject({ pdfImageQuality: "original", ocrAllText: true });
-    expect(await (await server.api("/api/settings")).json()).toEqual({
-      ...defaults,
-      uploadEnhancement: "grayscale",
-      autoOcr: false,
-      pdfImageQuality: "original",
-      ocrAllText: true,
-    });
+    expect(await (await server.api("/api/settings")).json()).toEqual({ ...defaults, autoOcr: false, pdfImageQuality: "original", ocrAllText: true });
   });
 
-  test("prepares uploads with OCR as chosen in the settings", async () => {
+  test("every user starts with black and white, auto levels and rotation as import preset, also without OCR", async () => {
+    await server.close();
+    server = await startTestServer({ importPreset: true });
     server.ocr.orientation = { rotation: 90, confidence: 8 };
-    const contrasty = async (name: string) => {
-      const data = new Uint8ClampedArray(60 * 40 * 4);
-      for (let i = 0; i < data.length; i += 4) data.set(i % 32 < 16 ? [90, 90, 90, 255] : [170, 170, 170, 255], i);
-      const [doc] = await upload([{ name, data: new Uint8Array(await createImage(60, 40, data).getBuffer("image/jpeg")), type: "image/jpeg" }], { ocr: "true" });
-      return doc!.editSettings;
-    };
+    const [preset] = (await (await server.api("/api/presets")).json()) as ImagePreset[];
+    expect(preset).toMatchObject({ name: "SW + Auto-Tonwerte + automatisch drehen", steps: { autoRotate: true, autoBw: true, autoLevels: true } });
+    expect(await (await server.api("/api/settings")).json()).toMatchObject({ importPresetId: preset!.id });
 
-    await patchSettings({ uploadEnhancement: "grayscale" });
-    const gray = await contrasty("grau.jpg");
-    expect(gray).toMatchObject({ rotation: 90, colorMode: "grayscale" });
-    expect(gray.contrast).toBeGreaterThan(0);
-
-    await patchSettings({ uploadEnhancement: "color" });
-    expect(await contrasty("farbe.jpg")).toMatchObject({ rotation: 90, colorMode: "color", brightness: 0, contrast: 0 });
-
-    const detections = server.ocr.orientationInputs;
-    await patchSettings({ uploadEnhancement: "original" });
-    expect(await contrasty("original.jpg")).toMatchObject({ rotation: 0, colorMode: "color", brightness: 0, contrast: 0 });
-    expect(server.ocr.orientationInputs).toBe(detections);
+    const doc = await uploadImage();
+    expect(doc.editSettings).toMatchObject({ rotation: 90, colorMode: "bw", autoLevels: true });
     await server.ctx.ocr.idle();
-    expect(server.ocr.calls).toBe(3);
+    expect(server.ocr.calls).toBe(0);
+
+    await patchSettings({ importPresetId: null });
+    expect((await uploadImage("b.jpg", { ocr: "true" })).editSettings).toMatchObject({ rotation: 0, colorMode: "color" });
+    await server.ctx.ocr.idle();
+    expect(server.ocr.calls).toBe(1);
   });
 
   test("scales images in exported PDFs down to the chosen resolution", async () => {
@@ -632,22 +616,6 @@ describe("automatic rotation and cropping", () => {
     expect((await post(`/api/documents/${doc!.id}/orientation`, {})).status).toBe(400);
     expect((await post(`/api/documents/${doc!.id}/auto-crop`, {})).status).toBe(400);
   });
-
-  test("uploads with OCR are turned upright", async () => {
-    server.ocr.orientation = { rotation: 90, confidence: 8 };
-    const doc = await uploadImage("x.jpg", { ocr: "true", dewarp: "true" });
-    expect(doc.editSettings).toMatchObject({ rotation: 90, colorMode: "bw" });
-    expect(doc.editSettings.dewarp?.rotation).toBe(90);
-    expect(server.dewarp.inputs[0]).toMatchObject({ width: 48, height: 64 });
-    expect(doc).toMatchObject({ width: 48, height: 64 });
-  });
-
-  test("uploads without OCR are not rotated", async () => {
-    server.ocr.orientation = { rotation: 90, confidence: 8 };
-    const doc = await uploadImage();
-    expect(doc.editSettings.rotation).toBe(0);
-    expect(server.ocr.orientationInputs).toBe(0);
-  });
 });
 
 describe("automatic black and white", () => {
@@ -678,29 +646,8 @@ describe("automatic black and white", () => {
     expect(server.ctx.documents.getById(doc!.id)?.editSettings).toMatchObject({ rotation: 0, colorMode: "color" });
   });
 
-  test("uploads with OCR are turned black and white but not dewarped by default", async () => {
+  test("uploads without an import preset stay untouched, also with OCR", async () => {
     const doc = await uploadImage("x.jpg", { ocr: "true" });
-    expect(doc.editSettings).toMatchObject({ colorMode: "bw", dewarp: null });
-    expect(server.dewarp.inputs).toHaveLength(0);
-  });
-
-  test("uploads with OCR and dewarp are dewarped and turned black and white", async () => {
-    const doc = await uploadImage("x.jpg", { ocr: "true", dewarp: "true" });
-    expect(doc.editSettings.colorMode).toBe("bw");
-    expect(doc.editSettings.dewarp?.rows).toBe(45);
-    expect(server.dewarp.inputs).toHaveLength(1);
-    await server.ctx.ocr.idle();
-    expect(server.ocr.calls).toBe(1);
-  });
-
-  test("without a model uploads with OCR are only turned black and white", async () => {
-    server.dewarp.isAvailable = false;
-    const doc = await uploadImage("x.jpg", { ocr: "true", dewarp: "true" });
-    expect(doc.editSettings).toMatchObject({ colorMode: "bw", dewarp: null });
-  });
-
-  test("uploads without OCR stay untouched", async () => {
-    const doc = await uploadImage();
     expect(doc.editSettings.colorMode).toBe("color");
     expect(server.dewarp.inputs).toHaveLength(0);
   });
@@ -721,7 +668,7 @@ describe("image presets", () => {
     expect(preset).toMatchObject({ name: "Beleg", steps: { autoBw: true, denoise: 3 } });
     await createPreset({ name: "Aquarell", steps: { saturation: 20 } });
     const list = (await (await server.api("/api/presets")).json()) as ImagePreset[];
-    expect(list.map((p) => p.name)).toEqual(["Aquarell", "Beleg"]);
+    expect(list.map((p) => p.name)).toEqual(["Aquarell", "Beleg", "SW + Auto-Tonwerte + automatisch drehen"]);
 
     const res = await patch(`/api/presets/${preset.id}`, { name: "Kassenbon", steps: { brightness: 0.2 } });
     expect(await res.json()).toMatchObject({ name: "Kassenbon", steps: { brightness: 0.2 } });

@@ -89,7 +89,6 @@ export interface UploadOptions {
   stackId?: number;
   ocr?: boolean;
   ocrAllText?: boolean;
-  autoDewarp?: boolean;
 }
 
 export const api = {
@@ -134,7 +133,6 @@ export const api = {
     if (options.stackId !== undefined) form.append("stackId", String(options.stackId));
     if (options.ocr) form.append("ocr", "true");
     if (options.ocrAllText) form.append("ocrAllText", "true");
-    if (options.autoDewarp) form.append("dewarp", "true");
     return sendWithProgress<ArchiveDocument[]>("/api/documents", form, onProgress);
   },
 

@@ -10,7 +10,7 @@ const variants = [
 ];
 
 const settings = (overrides: Partial<EditSettings>): EditSettings => ({ ...DEFAULT_EDIT_SETTINGS, colorMode: "bw", ...overrides });
-const cache = { key: JSON.stringify([0, null, null, 0]), variants };
+const cache = { key: JSON.stringify([0, null, null, 0, false]), variants };
 
 describe("autoBwState", () => {
   test("finds the applied variant and describes it relative to the best guess", () => {
@@ -22,6 +22,8 @@ describe("autoBwState", () => {
   test("is cleared by manual changes or new geometry", () => {
     expect(autoBwState(settings({ ...variants[0]!, bwThreshold: 131 }), cache)).toBeNull();
     expect(autoBwState(settings({ ...variants[0]!, rotation: 90 }), cache)).toBeNull();
+    // The variants were worked out without auto levels.
+    expect(autoBwState(settings({ ...variants[0]!, autoLevels: true }), cache)).toBeNull();
     expect(autoBwState(settings({ ...variants[0]!, colorMode: "grayscale" }), cache)).toBeNull();
     expect(autoBwState(settings(variants[0]!), null)).toBeNull();
   });
