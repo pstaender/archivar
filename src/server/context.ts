@@ -12,6 +12,7 @@ import { VectorRepository } from "./db/vectors";
 import { HttpError } from "./http";
 import { ArchiveService } from "./services/archive";
 import type { DewarpEngine } from "./services/dewarp";
+import type { DocumentSegmenter } from "./services/documentSegmentation";
 import { ImagingService } from "./services/imaging";
 import { JobQueue } from "./services/jobs";
 import type { ImageConverter } from "./services/magick";
@@ -43,6 +44,7 @@ export interface ContextOptions {
   storageDir: string;
   ocrEngine: OcrEngine;
   dewarpEngine: DewarpEngine;
+  segmenter: DocumentSegmenter;
   imageConverter?: ImageConverter | null;
   ocrPageTimeoutMs?: number;
 }
@@ -61,7 +63,7 @@ export function createContext(options: ContextOptions): AppContext {
   const imaging = new ImagingService(storage, options.imageConverter ?? null, (doc) => vectors.get(doc.userId, doc.id)?.areas ?? []);
   const ocr = new OcrQueue(documents, imaging, options.ocrEngine, options.ocrPageTimeoutMs);
   const dewarp = options.dewarpEngine;
-  const archive = new ArchiveService(documents, stacks, folders, storage, imaging, ocr, dewarp, options.ocrEngine, vectors);
+  const archive = new ArchiveService(documents, stacks, folders, storage, imaging, ocr, dewarp, options.segmenter, options.ocrEngine, vectors);
   const jobQueue = new JobQueue(jobs, archive);
 
   // There is no login yet: requests without a bearer token act as the default user.

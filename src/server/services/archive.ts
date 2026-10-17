@@ -1,7 +1,7 @@
 import { basename, extname } from "node:path";
 import { DEFAULT_EDIT_SETTINGS, isDefaultEditSettings, normalizeEditSettings } from "../../shared/editSettings";
 import { autoBwVariants } from "../../shared/image/autoBw";
-import { detectDocument } from "../../shared/image/autoCrop";
+import { quadFromMask } from "../../shared/image/autoCrop";
 import type { JimpImage } from "../../shared/image/jimp";
 import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
 import { normalizeFolderPath } from "../../shared/folders";
@@ -38,6 +38,7 @@ import { extensionFor, type ImagingService } from "./imaging";
 import { detectLanguage } from "./language";
 import { createSearchablePdf, type PdfPart } from "./searchablePdf";
 import { type DewarpEngine, toDewarpGrid } from "./dewarp";
+import type { DocumentSegmenter } from "./documentSegmentation";
 import type { OcrEngine, OcrOptions, OcrQueue } from "./ocr";
 
 const ORIENTATION_SIZE = 2000;
@@ -71,6 +72,7 @@ export class ArchiveService {
     private imaging: ImagingService,
     private ocr: OcrQueue,
     private dewarp: DewarpEngine,
+    private segmenter: DocumentSegmenter,
     private ocrEngine: OcrEngine,
     private vectors: VectorRepository,
   ) {}
@@ -350,16 +352,22 @@ export class ArchiveService {
     return this.orientationOf(await this.imaging.loadOriginal(doc));
   }
 
+  autoCropAvailable(): boolean {
+    return this.segmenter.available();
+  }
+
   /** Corners of the page in the image after rotation and dewarping, or null if no page outline was found. */
   async detectCrop(userId: number, id: number, settings: Partial<EditSettings> = {}): Promise<Quad | null> {
     const doc = this.getDocument(userId, id);
     if (doc.kind !== "image") throw new HttpError(400, "Only images can be cropped");
-    return this.cropOf(await this.imaging.loadOriginal(doc), normalizeEditSettings(settings, doc.editSettings));
+    if (!this.segmenter.available()) throw new HttpError(503, "Document segmentation model is not installed");
+    return await this.cropOf(await this.imaging.loadOriginal(doc), normalizeEditSettings(settings, doc.editSettings));
   }
 
-  private cropOf(original: JimpImage, { rotation, dewarp }: EditSettings): Quad | null {
-    const image = scaleToFit(original.clone() as JimpImage, CROP_ANALYSIS_SIZE);
-    return detectDocument(applyEdits(image, { ...DEFAULT_EDIT_SETTINGS, rotation, dewarp }).bitmap);
+  private async cropOf(original: JimpImage, { rotation, dewarp }: EditSettings): Promise<Quad | null> {
+    const image = applyEdits(scaleToFit(original.clone() as JimpImage, CROP_ANALYSIS_SIZE), { ...DEFAULT_EDIT_SETTINGS, rotation, dewarp }).bitmap;
+    const mask = await this.segmenter.segment(image);
+    return quadFromMask(mask.data, mask.width, mask.height);
   }
 
   /** The edit settings after applying a preset's steps on top of `settings` (default: the stored ones); nothing is saved. */
@@ -386,8 +394,11 @@ export class ArchiveService {
       const upright = settings.rotation === 0 ? original : (original.clone().rotate(-settings.rotation) as JimpImage);
       settings = { ...settings, dewarp: toDewarpGrid(await this.dewarp.predict(upright.bitmap), settings.rotation), corners: null };
     }
-    if (steps.autoCrop) {
-      const corners = this.cropOf(original, settings);
+    if (steps.autoCrop && this.segmenter.available()) {
+      const corners = await this.cropOf(original, settings).catch((error) => {
+        console.warn(`Page detection failed for document ${doc.id}:`, error);
+        return null;
+      });
       if (corners) settings = { ...settings, corners };
     }
     settings = applyFixedSteps(settings, steps);

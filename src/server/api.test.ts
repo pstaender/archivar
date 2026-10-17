@@ -608,9 +608,10 @@ describe("settings", () => {
 describe("dewarp", () => {
   test("reports whether the model is available", async () => {
     const config = { convertibleImageTypes: ["image/webp"], ocrLanguages: ["deu", "eng"] };
-    expect(await (await server.api("/api/config")).json()).toEqual({ ...config, dewarpAvailable: true });
+    expect(await (await server.api("/api/config")).json()).toEqual({ ...config, dewarpAvailable: true, autoCropAvailable: true });
     server.dewarp.isAvailable = false;
-    expect(await (await server.api("/api/config")).json()).toEqual({ ...config, dewarpAvailable: false });
+    server.segmenter.isAvailable = false;
+    expect(await (await server.api("/api/config")).json()).toEqual({ ...config, dewarpAvailable: false, autoCropAvailable: false });
   });
 
   test("predicts a grid on the rotated original", async () => {
@@ -673,17 +674,21 @@ describe("automatic rotation and cropping", () => {
     expect(await (await post(`/api/documents/${doc.id}/orientation`, {})).json()).toEqual({ rotation: null });
   });
 
-  test("finds the page in the rotated image", async () => {
-    const data = await pageOnBackground(400, 300, { left: 0.25, top: 0.2, right: 0.75, bottom: 0.8 });
-    const [doc] = await upload([{ name: "page.png", data, type: "image/png" }]);
+  test("finds the page with the segmentation model in the rotated image", async () => {
+    const [doc] = await upload([{ name: "page.png", data: await pageOnBackground(400, 300, { left: 0.25, top: 0.2, right: 0.75, bottom: 0.8 }), type: "image/png" }]);
+    const data = new Uint8Array(100 * 100);
+    for (let y = 20; y < 70; y++) data.fill(255, y * 100 + 10, y * 100 + 90);
+    server.segmenter.mask = { width: 100, height: 100, data };
     const res = await post(`/api/documents/${doc!.id}/auto-crop`, { editSettings: { rotation: 90 } });
     expect(res.status).toBe(200);
     const { corners } = (await res.json()) as { corners: { x: number; y: number }[] };
+    const input = server.segmenter.inputs.at(-1)!;
+    expect([input.width, input.height]).toEqual([300, 400]);
     const expected = [
-      { x: 0.2, y: 0.25 },
-      { x: 0.8, y: 0.25 },
-      { x: 0.8, y: 0.75 },
-      { x: 0.2, y: 0.75 },
+      { x: 0.1, y: 0.2 },
+      { x: 0.9, y: 0.2 },
+      { x: 0.9, y: 0.7 },
+      { x: 0.1, y: 0.7 },
     ];
     corners.forEach((corner, i) => {
       expect(corner.x).toBeCloseTo(expected[i]!.x, 1);
@@ -695,6 +700,12 @@ describe("automatic rotation and cropping", () => {
   test("returns no corners when there is no page outline", async () => {
     const doc = await uploadImage();
     expect(await (await post(`/api/documents/${doc.id}/auto-crop`, {})).json()).toEqual({ corners: null });
+  });
+
+  test("reports 503 without the segmentation model", async () => {
+    const doc = await uploadImage();
+    server.segmenter.isAvailable = false;
+    expect((await post(`/api/documents/${doc.id}/auto-crop`, {})).status).toBe(503);
   });
 
   test("rejects documents that are not images", async () => {

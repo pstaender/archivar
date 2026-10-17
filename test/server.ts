@@ -5,6 +5,7 @@ import { createContext, type AppContext } from "../src/server/context";
 import { openDatabase } from "../src/server/db/database";
 import { createApiRoutes } from "../src/server/routes";
 import type { DewarpEngine } from "../src/server/services/dewarp";
+import type { DocumentSegmenter, SegmentationMask } from "../src/server/services/documentSegmentation";
 import type { ImageConverter } from "../src/server/services/magick";
 import type { OcrEngine, OcrResult, Orientation } from "../src/server/services/ocr";
 import type { RawImage } from "../src/shared/image/raw";
@@ -91,11 +92,28 @@ export class FakeDewarpEngine implements DewarpEngine {
   }
 }
 
+/** Returns `mask`, by default one without a page. */
+export class FakeSegmenter implements DocumentSegmenter {
+  isAvailable = true;
+  mask: SegmentationMask = { width: 100, height: 100, data: new Uint8Array(100 * 100) };
+  inputs: RawImage[] = [];
+
+  available(): boolean {
+    return this.isAvailable;
+  }
+
+  async segment(image: RawImage): Promise<SegmentationMask> {
+    this.inputs.push(image);
+    return this.mask;
+  }
+}
+
 export interface TestServer {
   url: string;
   ctx: AppContext;
   ocr: FakeOcrEngine;
   dewarp: FakeDewarpEngine;
+  segmenter: FakeSegmenter;
   converter: FakeImageConverter;
   api(path: string, init?: RequestInit): Promise<Response>;
   close(): Promise<void>;
@@ -109,12 +127,14 @@ export async function startTestServer({ ocrPageTimeoutMs, importPreset = false }
   const dir = await mkdtemp(join(tmpdir(), "archivar-test-"));
   const ocr = new FakeOcrEngine();
   const dewarp = new FakeDewarpEngine();
+  const segmenter = new FakeSegmenter();
   const converter = new FakeImageConverter();
   const ctx = createContext({
     db: openDatabase(":memory:"),
     storageDir: join(dir, "files"),
     ocrEngine: ocr,
     dewarpEngine: dewarp,
+    segmenter,
     imageConverter: converter,
     ocrPageTimeoutMs,
   });
@@ -126,6 +146,7 @@ export async function startTestServer({ ocrPageTimeoutMs, importPreset = false }
     ctx,
     ocr,
     dewarp,
+    segmenter,
     converter,
     api: (path, init) => fetch(`${url}${path}`, init),
     async close() {

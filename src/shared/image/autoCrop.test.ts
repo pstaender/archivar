@@ -1,35 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import type { Point, Quad } from "../types";
-import { detectDocument, orderCorners, snapToRect } from "./autoCrop";
-import type { RawImage } from "./raw";
+import { orderCorners, quadFromMask, snapToRect } from "./autoCrop";
 
 function inside(quad: Quad, x: number, y: number): boolean {
   return quad.every((a, i) => {
     const b = quad[(i + 1) % 4]!;
     return (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x) >= 0;
   });
-}
-
-/** A light page with dark text lines on a darker, slightly noisy background. */
-function photo(width: number, height: number, page: Quad): RawImage {
-  const data = new Uint8ClampedArray(width * height * 4);
-  let seed = 7;
-  const noise = () => ((seed = (seed * 16807) % 2147483647) % 21) - 10;
-  const top = Math.min(...page.map((p) => p.y));
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const nx = x / width;
-      const ny = y / height;
-      let v = 80 + noise();
-      if (inside(page, nx, ny)) {
-        const line = Math.floor((ny - top) * 40);
-        v = line > 3 && line % 3 === 0 && nx > 0.35 && nx < 0.65 ? 40 : 235 + noise() / 2;
-      }
-      data.fill(v, (y * width + x) * 4, (y * width + x) * 4 + 3);
-      data[(y * width + x) * 4 + 3] = 255;
-    }
-  }
-  return { width, height, data };
 }
 
 function expectCorners(actual: Quad | null, expected: Quad, tolerance = 0.02) {
@@ -42,32 +19,41 @@ function expectCorners(actual: Quad | null, expected: Quad, tolerance = 0.02) {
 
 const quad = (...points: [number, number][]) => points.map(([x, y]) => ({ x, y })) as Quad;
 
-describe("detectDocument", () => {
-  test("finds a tilted page in perspective", () => {
+function mask(size: number, page: Quad): Uint8Array {
+  const data = new Uint8Array(size * size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) if (inside(page, (x + 0.5) / size, (y + 0.5) / size)) data[y * size + x] = 255;
+  }
+  return data;
+}
+
+describe("quadFromMask", () => {
+  test("finds the corners of the segmented page", () => {
     const page = quad([0.18, 0.12], [0.84, 0.08], [0.9, 0.9], [0.12, 0.86]);
-    expectCorners(detectDocument(photo(600, 800, page)), page);
+    expectCorners(quadFromMask(mask(384, page), 384, 384), page);
   });
 
-  test("returns an exact rectangle for an upright page", () => {
-    const page = quad([0.1, 0.1], [0.9, 0.1], [0.9, 0.9], [0.1, 0.9]);
-    const corners = detectDocument(photo(600, 800, page));
-    expectCorners(corners, page);
-    expect(corners![0].y).toBe(corners![1].y);
-    expect(corners![0].x).toBe(corners![3].x);
+  test("keeps the largest region and ignores specks", () => {
+    const data = mask(384, quad([0.3, 0.3], [0.7, 0.3], [0.7, 0.75], [0.3, 0.75]));
+    data.fill(255, 10 * 384 + 10, 10 * 384 + 20);
+    expectCorners(quadFromMask(data, 384, 384), quad([0.3, 0.3], [0.7, 0.3], [0.7, 0.75], [0.3, 0.75]));
   });
 
   test("finds a page that runs out of the frame", () => {
     const page = quad([0.15, 0.2], [0.85, 0.2], [0.85, 1.2], [0.15, 1.2]);
-    expectCorners(detectDocument(photo(600, 800, page)), quad([0.15, 0.2], [0.85, 0.2], [0.85, 1], [0.15, 1]));
+    expectCorners(quadFromMask(mask(384, page), 384, 384), quad([0.15, 0.2], [0.85, 0.2], [0.85, 1], [0.15, 1]));
+  });
+
+  test("returns an exact rectangle for an upright page", () => {
+    const corners = quadFromMask(mask(384, quad([0.1, 0.1], [0.9, 0.1], [0.9, 0.9], [0.1, 0.9])), 384, 384);
+    expect(corners![0].y).toBe(corners![1].y);
+    expect(corners![0].x).toBe(corners![3].x);
   });
 
   test("returns null without a page or when the page fills the image", () => {
-    expect(detectDocument(photo(400, 300, quad([2, 2], [3, 2], [3, 3], [2, 3])))).toBeNull();
-    expect(detectDocument(photo(400, 300, quad([0, 0], [1, 0], [1, 1], [0, 1])))).toBeNull();
-  });
-
-  test("ignores shapes that are too small to be the page", () => {
-    expect(detectDocument(photo(600, 800, quad([0.4, 0.4], [0.6, 0.4], [0.6, 0.6], [0.4, 0.6])))).toBeNull();
+    expect(quadFromMask(new Uint8Array(384 * 384), 384, 384)).toBeNull();
+    expect(quadFromMask(mask(384, quad([0.45, 0.45], [0.55, 0.45], [0.55, 0.55], [0.45, 0.55])), 384, 384)).toBeNull();
+    expect(quadFromMask(new Uint8Array(384 * 384).fill(255), 384, 384)).toBeNull();
   });
 });
 

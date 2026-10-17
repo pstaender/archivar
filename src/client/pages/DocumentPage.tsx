@@ -553,7 +553,7 @@ export function DocumentPage() {
                   rotating={rotating}
                   onAutoRotate={autoRotate}
                   cropping={cropping}
-                  onAutoCrop={autoCrop}
+                  onAutoCrop={config.autoCropAvailable ? autoCrop : undefined}
                 />
                 <div className="panel__footer">
                   <button type="button" className="btn btn--ghost btn--sm" onClick={() => setDraft(DEFAULT_EDIT_SETTINGS)}>

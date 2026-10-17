@@ -2,87 +2,55 @@ import type { Point, Quad } from "../types";
 import { openCv } from "./opencv";
 import type { RawImage } from "./raw";
 
-// The page must cover this much of the image; smaller shapes are usually text blocks, tables or photos on the page.
-const MIN_AREA = 0.2;
 // Above this the page already fills the image and there is nothing to crop.
 const MAX_AREA = 0.95;
 // Corners closer than this (relative to the image) to an axis-aligned rectangle become a plain crop.
 const SNAP_TOLERANCE = 0.015;
 const EPSILONS = [0.02, 0.04, 0.06, 0.08, 0.1];
-
-type Mat = InstanceType<ReturnType<typeof openCv>["Mat"]>;
+// A segmentation model also finds small pages, e.g. a receipt on a table.
+const MIN_MASK_AREA = 0.05;
 
 /**
- * Finds the outline of a page or photo in front of a background: edges for pages that stand out by their border,
- * Otsu for a bright page on a darker background (the approach of z80z80z80/autocrop). The largest convex
- * four-cornered shape wins. Returns normalized corners (top-left, top-right, bottom-right, bottom-left) or null.
+ * Corners of the page in a segmentation mask (non-zero = page), the post-processing of LearnOpenCV's DeepLabV3
+ * document scanner: the largest region's outline approximated to four corners, or its minimum-area rectangle when
+ * it has no clear four corners (e.g. a corner outside the image). Returns normalized corners or null.
  */
-export function detectDocument(image: RawImage): Quad | null {
+export function quadFromMask(mask: Uint8Array, width: number, height: number): Quad | null {
   const cv = openCv();
-  const { width, height } = image;
-  const rgba = new cv.Mat(height, width, cv.CV_8UC4);
-  const gray = new cv.Mat();
-  const edges = new cv.Mat();
-  const bright = new cv.Mat();
-  const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
-  try {
-    rgba.data.set(image.data);
-    cv.cvtColor(rgba, gray, cv.COLOR_RGBA2GRAY);
-    cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
-
-    cv.Canny(gray, edges, 50, 150);
-    cv.dilate(edges, edges, kernel);
-    cv.morphologyEx(edges, edges, cv.MORPH_CLOSE, kernel, new cv.Point(-1, -1), 2);
-
-    cv.threshold(gray, bright, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
-    cv.morphologyEx(bright, bright, cv.MORPH_OPEN, kernel, new cv.Point(-1, -1), 2);
-
-    let best: { quad: Point[]; area: number } | null = null;
-    for (const mask of [edges, bright]) {
-      const candidate = largestQuad(mask, width * height);
-      if (candidate && (!best || candidate.area > best.area)) best = candidate;
-    }
-    if (!best || best.area > MAX_AREA * width * height) return null;
-    return snapToRect(orderCorners(best.quad.map((p) => ({ x: clamp01(p.x / width), y: clamp01(p.y / height) }))));
-  } finally {
-    rgba.delete();
-    gray.delete();
-    edges.delete();
-    bright.delete();
-    kernel.delete();
-  }
-}
-
-function largestQuad(mask: Mat, imageArea: number): { quad: Point[]; area: number } | null {
-  const cv = openCv();
+  const image = new cv.Mat(height, width, cv.CV_8UC1);
   const contours = new cv.MatVector();
   const hierarchy = new cv.Mat();
-  let best: { quad: Point[]; area: number } | null = null;
+  const hull = new cv.Mat();
   try {
-    cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+    image.data.set(mask);
+    cv.findContours(image, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+    let page = -1;
+    let pageArea = MIN_MASK_AREA * width * height;
     for (let i = 0; i < contours.size(); i++) {
       const contour = contours.get(i);
-      const hull = new cv.Mat();
-      try {
-        cv.convexHull(contour, hull);
-        if (cv.contourArea(hull) < MIN_AREA * imageArea) continue;
-        const quad = approximateQuad(hull);
-        if (!quad) continue;
-        const area = polygonArea(quad);
-        if (area >= MIN_AREA * imageArea && (!best || area > best.area)) best = { quad, area };
-      } finally {
-        contour.delete();
-        hull.delete();
-      }
+      const area = cv.contourArea(contour);
+      contour.delete();
+      if (area >= pageArea) [page, pageArea] = [i, area];
+    }
+    if (page < 0) return null;
+    const contour = contours.get(page);
+    try {
+      cv.convexHull(contour, hull);
+      const quad = approximateQuad(hull) ?? cv.boxPoints(cv.minAreaRect(contour));
+      if (polygonArea(quad) > MAX_AREA * width * height) return null;
+      return snapToRect(orderCorners(quad.map((p) => ({ x: clamp01(p.x / width), y: clamp01(p.y / height) }))));
+    } finally {
+      contour.delete();
     }
   } finally {
+    image.delete();
     contours.delete();
     hierarchy.delete();
+    hull.delete();
   }
-  return best;
 }
 
-function approximateQuad(hull: Mat): Point[] | null {
+function approximateQuad(hull: InstanceType<ReturnType<typeof openCv>["Mat"]>): Point[] | null {
   const cv = openCv();
   const perimeter = cv.arcLength(hull, true);
   for (const epsilon of EPSILONS) {

@@ -173,6 +173,7 @@ export interface LibraryItemRef {
 
 export interface AppConfig {
   dewarpAvailable: boolean;
+  autoCropAvailable: boolean;
   convertibleImageTypes: string[];
   /** Languages used for text recognition unless a document has its own. */
   ocrLanguages: string[];

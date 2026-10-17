@@ -68,6 +68,7 @@ export function createApiRoutes(ctx: AppContext) {
       GET: handle(() =>
         json({
           dewarpAvailable: ctx.dewarp.available(),
+          autoCropAvailable: ctx.archive.autoCropAvailable(),
           convertibleImageTypes: ctx.imaging.convertibleTypes(),
           ocrLanguages: ctx.ocrEngine.languages,
         } satisfies AppConfig),

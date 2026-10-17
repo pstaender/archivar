@@ -51,6 +51,7 @@
     "test:server": "bun test --preload ./test/opencv.ts src/server src/shared src/vectorizer",
     "test:client": "bun test --preload ./test/happydom.ts src/client",
     "typecheck": "tsc --noEmit",
-    "setup:uvdoc": "bash scripts/setup-uvdoc.sh"
+    "setup:uvdoc": "bash scripts/setup-uvdoc.sh",
+    "setup:docseg": "bash scripts/setup-docseg.sh"
   }
 }
