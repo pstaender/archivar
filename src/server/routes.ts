@@ -26,6 +26,14 @@ function formFlag(value: FormDataEntryValue | null, fallback: boolean): boolean 
   return typeof value === "string" ? value === "true" : fallback;
 }
 
+/** ISO 8601 or Unix seconds (as `stat` prints them), so scripts can pass the file's own date as the upload date. */
+function parseCreatedAt(value: FormDataEntryValue | null): string | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  const time = /^\d+(\.\d+)?$/.test(value.trim()) ? Number(value) * 1000 : Date.parse(value);
+  if (!Number.isFinite(time)) throw new HttpError(400, "Invalid createdAt");
+  return new Date(time).toISOString();
+}
+
 function parseSort(value: string | null): LibrarySort | undefined {
   if (value === null) return undefined;
   if (!LIBRARY_SORTS.includes(value as LibrarySort)) throw new HttpError(400, "Unknown sort");
@@ -116,6 +124,7 @@ export function createApiRoutes(ctx: AppContext) {
             .map(async (file) => ({ name: file.name, type: file.type, data: new Uint8Array(await file.arrayBuffer()) })),
         );
         const stackId = form.get("stackId");
+        const createdAt = parseCreatedAt(form.get("createdAt"));
         const jobItemValue = form.get("jobItemId");
         const jobItem = typeof jobItemValue === "string" && jobItemValue ? ctx.jobs.item(userId(req), parseId(jobItemValue)) : null;
         const tracked = jobItem?.kind === "import" && jobItem.status === "pending" ? jobItem : null;
@@ -129,6 +138,7 @@ export function createApiRoutes(ctx: AppContext) {
           ocrAllText: formFlag(form.get("ocrAllText"), settings.ocrAllText),
           preset: preset?.steps,
           ocrLanguages: settings.importOcrLanguages,
+          createdAt,
         }).catch((error: unknown) => {
           if (tracked) ctx.jobs.updateItem(tracked.id, { status: "failed", error: error instanceof Error ? error.message : String(error) });
           throw error;

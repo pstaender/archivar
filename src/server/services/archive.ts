@@ -50,6 +50,8 @@ export interface UploadOptions {
   preset?: PresetSteps;
   /** Recognition languages for the uploads; null or left out detects the language (`OcrOptions.detectLanguage`). */
   ocrLanguages?: string[] | null;
+  /** Replaces the upload time (ISO 8601), e.g. with the file's creation date. */
+  createdAt?: string;
 }
 
 export interface UploadFile {
@@ -123,6 +125,7 @@ export class ArchiveService {
         ocrStatus: hasEmbeddedText ? "done" : "none",
         ocrLanguage: hasEmbeddedText ? detectLanguage(inspection.text) : null,
         metadata: hasEmbeddedText ? { ...inspection.metadata, textSource: "pdf" } : inspection.metadata,
+        createdAt: options.createdAt,
       });
       duplicates.set(
         doc.id,

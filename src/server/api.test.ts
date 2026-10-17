@@ -50,6 +50,14 @@ describe("users", () => {
 });
 
 describe("documents", () => {
+  test("uploads can pass the file's creation date as the upload date", async () => {
+    expect((await uploadImage("a.jpg", { createdAt: "2019-05-04T10:20:30Z" })).createdAt).toBe("2019-05-04T10:20:30.000Z");
+    expect((await uploadImage("b.jpg", { createdAt: "1557000000" })).createdAt).toBe("2019-05-04T20:00:00.000Z");
+    expect(Date.parse((await uploadImage("c.jpg")).createdAt)).toBeGreaterThan(Date.now() - 60_000);
+    const res = await server.api("/api/documents", { method: "POST", body: uploadForm([{ name: "d.jpg", data: await makeJpeg(), type: "image/jpeg" }], { createdAt: "gestern" }) });
+    expect(res.status).toBe(400);
+  });
+
   test("uploads multiple files and detects their kind", async () => {
     const docs = await upload([
       { name: "photo.jpg", data: await makeJpeg(80, 60), type: "image/jpeg" },

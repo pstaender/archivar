@@ -56,6 +56,7 @@ export interface DocumentCreate {
   ocrStatus?: OcrStatus;
   ocrLanguage?: string | null;
   metadata?: Record<string, unknown>;
+  createdAt?: string;
 }
 
 export interface DocumentFilter {
@@ -91,8 +92,9 @@ export class DocumentRepository {
   create(input: DocumentCreate): StoredDocument {
     const row = this.db
       .query(
-        `INSERT INTO documents (user_id, title, original_name, mime_type, kind, size, storage_key, sha256, width, height, page_count, ocr_text, ocr_status, ocr_language, metadata)
-         VALUES ($userId, $title, $originalName, $mimeType, $kind, $size, $storageKey, $sha256, $width, $height, $pageCount, $ocrText, $ocrStatus, $ocrLanguage, $metadata)
+        `INSERT INTO documents (user_id, title, original_name, mime_type, kind, size, storage_key, sha256, width, height, page_count, ocr_text, ocr_status, ocr_language, metadata, created_at)
+         VALUES ($userId, $title, $originalName, $mimeType, $kind, $size, $storageKey, $sha256, $width, $height, $pageCount, $ocrText, $ocrStatus, $ocrLanguage, $metadata,
+                 COALESCE($createdAt, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))
          RETURNING id`,
       )
       .get({
@@ -111,6 +113,7 @@ export class DocumentRepository {
         ocrStatus: input.ocrStatus ?? "none",
         ocrLanguage: input.ocrLanguage ?? null,
         metadata: JSON.stringify(input.metadata ?? {}),
+        createdAt: input.createdAt ?? null,
       }) as { id: number };
     return this.get(input.userId, row.id)!;
   }
