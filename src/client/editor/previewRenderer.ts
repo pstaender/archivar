@@ -26,6 +26,13 @@ export interface WorkerLike {
 
 type WithoutId<T> = T extends unknown ? Omit<T, "id"> : never;
 
+/** Requests still running when the renderer is disposed end with this; nobody waits for their result any more. */
+export class RendererDisposedError extends Error {
+  constructor() {
+    super("Renderer disposed");
+  }
+}
+
 interface Pending {
   resolve(response: WorkerResponse): void;
   reject(error: Error): void;
@@ -46,6 +53,7 @@ export class PreviewRenderer {
   private pending = new Map<number, Pending>();
   private busy = false;
   private queued: QueuedRender | null = null;
+  private disposed = false;
 
   constructor(private worker: WorkerLike = new Worker(PREVIEW_WORKER_URL)) {
     worker.onmessage = ({ data }) => {
@@ -76,10 +84,11 @@ export class PreviewRenderer {
   }
 
   dispose(): void {
+    this.disposed = true;
     this.worker.terminate();
     this.queued?.resolve(null);
     this.queued = null;
-    this.failAll(new Error("Renderer disposed"));
+    this.failAll(new RendererDisposedError());
   }
 
   private next(): void {
@@ -103,6 +112,8 @@ export class PreviewRenderer {
   private call(request: WithoutId<WorkerRequest>): Promise<WorkerResponse> {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
+      // A terminated worker would never answer.
+      if (this.disposed) return reject(new RendererDisposedError());
       this.pending.set(id, { resolve, reject });
       this.worker.postMessage({ ...request, id });
     });

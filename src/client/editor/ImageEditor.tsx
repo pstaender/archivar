@@ -4,7 +4,7 @@ import type { EditSettings, Point, Quad } from "../../shared/types";
 import { type GeometryMode, moveCorner, quadOrFull, translateQuad } from "./geometry";
 import { type LensPointer, Magnifier } from "./Magnifier";
 import { PreviewBar } from "./PreviewBar";
-import { PreviewRenderer, type RenderedPreview } from "./previewRenderer";
+import { PreviewRenderer, type RenderedPreview, RendererDisposedError } from "./previewRenderer";
 
 // Filters behave differently on a downscaled image (thin strokes turn gray and fall below the threshold), so the
 // preview is rendered from the full base image in a worker. Slow settings (colors, denoise) additionally get a small
@@ -51,17 +51,19 @@ export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc
     const full = new PreviewRenderer();
     let draft: PreviewRenderer | null = null;
     setRenderers(null);
+    setError(null);
     fullRenderMs.current = Infinity;
     full
       .load(src)
       .then(async ({ width, height }) => {
+        if (cancelled) return;
         if (Math.max(width, height) > DRAFT_SIZE) {
           draft = new PreviewRenderer();
           await draft.load(src, DRAFT_SIZE);
         }
         if (!cancelled) setRenderers({ full, draft });
       })
-      .catch((e) => !cancelled && setError(e instanceof Error ? e.message : String(e)));
+      .catch((e) => !cancelled && !(e instanceof RendererDisposedError) && setError(e instanceof Error ? e.message : String(e)));
     return () => {
       cancelled = true;
       full.dispose();
@@ -80,7 +82,8 @@ export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc
       drawToCanvas(canvasRef.current, result);
       return true;
     };
-    const fail = (e: unknown) => !cancelled && setError(e instanceof Error ? e.message : String(e));
+    // Switching to another image disposes the renderers while a render may still run.
+    const fail = (e: unknown) => !cancelled && !(e instanceof RendererDisposedError) && setError(e instanceof Error ? e.message : String(e));
     const { full, draft } = renderers;
     const instant = !draft || fullRenderMs.current <= INSTANT_RENDER_MS;
     const draftTimer = instant

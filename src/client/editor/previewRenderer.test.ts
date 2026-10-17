@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
 import type { EditSettings } from "../../shared/types";
-import { PreviewRenderer, type WorkerLike, type WorkerRequest, type WorkerResponse } from "./previewRenderer";
+import { PreviewRenderer, RendererDisposedError, type WorkerLike, type WorkerRequest, type WorkerResponse } from "./previewRenderer";
 
 class FakeWorker implements WorkerLike {
   requests: WorkerRequest[] = [];
@@ -82,6 +82,9 @@ describe("PreviewRenderer", () => {
     renderer.dispose();
     expect(worker.terminated).toBe(true);
     expect(await waiting).toBeNull();
-    await expect(rendering).rejects.toThrow("Renderer disposed");
+    await expect(rendering).rejects.toBeInstanceOf(RendererDisposedError);
+    // A terminated worker would never answer, so later requests fail at once instead of waiting forever.
+    await expect(renderer.load("/y")).rejects.toBeInstanceOf(RendererDisposedError);
+    await expect(renderer.render(settings(0.3))).rejects.toBeInstanceOf(RendererDisposedError);
   });
 });
