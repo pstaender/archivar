@@ -11,6 +11,7 @@ import { uploadAccept } from "../../shared/uploads";
 import { useConfig } from "../hooks/config";
 import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
+import { useRefreshOnJobProgress } from "../hooks/jobs";
 import { useRefreshOnEditSave } from "../editSaves";
 import { useRefreshOnUpload, useUpload } from "../hooks/upload";
 import { usePolling } from "../hooks/usePolling";
@@ -29,6 +30,7 @@ export function StackPage() {
   const stack = useResource(() => api.stack(id), [id]);
   useRefreshOnUpload(stack.refresh);
   useRefreshOnEditSave(stack.refresh);
+  useRefreshOnJobProgress(stack.refresh);
   const [confirm, setConfirm] = useState<"dissolve" | "delete" | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 

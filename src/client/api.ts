@@ -1,4 +1,5 @@
 import { PREVIEW_SIZE } from "../shared/preview";
+import type { Job, JobCreate } from "../shared/jobs";
 import type { ImagePreset, ImagePresetInput } from "../shared/presets";
 import type { UserSettings } from "../shared/settings";
 import type {
@@ -89,6 +90,8 @@ export interface UploadOptions {
   stackId?: number;
   ocr?: boolean;
   ocrAllText?: boolean;
+  /** Item of the import job that follows this upload. */
+  jobItemId?: number;
 }
 
 export const api = {
@@ -133,6 +136,7 @@ export const api = {
     if (options.stackId !== undefined) form.append("stackId", String(options.stackId));
     if (options.ocr) form.append("ocr", "true");
     if (options.ocrAllText) form.append("ocrAllText", "true");
+    if (options.jobItemId !== undefined) form.append("jobItemId", String(options.jobItemId));
     return sendWithProgress<ArchiveDocument[]>("/api/documents", form, onProgress);
   },
 
@@ -143,6 +147,12 @@ export const api = {
   addToStack: (id: number, documentIds: number[]) =>
     request<StackWithDocuments>(`/api/stacks/${id}/documents`, jsonBody("POST", { documentIds })),
   deleteStack: (id: number) => request<void>(`/api/stacks/${id}`, { method: "DELETE" }),
+
+  jobs: () => request<Job[]>("/api/jobs"),
+  createJob: (input: JobCreate) => request<Job>("/api/jobs", jsonBody("POST", input)),
+  deleteJob: (id: number) => request<void>(`/api/jobs/${id}`, { method: "DELETE" }),
+  /** Marks an upload of an import job that never reached the server as failed. */
+  failJobItem: (jobId: number, itemId: number, error: string) => request<void>(`/api/jobs/${jobId}/items/${itemId}`, jsonBody("PATCH", { error })),
 
   presets: () => request<ImagePreset[]>("/api/presets"),
   createPreset: (input: ImagePresetInput) => request<ImagePreset>("/api/presets", jsonBody("POST", input)),

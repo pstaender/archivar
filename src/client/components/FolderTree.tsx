@@ -1,9 +1,10 @@
-import { ChevronRight, Folder, FolderOpen, Inbox, Pencil, Plus, Trash } from "../icons";
+import { ChevronRight, Folder, FolderOpen, Inbox, Pencil, Plus, Trash, Wand } from "../icons";
 import { type FormEvent, useMemo, useState } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { buildFolderTree, type FolderNode, isWithinFolder } from "../../shared/folders";
 import { api } from "../api";
 import { useFolders } from "../hooks/folders";
+import { useJobs } from "../hooks/jobs";
 import { useToast } from "../hooks/toast";
 import { folderHref, useCurrentFolder } from "../routes";
 import { ConfirmDialog } from "./Dialog";
@@ -36,6 +37,8 @@ export function FolderTree({ onNavigate }: FolderTreeProps) {
   const { folders, reload } = useFolders();
   const toast = useToast();
   const active = useCurrentFolder() ?? "";
+  const { pathname } = useLocation();
+  const { activeCount } = useJobs();
   const tree = useMemo(
     () => buildFolderTree(folders.map((f) => ({ id: f.id, path: f.path, count: f.documentCount + f.stackCount }))),
     [folders],
@@ -58,10 +61,20 @@ export function FolderTree({ onNavigate }: FolderTreeProps) {
 
   return (
     <nav className="folder-tree" aria-label="Ordner">
-      <Link to="/" className={`folder-tree__row ${active ? "" : "is-active"}`} onClick={onNavigate}>
+      <Link to="/" className={`folder-tree__row ${pathname === "/" ? "is-active" : ""}`} onClick={onNavigate}>
         <span className="folder-tree__toggle" />
         <Inbox size={16} aria-hidden />
         <span className="folder-tree__name">Alle Dokumente</span>
+      </Link>
+      <Link to="/jobs" className={`folder-tree__row ${pathname === "/jobs" ? "is-active" : ""}`} onClick={onNavigate}>
+        <span className="folder-tree__toggle" />
+        <Wand size={16} aria-hidden />
+        <span className="folder-tree__name">Stapelverarbeitung</span>
+        {activeCount > 0 && (
+          <span className="folder-tree__count folder-tree__count--busy" title={activeCount === 1 ? "1 Auftrag läuft" : `${activeCount} Aufträge laufen`}>
+            {activeCount}
+          </span>
+        )}
       </Link>
 
       <div className="folder-tree__heading">

@@ -16,6 +16,7 @@ export interface FetchMock {
 // Loaded by every page through the providers; tests that care mock them themselves.
 const defaultRoutes: Record<string, Handler> = {
   "GET /api/presets": () => [],
+  "GET /api/jobs": () => [],
 };
 
 export function mockFetch(routes: Record<string, Handler>): FetchMock {

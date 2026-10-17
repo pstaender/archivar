@@ -93,6 +93,29 @@ const migrations: string[] = [
   `,
   `ALTER TABLE users ADD COLUMN import_preset_seeded INTEGER NOT NULL DEFAULT 0;`,
   `UPDATE image_presets SET name = 'OCR Optimiert' WHERE name = 'SW + Auto-Tonwerte + automatisch drehen';`,
+  `
+  CREATE TABLE jobs (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    options TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX jobs_user ON jobs(user_id, id);
+
+  CREATE TABLE job_items (
+    id INTEGER PRIMARY KEY,
+    job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    document_id INTEGER REFERENCES documents(id) ON DELETE SET NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    error TEXT,
+    ocr INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX job_items_job ON job_items(job_id, position);
+  CREATE INDEX job_items_status ON job_items(status);
+  `,
 ];
 
 export function migrate(db: Database): void {

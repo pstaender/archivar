@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createImage, Jimp } from "../shared/image/jimp";
 import { PREVIEW_SIZE } from "../shared/preview";
+import type { Job } from "../shared/jobs";
 import type { ImagePreset } from "../shared/presets";
 import type { ArchiveDocument, EditSettings, Folder, LibraryItem, StackWithDocuments } from "../shared/types";
 import { getDocumentProxy } from "unpdf";
@@ -715,6 +716,101 @@ describe("image presets", () => {
     expect(await (await server.api("/api/settings")).json()).toMatchObject({ importPresetId: null });
     const doc = await uploadImage();
     expect(doc.editSettings.colorMode).toBe("color");
+  });
+});
+
+describe("jobs", () => {
+  const jobs = async () => (await (await server.api("/api/jobs")).json()) as Job[];
+  const states = (job: Job | undefined) => job?.items.map((item) => [item.name, item.state, item.error]);
+
+  test("batch jobs apply the preset to images and queue OCR for images and PDFs in the background", async () => {
+    const photo = await uploadImage("foto.jpg");
+    const [pdf, note] = await upload([
+      { name: "brief.pdf", data: makePdf(""), type: "application/pdf" },
+      { name: "notiz.txt", data: new TextEncoder().encode("x"), type: "text/plain" },
+    ]);
+    const preset = (await (await post("/api/presets", { name: "Grau", steps: { colorMode: "grayscale" } })).json()) as ImagePreset;
+
+    const res = await post("/api/jobs", { kind: "batch", documentIds: [photo.id, pdf!.id, note!.id], presetId: preset.id, ocr: true, languages: ["fra"], allText: true });
+    expect(res.status).toBe(201);
+    const created = (await res.json()) as Job;
+    expect(created).toMatchObject({ kind: "batch", active: true, options: { preset: { name: "Grau" }, ocr: true, languages: ["fra"], allText: true } });
+
+    await server.ctx.jobQueue.idle();
+    await server.ctx.ocr.idle();
+    const [job] = await jobs();
+    expect(states(job)).toEqual([
+      ["foto", "done", null],
+      ["brief", "done", null],
+      ["notiz", "skipped", null],
+    ]);
+    expect(job!.active).toBe(false);
+    expect(server.ctx.documents.getById(photo.id)).toMatchObject({ editSettings: { colorMode: "grayscale" }, ocrLanguages: ["fra"], ocrAllText: true });
+    expect(server.ctx.documents.getById(pdf!.id)?.editSettings.colorMode).toBe("color");
+    expect(server.ocr.recognizedLanguages).toEqual([["fra"], ["fra"]]);
+
+    // Items wait for the text recognition they queued.
+    server.ctx.documents.setOcrResult(photo.id, { status: "running" });
+    expect((await jobs())[0]).toMatchObject({ active: true, items: [{ state: "ocr" }, {}, {}] });
+    server.ctx.documents.setOcrResult(photo.id, { status: "failed", error: "kaputt" });
+    expect(states((await jobs())[0])?.[0]).toEqual(["foto", "failed", "kaputt"]);
+  });
+
+  test("batch jobs need documents of the user and something to do", async () => {
+    const photo = await uploadImage();
+    expect((await post("/api/jobs", { kind: "batch", documentIds: [photo.id], ocr: false })).status).toBe(400);
+    expect((await post("/api/jobs", { kind: "batch", documentIds: [999], ocr: true })).status).toBe(404);
+    expect((await post("/api/jobs", { kind: "batch", documentIds: [photo.id], ocr: true, languages: ["xx"] })).status).toBe(400);
+    expect((await post("/api/jobs", { kind: "batch", documentIds: [photo.id], presetId: 999, ocr: true })).status).toBe(404);
+  });
+
+  test("import jobs follow the uploads of their files", async () => {
+    const res = await post("/api/jobs", { kind: "import", files: ["a.jpg", "b.jpg", "c.jpg"] });
+    const job = (await res.json()) as Job;
+    expect(states(job)).toEqual([
+      ["a.jpg", "pending", null],
+      ["b.jpg", "pending", null],
+      ["c.jpg", "pending", null],
+    ]);
+    const [a, b] = job.items;
+    const doc = await uploadImage("a.jpg", { jobItemId: String(a!.id), ocr: "true" });
+    await patch(`/api/jobs/${job.id}/items/${b!.id}`, { error: "Netzwerkfehler" });
+
+    const listed = (await jobs())[0]!;
+    expect(listed.items[0]).toMatchObject({ state: expect.stringMatching(/ocr|done/), document: { id: doc.id, title: "a" } });
+    expect(states(listed)?.slice(1)).toEqual([
+      ["b.jpg", "failed", "Netzwerkfehler"],
+      ["c.jpg", "pending", null],
+    ]);
+    expect(listed.active).toBe(true);
+    expect((await server.api(`/api/jobs/${job.id}`, { method: "DELETE" })).status).toBe(409);
+
+    // After a restart, uploads that never arrived are marked as interrupted.
+    server.ctx.jobQueue.resume();
+    await server.ctx.ocr.idle();
+    expect(states((await jobs())[0])?.slice(1)).toEqual([
+      ["b.jpg", "failed", "Netzwerkfehler"],
+      ["c.jpg", "failed", "Der Upload wurde abgebrochen."],
+    ]);
+    expect((await server.api(`/api/jobs/${job.id}`, { method: "DELETE" })).status).toBe(204);
+    expect(await jobs()).toEqual([]);
+  });
+
+  test("batch items of deleted documents fail instead of stopping the job", async () => {
+    const a = await uploadImage("a.jpg");
+    const b = await uploadImage("b.jpg");
+    const preset = (await (await post("/api/presets", { name: "SW", steps: { colorMode: "bw" } })).json()) as ImagePreset;
+    const id = server.ctx.jobs.create(1, "batch", { preset: { name: "SW", steps: preset.steps }, ocr: false, languages: null, allText: false }, [
+      { name: "a", documentId: a.id },
+      { name: "b", documentId: b.id },
+    ]);
+    await server.api(`/api/documents/${a.id}`, { method: "DELETE" });
+    server.ctx.jobQueue.start();
+    await server.ctx.jobQueue.idle();
+    expect(states(server.ctx.jobs.get(1, id)!)).toEqual([
+      ["a", "failed", "Das Dokument wurde gelöscht."],
+      ["b", "done", null],
+    ]);
   });
 });
 

@@ -12,10 +12,11 @@ afterEach(() => {
   xhr.restore();
 });
 
-async function setup(convertibleImageTypes: string[] = []) {
+async function setup(convertibleImageTypes: string[] = [], routes: Parameters<typeof mockFetch>[0] = {}) {
   fetchMock = mockFetch({
     "GET /api/folders": () => [],
     "GET /api/config": () => ({ dewarpAvailable: false, convertibleImageTypes }),
+    ...routes,
   });
   xhr = mockXhr();
   await renderApp(
@@ -84,5 +85,25 @@ describe("UploadButtons", () => {
     await act(async () => xhr.uploads[1]!.respond(201, [makeDocument()]));
     expect(screen.getByText("a.jpg: Kaputt")).toBeTruthy();
     expect(screen.getByText("1 Datei hochgeladen")).toBeTruthy();
+  });
+
+  test("follows the uploads in an import job and reports files that did not arrive", async () => {
+    const items = [
+      { id: 11, name: "a.jpg", state: "pending", error: null, document: null },
+      { id: 12, name: "b.jpg", state: "pending", error: null, document: null },
+    ];
+    const input = await setup([], {
+      "POST /api/jobs": () => ({ id: 5, kind: "import", options: null, createdAt: "", active: true, items }),
+      "PATCH /api/jobs/5/items/12": () => undefined,
+    });
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file("a.jpg", "image/jpeg"), file("b.jpg", "image/jpeg")] } });
+    });
+    expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toEqual({ kind: "import", files: ["a.jpg", "b.jpg"] });
+    expect(xhr.uploads[0]!.body.get("jobItemId")).toBe("11");
+    await act(async () => xhr.uploads[0]!.respond(201, [makeDocument()]));
+    expect(xhr.uploads[1]!.body.get("jobItemId")).toBe("12");
+    await act(async () => xhr.uploads[1]!.respond(500, { error: "Speicher voll" }));
+    expect(fetchMock.calls.find((c) => c.method === "PATCH")).toMatchObject({ path: "/api/jobs/5/items/12", body: { error: "Speicher voll" } });
   });
 });

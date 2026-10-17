@@ -1,5 +1,7 @@
 import type { BunRequest } from "bun";
 import { type AppConfig, type DocumentUpdate, type EditSettings, LIBRARY_SORTS, type LibraryItemRef, type LibrarySort, type Rotation, type StackCreate, type StackUpdate } from "../shared/types";
+import type { BatchOptions, JobCreate } from "../shared/jobs";
+import { isOcrLanguage } from "../shared/languages";
 import { type ImagePresetInput, normalizePresetName, normalizePresetSteps } from "../shared/presets";
 import type { AppContext } from "./context";
 import { toPublicDocument } from "./db/documents";
@@ -106,6 +108,10 @@ export function createApiRoutes(ctx: AppContext) {
             .map(async (file) => ({ name: file.name, type: file.type, data: new Uint8Array(await file.arrayBuffer()) })),
         );
         const stackId = form.get("stackId");
+        const jobItemValue = form.get("jobItemId");
+        const jobItem = typeof jobItemValue === "string" && jobItemValue ? ctx.jobs.item(userId(req), parseId(jobItemValue)) : null;
+        const tracked = jobItem?.kind === "import" && jobItem.status === "pending" ? jobItem : null;
+        if (tracked) ctx.jobs.updateItem(tracked.id, { status: "running" });
         const settings = ctx.users.settings(userId(req));
         const preset = settings.importPresetId === null ? null : ctx.presets.get(userId(req), settings.importPresetId);
         const docs = await archive.upload(userId(req), files, {
@@ -114,7 +120,12 @@ export function createApiRoutes(ctx: AppContext) {
           runOcr: form.get("ocr") === "true",
           ocrAllText: form.get("ocrAllText") === "true",
           preset: preset?.steps,
+        }).catch((error: unknown) => {
+          if (tracked) ctx.jobs.updateItem(tracked.id, { status: "failed", error: error instanceof Error ? error.message : String(error) });
+          throw error;
         });
+        const [uploaded] = docs;
+        if (tracked && uploaded) ctx.jobs.updateItem(tracked.id, { status: "done", documentId: uploaded.id, ocr: uploaded.ocrStatus === "pending" });
         return json(docs, 201);
       }),
     },
@@ -279,6 +290,59 @@ export function createApiRoutes(ctx: AppContext) {
         const id = parseId(req.params.id);
         if (!ctx.presets.delete(userId(req), id)) throw new HttpError(404, "Preset not found");
         if (ctx.users.settings(userId(req)).importPresetId === id) ctx.users.updateSettings(userId(req), { importPresetId: null });
+        return noContent();
+      }),
+    },
+
+    "/api/jobs": {
+      GET: handle((req: Req) => json(ctx.jobs.list(userId(req)))),
+      POST: handle(async (req: Req) => {
+        const body = await readJson<JobCreate>(req);
+        if (body.kind === "import") {
+          if (!Array.isArray(body.files) || body.files.length === 0) throw new HttpError(400, "files required");
+          const id = ctx.jobs.create(userId(req), "import", null, body.files.map((name) => ({ name: String(name), documentId: null })));
+          return json(ctx.jobs.get(userId(req), id), 201);
+        }
+        if (body.kind !== "batch") throw new HttpError(400, "Unknown job kind");
+        if (!Array.isArray(body.documentIds) || body.documentIds.length === 0) throw new HttpError(400, "documentIds required");
+        const docs = [...new Set(body.documentIds.map((id) => parseId(String(id))))].map((id) => archive.getDocument(userId(req), id));
+        const preset = body.presetId ? ctx.presets.get(userId(req), parseId(String(body.presetId))) : null;
+        if (body.presetId && !preset) throw new HttpError(404, "Preset not found");
+        const languages = Array.isArray(body.languages) && body.languages.length > 0 ? body.languages : null;
+        if (languages && !languages.every(isOcrLanguage)) throw new HttpError(400, "Unknown OCR language");
+        const options: BatchOptions = {
+          preset: preset ? { name: preset.name, steps: preset.steps } : null,
+          ocr: body.ocr === true,
+          languages,
+          allText: body.allText === true,
+        };
+        if (!options.preset && !options.ocr) throw new HttpError(400, "Nichts zu tun");
+        const items = docs.map((doc) => ({ name: doc.title.trim() || doc.originalName, documentId: doc.id }));
+        const id = ctx.jobs.create(userId(req), "batch", options, items);
+        ctx.jobQueue.start();
+        return json(ctx.jobs.get(userId(req), id), 201);
+      }),
+    },
+
+    "/api/jobs/:id": {
+      DELETE: handle((req: Req) => {
+        const job = ctx.jobs.get(userId(req), parseId(req.params.id));
+        if (!job) throw new HttpError(404, "Job not found");
+        if (job.active) throw new HttpError(409, "Der Auftrag läuft noch");
+        ctx.jobs.delete(userId(req), job.id);
+        return noContent();
+      }),
+    },
+
+    "/api/jobs/:id/items/:itemId": {
+      // The client reports uploads that never reached the server.
+      PATCH: handle(async (req: Req) => {
+        const body = await readJson<{ error?: unknown }>(req);
+        const item = ctx.jobs.item(userId(req), parseId(req.params.itemId));
+        if (!item || item.jobId !== parseId(req.params.id)) throw new HttpError(404, "Job item not found");
+        if (item.kind === "import" && item.status === "pending") {
+          ctx.jobs.updateItem(item.id, { status: "failed", error: typeof body.error === "string" ? body.error : "Upload fehlgeschlagen" });
+        }
         return noContent();
       }),
     },

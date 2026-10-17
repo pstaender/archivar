@@ -3,6 +3,7 @@ import type { User } from "../shared/types";
 import { DEFAULT_USER_NAME } from "./db/database";
 import { DocumentRepository } from "./db/documents";
 import { FolderRepository } from "./db/folders";
+import { JobRepository } from "./db/jobs";
 import { PresetRepository } from "./db/presets";
 import { StackRepository } from "./db/stacks";
 import { UserRepository } from "./db/users";
@@ -10,6 +11,7 @@ import { HttpError } from "./http";
 import { ArchiveService } from "./services/archive";
 import type { DewarpEngine } from "./services/dewarp";
 import { ImagingService } from "./services/imaging";
+import { JobQueue } from "./services/jobs";
 import type { ImageConverter } from "./services/magick";
 import { type OcrEngine, OcrQueue } from "./services/ocr";
 import { FileStorage } from "./storage";
@@ -22,6 +24,8 @@ export interface AppContext {
   documents: DocumentRepository;
   stacks: StackRepository;
   presets: PresetRepository;
+  jobs: JobRepository;
+  jobQueue: JobQueue;
   ocr: OcrQueue;
   dewarp: DewarpEngine;
   imaging: ImagingService;
@@ -47,10 +51,12 @@ export function createContext(options: ContextOptions): AppContext {
   const documents = new DocumentRepository(db, folders);
   const stacks = new StackRepository(db, folders);
   const presets = new PresetRepository(db);
+  const jobs = new JobRepository(db);
   const imaging = new ImagingService(storage, options.imageConverter ?? null);
   const ocr = new OcrQueue(documents, imaging, options.ocrEngine, options.ocrPageTimeoutMs);
   const dewarp = options.dewarpEngine;
   const archive = new ArchiveService(documents, stacks, folders, storage, imaging, ocr, dewarp, options.ocrEngine);
+  const jobQueue = new JobQueue(jobs, archive);
 
   // Authentication is not implemented yet: every request acts as the default user.
   const currentUser = (_req: Request): User => {
@@ -59,5 +65,5 @@ export function createContext(options: ContextOptions): AppContext {
     return user;
   };
 
-  return { db, storage, users, folders, documents, stacks, presets, ocr, ocrEngine: options.ocrEngine, dewarp, imaging, archive, currentUser };
+  return { db, storage, users, folders, documents, stacks, presets, jobs, jobQueue, ocr, ocrEngine: options.ocrEngine, dewarp, imaging, archive, currentUser };
 }

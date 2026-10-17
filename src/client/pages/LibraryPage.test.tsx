@@ -89,25 +89,14 @@ describe("LibraryPage", () => {
     expect((screen.getByRole("button", { name: /Alle markieren/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  test("batch processing applies the preset to images and recognizes the text of images and PDFs", async () => {
+  test("batch processing starts a background job for all selected documents, stacks included", async () => {
     const photo = makeDocument({ title: "Foto" });
-    const pdf = makeDocument({ title: "Brief", kind: "pdf" });
-    const note = makeDocument({ title: "Notiz", kind: "file" });
-    const page = makeDocument({ id: 50, title: "Seite" });
-    const stack = makeStack({ id: 8, title: "Mappe", documentIds: [50] });
-    const settings = { ...photo.editSettings, colorMode: "bw" };
+    const stack = makeStack({ id: 8, title: "Mappe", documentIds: [50, 51] });
     fetchMock = mockFetch({
       "GET /api/folders": () => [],
-      "GET /api/library": () => [docItem(photo), docItem(pdf), docItem(note), stackItem(stack)],
+      "GET /api/library": () => [docItem(photo), stackItem(stack)],
       "GET /api/presets": () => [{ id: 7, name: "OCR Optimiert", steps: { autoBw: true }, createdAt: "" }],
-      "GET /api/stacks/8": () => ({ ...stack, documents: [page] }),
-      [`POST /api/documents/${photo.id}/apply-preset`]: () => ({ editSettings: settings }),
-      "POST /api/documents/50/apply-preset": () => ({ editSettings: settings }),
-      [`PATCH /api/documents/${photo.id}`]: () => ({ ...photo, editSettings: settings }),
-      "PATCH /api/documents/50": () => ({ ...page, editSettings: settings }),
-      [`POST /api/documents/${photo.id}/ocr`]: () => photo,
-      [`POST /api/documents/${pdf.id}/ocr`]: () => pdf,
-      "POST /api/documents/50/ocr": () => page,
+      "POST /api/jobs": () => ({ id: 1, kind: "batch", options: null, createdAt: "", active: true, items: [] }),
     });
     await renderApp(<LibraryPage />);
 
@@ -119,17 +108,15 @@ describe("LibraryPage", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /Alle Textteile erkennen/ }));
     fireEvent.click(screen.getByRole("button", { name: "Anwenden" }));
 
-    await waitFor(() => expect(screen.getByText("4 Dokumente verarbeitet")).toBeTruthy());
-    const posts = fetchMock.calls.filter((c) => c.method !== "GET").map((c) => [c.method, c.path, c.body]);
-    expect(posts).toEqual([
-      ["POST", `/api/documents/${photo.id}/apply-preset`, { presetId: 7 }],
-      ["PATCH", `/api/documents/${photo.id}`, { editSettings: settings }],
-      ["POST", `/api/documents/${photo.id}/ocr`, { allText: true, languages: ["fra"] }],
-      ["POST", `/api/documents/${pdf.id}/ocr`, { allText: true, languages: ["fra"] }],
-      ["POST", "/api/documents/50/apply-preset", { presetId: 7 }],
-      ["PATCH", "/api/documents/50", { editSettings: settings }],
-      ["POST", "/api/documents/50/ocr", { allText: true, languages: ["fra"] }],
-    ]);
+    await waitFor(() => expect(screen.getByText("Stapelverarbeitung für 3 Dokumente gestartet")).toBeTruthy());
+    expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toEqual({
+      kind: "batch",
+      documentIds: [photo.id, 50, 51],
+      presetId: 7,
+      ocr: true,
+      languages: ["fra"],
+      allText: true,
+    });
     expect(screen.queryByRole("toolbar")).toBeNull();
   });
 
@@ -138,7 +125,7 @@ describe("LibraryPage", () => {
     fetchMock = mockFetch({
       "GET /api/folders": () => [],
       "GET /api/library": () => [docItem(photo)],
-      [`POST /api/documents/${photo.id}/ocr`]: () => photo,
+      "POST /api/jobs": () => ({ id: 1, kind: "batch", options: null, createdAt: "", active: true, items: [] }),
     });
     await renderApp(<LibraryPage />);
     fireEvent.click(screen.getByLabelText("Foto auswählen"));
@@ -151,8 +138,8 @@ describe("LibraryPage", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /Text erkennen/ }));
     fireEvent.click(apply);
 
-    await waitFor(() => expect(screen.getByText("1 Dokument verarbeitet")).toBeTruthy());
-    expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toEqual({ allText: false, languages: null });
+    await waitFor(() => expect(screen.getByText("Stapelverarbeitung für 1 Dokument gestartet")).toBeTruthy());
+    expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toMatchObject({ presetId: null, ocr: true, languages: null, allText: false });
   });
 
   const folders = () => [folder(1, "privat"), folder(2, "wichtig"), folder(3, "wichtig/2026")];

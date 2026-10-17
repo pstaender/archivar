@@ -27,6 +27,8 @@ const detected = ctx.archive.detectMissingLanguages();
 if (detected > 0) console.log(`Detected the language of ${detected} documents.`);
 const resumed = ctx.ocr.resume();
 if (resumed > 0) console.log(`Resumed text recognition for ${resumed} documents.`);
+const resumedJobs = ctx.jobQueue.resume();
+if (resumedJobs > 0) console.log(`Resumed batch processing for ${resumedJobs} documents.`);
 ctx.imaging
   .removeStalePreviews()
   .then((count) => count > 0 && console.log(`Removed ${count} outdated preview files.`))

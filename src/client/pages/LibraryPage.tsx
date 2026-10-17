@@ -12,6 +12,7 @@ import { SortableGrid } from "../components/SortableGrid";
 import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
 import { useRefreshOnEditSave, whenEditsSaved } from "../editSaves";
+import { useRefreshOnJobProgress } from "../hooks/jobs";
 import { useRefreshOnUpload, useUpload } from "../hooks/upload";
 import { usePolling } from "../hooks/usePolling";
 import { useResource } from "../hooks/useResource";
@@ -69,6 +70,7 @@ export function LibraryPage() {
   const library = useResource(() => api.library({ folder, q, sort }), [folder, q, sort]);
   useRefreshOnUpload(library.refresh);
   useRefreshOnEditSave(library.refresh);
+  useRefreshOnJobProgress(library.refresh);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => setSelected(new Set()), [folder, q]);
@@ -348,7 +350,7 @@ export function SelectionBar({ items, allSelected, onSelectAll, onClear, onDone 
         onClose={() => setFolderDialog(false)}
       />
 
-      <BatchDialog open={batchDialog} items={items} onClose={() => setBatchDialog(false)} onDone={onDone} />
+      <BatchDialog open={batchDialog} documentIds={documentIds} onClose={() => setBatchDialog(false)} onStarted={onDone} />
 
       <ConfirmDialog
         open={confirmDelete}

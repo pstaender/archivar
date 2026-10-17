@@ -118,6 +118,7 @@ export async function startTestServer({ ocrPageTimeoutMs, importPreset = false }
     converter,
     api: (path, init) => fetch(`${url}${path}`, init),
     async close() {
+      await ctx.jobQueue.idle();
       await ctx.ocr.idle();
       await server.stop(true);
       ctx.db.close();

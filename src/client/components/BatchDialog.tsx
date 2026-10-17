@@ -1,10 +1,10 @@
 import { Loader } from "../icons";
 import { useEffect, useId, useState } from "react";
 import { languageName, OCR_LANGUAGES } from "../../shared/languages";
-import type { ArchiveDocument, LibraryItem } from "../../shared/types";
 import { api } from "../api";
-import { saveEditSettings, whenEditsSaved } from "../editSaves";
+import { whenEditsSaved } from "../editSaves";
 import { useConfig } from "../hooks/config";
+import { useJobs } from "../hooks/jobs";
 import { usePresets } from "../hooks/presets";
 import { useToast } from "../hooks/toast";
 import { Dialog } from "./Dialog";
@@ -12,13 +12,13 @@ import { Switch } from "./Switch";
 
 interface BatchDialogProps {
   open: boolean;
-  items: LibraryItem[];
+  documentIds: number[];
   onClose: () => void;
-  /** Called after processing, also when some documents failed. */
-  onDone: () => void;
+  /** Called once the job is started. */
+  onStarted: () => void;
 }
 
-export interface BatchOptions {
+interface BatchChoice {
   presetId: number | null;
   ocr: boolean;
   /** Empty: the default languages. */
@@ -26,74 +26,47 @@ export interface BatchOptions {
   allText: boolean;
 }
 
-const DEFAULT_OPTIONS: BatchOptions = { presetId: null, ocr: true, language: "", allText: false };
+const DEFAULT_CHOICE: BatchChoice = { presetId: null, ocr: true, language: "", allText: false };
 
-async function documentsOf(items: LibraryItem[]): Promise<ArchiveDocument[]> {
-  const docs: ArchiveDocument[] = [];
-  for (const item of items) {
-    if (item.type === "document") docs.push(item.document);
-    else docs.push(...(await api.stack(item.stack.id)).documents);
-  }
-  return docs;
-}
-
-/** Applies the preset (images only) and then queues OCR (images and PDFs), one document after another. */
-async function processDocument(doc: ArchiveDocument, options: BatchOptions): Promise<void> {
-  if (options.presetId !== null && doc.kind === "image") {
-    await whenEditsSaved(doc.id);
-    const { editSettings } = await api.applyPreset(doc.id, options.presetId);
-    await saveEditSettings(doc.id, editSettings);
-  }
-  if (options.ocr && doc.kind !== "file") {
-    await api.runOcr(doc.id, { allText: options.allText, languages: options.language ? [options.language] : null });
-  }
-}
-
-export function BatchDialog({ open, items, onClose, onDone }: BatchDialogProps) {
+export function BatchDialog({ open, documentIds, onClose, onStarted }: BatchDialogProps) {
   const toast = useToast();
   const config = useConfig();
   const { presets } = usePresets();
+  const { reload: reloadJobs } = useJobs();
   const presetId = useId();
   const languageId = useId();
-  const [options, setOptions] = useState<BatchOptions>(DEFAULT_OPTIONS);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [options, setOptions] = useState<BatchChoice>(DEFAULT_CHOICE);
+  const [working, setWorking] = useState(false);
 
   useEffect(() => {
-    if (open) setOptions(DEFAULT_OPTIONS);
+    if (open) setOptions(DEFAULT_CHOICE);
   }, [open]);
 
-  const set = <K extends keyof BatchOptions>(key: K, value: BatchOptions[K]) => setOptions((current) => ({ ...current, [key]: value }));
-  const working = progress !== null;
+  const set = <K extends keyof BatchChoice>(key: K, value: BatchChoice[K]) => setOptions((current) => ({ ...current, [key]: value }));
   const canRun = !working && (options.presetId !== null || options.ocr);
   const defaultLanguages = config.ocrLanguages.map(languageName).join(" + ");
 
   const run = async () => {
-    setProgress({ done: 0, total: 0 });
-    const failures: unknown[] = [];
-    let total = 0;
+    setWorking(true);
     try {
-      const docs = await documentsOf(items);
-      total = docs.length;
-      setProgress({ done: 0, total });
-      for (const [index, doc] of docs.entries()) {
-        try {
-          await processDocument(doc, options);
-        } catch (error) {
-          failures.push(error);
-        }
-        setProgress({ done: index + 1, total });
-      }
+      await whenEditsSaved();
+      await api.createJob({
+        kind: "batch",
+        documentIds,
+        presetId: options.presetId,
+        ocr: options.ocr,
+        languages: options.language ? [options.language] : null,
+        allText: options.allText,
+      });
+      void reloadJobs();
+      toast.success(`Stapelverarbeitung für ${documentIds.length === 1 ? "1 Dokument" : `${documentIds.length} Dokumente`} gestartet`);
+      onStarted();
+      onClose();
     } catch (error) {
-      failures.push(error);
+      toast.error(error);
+    } finally {
+      setWorking(false);
     }
-    setProgress(null);
-    if (failures.length === 0) toast.success(total === 1 ? "1 Dokument verarbeitet" : `${total} Dokumente verarbeitet`);
-    else {
-      const reason = failures[0] instanceof Error ? failures[0].message : String(failures[0]);
-      toast.error(new Error(`${failures.length} von ${total || items.length} konnten nicht verarbeitet werden: ${reason}`));
-    }
-    onDone();
-    onClose();
   };
 
   return (
@@ -158,12 +131,7 @@ export function BatchDialog({ open, items, onClose, onDone }: BatchDialogProps) 
         >
           Alle Textteile erkennen
         </Switch>
-        {progress && (
-          <p className="muted small" role="status">
-            <Loader size={14} className="spin" />{" "}
-            {progress.total ? `${progress.done} von ${progress.total} verarbeitet …` : "Dokumente werden geladen …"}
-          </p>
-        )}
+        <p className="muted small">Läuft im Hintergrund weiter; den Fortschritt zeigt „Stapelverarbeitung“ in der Seitenleiste.</p>
       </div>
     </Dialog>
   );

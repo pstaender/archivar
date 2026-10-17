@@ -6,6 +6,7 @@ import { api, type UploadOptions } from "../api";
 import { folderFromPathname } from "../routes";
 import { useConfig } from "./config";
 import { useFolders } from "./folders";
+import { useJobs } from "./jobs";
 import { useSettings } from "./settings";
 import { useToast } from "./toast";
 
@@ -39,6 +40,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
   const toast = useToast();
   const { convertibleImageTypes } = useConfig();
   const { reload: reloadFolders } = useFolders();
+  const { reload: reloadJobs } = useJobs();
   const location = useLocation();
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [version, setVersion] = useState(0);
@@ -77,12 +79,19 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       const run = async () => {
         const docs: ArchiveDocument[] = [];
         const failures: { file: File; error: unknown }[] = [];
-        for (const file of supported) {
+        // The import job shows the files on the jobs page; uploads still work without it.
+        const job = await api.createJob({ kind: "import", files: supported.map((file) => file.name) }).catch((error) => {
+          console.warn("Could not create the import job:", error);
+          return null;
+        });
+        if (job) void reloadJobs();
+        for (const [index, file] of supported.entries()) {
+          const jobItem = job?.items[index];
           s.currentSize = file.size;
           s.currentBytes = 0;
           publish();
           try {
-            const uploaded = await api.upload([file], { ocr: autoOcr, ocrAllText, ...options }, (loaded, total) => {
+            const uploaded = await api.upload([file], { ocr: autoOcr, ocrAllText, ...options, jobItemId: jobItem?.id }, (loaded, total) => {
               s.currentBytes = file.size * (loaded / total);
               publish();
             });
@@ -90,6 +99,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
             setVersion((v) => v + 1);
           } catch (error) {
             failures.push({ file, error });
+            if (job && jobItem) void api.failJobItem(job.id, jobItem.id, error instanceof Error ? error.message : String(error)).catch(() => undefined);
           } finally {
             s.done++;
             s.doneBytes += file.size;
@@ -100,6 +110,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        if (job) void reloadJobs();
         if (docs.length > 0) {
           toast.success(docs.length === 1 ? "1 Datei hochgeladen" : `${docs.length} Dateien hochgeladen`);
           if (options.folders?.length) void reloadFolders();
@@ -117,7 +128,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       queue.current = result.catch(() => undefined);
       return result;
     },
-    [autoOcr, ocrAllText, convertibleImageTypes, toast, reloadFolders, publish],
+    [autoOcr, ocrAllText, convertibleImageTypes, toast, reloadFolders, reloadJobs, publish],
   );
 
   const stackMatch = matchPath("/stacks/:id", location.pathname);
