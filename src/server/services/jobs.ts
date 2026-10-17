@@ -1,4 +1,5 @@
 import type { JobRepository, QueuedBatchItem } from "../db/jobs";
+import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
 import type { ArchiveService } from "./archive";
 
 export const UPLOAD_INTERRUPTED_MESSAGE = "Der Upload wurde abgebrochen.";
@@ -43,7 +44,7 @@ export class JobQueue {
       const doc = this.archive.getDocument(userId, documentId);
       let applied = false;
       if (options.preset && doc.kind === "image") {
-        const editSettings = await this.archive.applyPreset(userId, doc.id, options.preset.steps);
+        const editSettings = await this.archive.applyPreset(userId, doc.id, options.preset.steps, DEFAULT_EDIT_SETTINGS);
         await this.archive.updateDocument(userId, doc.id, { editSettings, shapes: options.preset.steps.shapes });
         applied = true;
       }

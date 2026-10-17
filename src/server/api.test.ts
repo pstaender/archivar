@@ -846,6 +846,7 @@ describe("jobs", () => {
 
   test("batch jobs apply the preset to images and queue OCR for images and PDFs in the background", async () => {
     const photo = await uploadImage("foto.jpg");
+    await patch(`/api/documents/${photo.id}`, { editSettings: { brightness: 0.2, saturation: 30 } });
     const [pdf, note] = await upload([
       { name: "brief.pdf", data: makePdf(""), type: "application/pdf" },
       { name: "notiz.txt", data: new TextEncoder().encode("x"), type: "text/plain" },
@@ -870,6 +871,7 @@ describe("jobs", () => {
     const finishedAt = job!.finishedAt!;
     expect(finishedAt >= job!.createdAt).toBe(true);
     expect(server.ctx.documents.getById(photo.id)).toMatchObject({ editSettings: { colorMode: "grayscale" }, ocrLanguages: ["fra"], ocrAllText: true });
+    expect(server.ctx.documents.getById(photo.id)?.editSettings).toMatchObject({ brightness: 0, saturation: 0 });
     expect(server.ctx.documents.getById(pdf!.id)?.editSettings.colorMode).toBe("color");
     expect(server.ocr.recognizedLanguages).toEqual([["fra"], ["fra"]]);
 
