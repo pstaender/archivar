@@ -3,7 +3,7 @@ import { seedImportPresets } from "./presets";
 
 export const DEFAULT_USER_NAME = "default";
 
-const migrations: string[] = [
+export const migrations: string[] = [
   `
   CREATE TABLE users (
     id INTEGER PRIMARY KEY,
@@ -163,7 +163,7 @@ const migrations: string[] = [
   ALTER TABLE documents ADD COLUMN copy_of INTEGER REFERENCES documents(id) ON DELETE SET NULL;
   CREATE INDEX documents_copy_of ON documents(copy_of);
   `,
-  // AUTOINCREMENT: ids of deleted documents are never given out again (their files are cached by id in browsers).
+  // AUTOINCREMENT: ids of deleted documents (and stacks, next migration) are never given out again (their files are cached by id in browsers).
   `
   CREATE TABLE documents_new (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -209,6 +209,18 @@ const migrations: string[] = [
   CREATE INDEX documents_stack ON documents(stack_id, stack_position);
   CREATE INDEX documents_sha256 ON documents(user_id, sha256);
   CREATE INDEX documents_copy_of ON documents(copy_of);
+  `,
+  `
+  CREATE TABLE stacks_new (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  INSERT INTO stacks_new (id, user_id, title, created_at, updated_at) SELECT id, user_id, title, created_at, updated_at FROM stacks;
+  DROP TABLE stacks;
+  ALTER TABLE stacks_new RENAME TO stacks;
   `,
 ];
 

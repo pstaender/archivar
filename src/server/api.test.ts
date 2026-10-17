@@ -964,6 +964,13 @@ describe("stacks", () => {
     expect(library.find((i) => i.type === "document")?.type === "document" && c.id).toBe(c.id);
   });
 
+  test("never gives the id of a deleted stack out again", async () => {
+    const stack = (await (await post("/api/stacks", { documentIds: [(await uploadImage()).id] })).json()) as StackWithDocuments;
+    await server.api(`/api/stacks/${stack.id}`, { method: "DELETE" });
+    const next = (await (await post("/api/stacks", { documentIds: [(await uploadImage()).id] })).json()) as StackWithDocuments;
+    expect(next.id).toBe(stack.id + 1);
+  });
+
   test("defaults the stack title to the first document", async () => {
     const a = await uploadImage("Rechnung.jpg");
     const stack = (await (await post("/api/stacks", { documentIds: [a.id] })).json()) as StackWithDocuments;
