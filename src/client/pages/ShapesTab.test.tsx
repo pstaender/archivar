@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { DEFAULT_USER_SETTINGS } from "../../shared/settings";
 import type { Shape } from "../../shared/shapes";
-import { type FetchMock, makeDocument, mockFetch, renderApp } from "../../../test/client";
+import { type FetchMock, makeDocument, mockFetch, renderApp, selectTab } from "../../../test/client";
 import { DocumentPage } from "./DocumentPage";
 
 let fetchMock: FetchMock;
@@ -28,15 +28,17 @@ async function open(overrides: Parameters<typeof makeDocument>[0] = {}, routes: 
     },
   });
   const view = await renderApp(<DocumentPage />, { path: "/documents/1", route: "/documents/:id" });
-  await screen.findByRole("tab", { name: "Formen" });
+  await screen.findByRole("tab", { name: "Text" });
   return view;
 }
 
 describe("Formen tab", () => {
-  test("sits between Text and Details and shows the image without its shapes", async () => {
+  test("sits in the „Mehr“ menu after Vektor and shows the image without its shapes", async () => {
     const view = await open({ shapes: [shape], shapesOutdated: true });
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bearbeiten", "Text", "Vektor", "Formen", "Details"]);
-    fireEvent.click(screen.getByRole("tab", { name: "Formen" }));
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bearbeiten", "Text", "Datei", "Mehr"]);
+    fireEvent.click(screen.getByRole("tab", { name: "Mehr" }));
+    expect(screen.getAllByRole("menuitemradio").map((t) => t.textContent)).toEqual(["Vektor", "Formen"]);
+    selectTab("Formen");
     expect(view.container.querySelector(".editor-canvas__image")?.getAttribute("src")).toStartWith("/api/documents/1/edited?");
     expect(screen.getByRole("button", { name: "Rechteck 1" })).toBeTruthy();
     expect(screen.getByText(/Prüfe, ob die Formen noch an der richtigen Stelle liegen/)).toBeTruthy();
@@ -45,7 +47,7 @@ describe("Formen tab", () => {
 
   test("saves changed shapes and reports that the text is recognized again", async () => {
     await open({ shapes: [shape] });
-    fireEvent.click(screen.getByRole("tab", { name: "Formen" }));
+    selectTab("Formen");
     const save = screen.getByRole("button", { name: "Speichern" }) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Alle entfernen" }));
@@ -65,7 +67,7 @@ describe("Formen tab", () => {
         return preset;
       },
     });
-    fireEvent.click(screen.getByRole("tab", { name: "Formen" }));
+    selectTab("Formen");
     fireEvent.click(screen.getByRole("button", { name: "Als Bildeinstellung" }));
     const dialog = (await screen.findByText("Formen: 1 Rechteck")).closest("dialog") as HTMLElement;
     fireEvent.change(within(dialog).getByLabelText("Name", { selector: "input" }), { target: { value: "Schwärzen" } });
@@ -80,25 +82,25 @@ describe("Formen tab", () => {
       "GET /api/presets": () => [preset],
       "POST /api/documents/1/apply-preset": () => ({ editSettings: makeDocument().editSettings, shapes: [shape] }),
     });
-    fireEvent.click(screen.getByRole("tab", { name: "Bearbeiten" }));
+    selectTab("Bearbeiten");
     await waitFor(() => expect(screen.getByRole("option", { name: "Schwärzen" })).toBeTruthy());
     fireEvent.change(screen.getByLabelText("Bildeinstellung anwenden"), { target: { value: "7" } });
     await screen.findByText(/Formen der Bildeinstellung wurden übernommen/);
-    fireEvent.click(screen.getByRole("tab", { name: "Formen" }));
+    selectTab("Formen");
     expect(screen.getByRole("button", { name: "Rechteck 1" })).toBeTruthy();
     expect((screen.getByRole("button", { name: "Speichern" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   test("asks before leaving the tab with unsaved shapes", async () => {
     await open({ shapes: [shape] });
-    fireEvent.click(screen.getByRole("tab", { name: "Formen" }));
+    selectTab("Formen");
     fireEvent.keyDown(screen.getByRole("button", { name: "Rechteck 1" }), { key: "Delete" });
-    fireEvent.click(screen.getByRole("tab", { name: "Details" }));
+    selectTab("Datei");
     const dialog = (await screen.findByText("Bearbeitung nicht gespeichert")).closest("dialog") as HTMLElement;
     expect(screen.getByRole("tab", { name: "Formen" }).getAttribute("aria-selected")).toBe("true");
     fireEvent.click(within(dialog).getByRole("button", { name: "Verwerfen", hidden: true }));
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Details" }).getAttribute("aria-selected")).toBe("true"));
-    fireEvent.click(screen.getByRole("tab", { name: "Formen" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Datei" }).getAttribute("aria-selected")).toBe("true"));
+    selectTab("Formen");
     expect(screen.getByRole("button", { name: "Rechteck 1" })).toBeTruthy();
   });
 });

@@ -13,6 +13,7 @@ import { ConfirmDialog } from "../components/Dialog";
 import { EditableTitle } from "../components/EditableTitle";
 import { FolderPicker } from "../components/FolderPicker";
 import { PresetDialog } from "../components/PresetDialog";
+import { type TabItem, TabBar } from "../components/TabBar";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { ZoomableImage } from "../components/ZoomableImage";
 import { type AutoBwState, EditControls } from "../editor/EditControls";
@@ -40,6 +41,16 @@ type Tab = "edit" | "text" | "vectors" | "shapes" | "details";
 const IMAGE_TABS: Tab[] = ["edit", "vectors", "shapes"];
 const TABS: Tab[] = ["edit", "text", "vectors", "shapes", "details"];
 const TAB_KEY = "archivar.documentTab";
+
+const EDIT_TAB: TabItem<Tab> = { id: "edit", label: "Bearbeiten" };
+const MAIN_TABS: TabItem<Tab>[] = [
+  { id: "text", label: "Text" },
+  { id: "details", label: "Datei" },
+];
+const MORE_TABS: TabItem<Tab>[] = [
+  { id: "vectors", label: "Vektor" },
+  { id: "shapes", label: "Formen" },
+];
 
 /** The tab chosen last, for all documents. */
 function storedTab(): Tab {
@@ -459,29 +470,12 @@ export function DocumentPage() {
         </div>
 
         <aside className="panel">
-          <div className="tabs" role="tablist">
-            {doc.kind === "image" && (
-              <TabButton tab="edit" current={tab} onSelect={selectTab}>
-                Bearbeiten
-              </TabButton>
-            )}
-            <TabButton tab="text" current={tab} onSelect={selectTab}>
-              Text
-            </TabButton>
-            {doc.kind === "image" && (
-              <TabButton tab="vectors" current={tab} onSelect={selectTab}>
-                Vektor
-              </TabButton>
-            )}
-            {doc.kind === "image" && (
-              <TabButton tab="shapes" current={tab} onSelect={selectTab}>
-                Formen
-              </TabButton>
-            )}
-            <TabButton tab="details" current={tab} onSelect={selectTab}>
-              Details
-            </TabButton>
-          </div>
+          <TabBar
+            tabs={doc.kind === "image" ? [EDIT_TAB, ...MAIN_TABS] : MAIN_TABS}
+            more={doc.kind === "image" ? MORE_TABS : []}
+            current={tab}
+            onSelect={selectTab}
+          />
 
           <div className="panel__body" role="tabpanel">
             {tab === "edit" && doc.kind === "image" && (
@@ -620,14 +614,6 @@ export function DocumentPage() {
   );
 }
 
-function TabButton({ tab, current, onSelect, children }: { tab: Tab; current: Tab; onSelect: (tab: Tab) => void; children: string }) {
-  return (
-    <button type="button" role="tab" aria-selected={tab === current} className={tab === current ? "is-active" : ""} onClick={() => onSelect(tab)}>
-      {children}
-    </button>
-  );
-}
-
 interface ViewerProps {
   doc: ArchiveDocument;
   editing: boolean;
@@ -688,7 +674,6 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
   const toast = useToast();
   const config = useConfig();
   const [text, setText] = useState(doc.ocrText);
-  const [exporting, setExporting] = useState(false);
   const current = doc.ocrLanguages?.join("+") ?? "";
   const [language, setLanguage] = useState(current);
   const busy = isOcrBusy(doc);
@@ -706,20 +691,6 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
       toast.success("Text kopiert");
     } catch (error) {
       toast.error(error);
-    }
-  };
-
-  // Exports what is in the text field, also when it is not saved yet.
-  const exportPdf = async () => {
-    setExporting(true);
-    try {
-      await whenEditsSaved(doc.id);
-      const { blob, filename } = await api.exportPdf(doc.id, text);
-      saveBlob(blob, filename);
-    } catch (error) {
-      toast.error(error);
-    } finally {
-      setExporting(false);
     }
   };
 
@@ -800,18 +771,6 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
         <button type="button" className="btn btn--sm" onClick={() => setText(doc.ocrText)} disabled={text === doc.ocrText}>
           Verwerfen
         </button>
-        {doc.kind === "image" && (
-          <button
-            type="button"
-            className="btn btn--sm"
-            onClick={exportPdf}
-            disabled={exporting || busy}
-            title="Bild mit dem Text als durchsuchbares PDF herunterladen"
-          >
-            {exporting ? <Loader size={16} className="spin" /> : <Download size={16} />}
-            PDF
-          </button>
-        )}
         <button type="button" className="btn btn--sm btn--primary" onClick={() => onSave(text)} disabled={text === doc.ocrText}>
           Text speichern
         </button>
@@ -820,9 +779,11 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
   );
 }
 
-function DetailsPanel({ doc, onFoldersChange }: { doc: ArchiveDocument; onFoldersChange: (folders: string[]) => void }) {
+export function DetailsPanel({ doc, onFoldersChange }: { doc: ArchiveDocument; onFoldersChange: (folders: string[]) => void }) {
+  const toast = useToast();
+  const [exporting, setExporting] = useState(false);
   const rows: [string, string][] = [
-    ["Datei", doc.originalName],
+    ["Dateiname", doc.originalName],
     ["Typ", doc.mimeType],
     ["Größe", formatBytes(doc.size)],
   ];
@@ -830,8 +791,39 @@ function DetailsPanel({ doc, onFoldersChange }: { doc: ArchiveDocument; onFolder
   if (doc.pageCount) rows.push(["Seiten", String(doc.pageCount)]);
   rows.push(["Hochgeladen", formatDateTime(doc.createdAt)], ["Geändert", formatDateTime(doc.updatedAt)]);
 
+  const exportPdf = async () => {
+    setExporting(true);
+    try {
+      await whenEditsSaved(doc.id);
+      const { blob, filename } = await api.exportPdf(doc.id);
+      saveBlob(blob, filename);
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="details-panel">
+      <div className="button-row">
+        <a href={assetUrl(doc, "file")} download={doc.originalName} className="btn btn--sm">
+          <Download size={16} />
+          Original
+        </a>
+        {doc.kind === "image" && (
+          <button
+            type="button"
+            className="btn btn--sm"
+            onClick={exportPdf}
+            disabled={exporting || isOcrBusy(doc)}
+            title="Bild mit dem gespeicherten Text als durchsuchbares PDF herunterladen"
+          >
+            {exporting ? <Loader size={16} className="spin" /> : <Download size={16} />}
+            PDF
+          </button>
+        )}
+      </div>
       <FolderPicker value={doc.folders} onChange={onFoldersChange} />
       <dl className="details">
         {rows.map(([label, value]) => (

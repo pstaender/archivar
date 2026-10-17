@@ -37,6 +37,7 @@ export const AutoRotate = createIcon(keyline("refresh-cw-sparkles"), "AutoRotate
 export const ArrowLeft = createIcon(keyline("arrow-left"), "ArrowLeft");
 export const Camera = createIcon(keyline("camera"), "Camera");
 export const Check = createIcon(keyline("check"), "Check");
+export const ChevronDown = createIcon(keyline("chevron-down"), "ChevronDown");
 export const ChevronLeft = createIcon(keyline("chevron-left"), "ChevronLeft");
 export const ChevronRight = createIcon(keyline("chevron-right"), "ChevronRight");
 export const CircleAlert = createIcon(keyline("circle-alert"), "CircleAlert");

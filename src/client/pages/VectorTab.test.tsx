@@ -65,9 +65,10 @@ function drawArea(container: HTMLElement) {
 }
 
 describe("Vektor tab", () => {
-  test("sits between Text and Formen and shows the stored areas on the image without them", async () => {
+  test("is opened from the „Mehr“ menu and shows the stored areas on the image without them", async () => {
     const view = await open({ vectorCount: 1, vectorsOutdated: true, ocrStatus: "done", ocrText: "Text" });
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bearbeiten", "Text", "Vektor", "Formen", "Details"]);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bearbeiten", "Text", "Datei", "Vektor"]);
+    expect(screen.getByRole("tab", { name: "Vektor" }).getAttribute("aria-selected")).toBe("true");
     expect(view.container.querySelector(".editor-canvas__image")?.getAttribute("src")).toStartWith("/api/documents/1/edited?");
     const button = await screen.findByRole("button", { name: "Vektorbereich 1" });
     expect(button.querySelector("path")?.getAttribute("d")).toBe(graphic.paths[0]!.d);

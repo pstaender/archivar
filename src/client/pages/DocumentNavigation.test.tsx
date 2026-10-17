@@ -71,10 +71,10 @@ describe("document navigation", () => {
   test("remembers the chosen tab for all documents", async () => {
     const first = await open("/documents/1");
     expect(screen.getByRole("tab", { name: "Text" }).getAttribute("aria-selected")).toBe("true");
-    fireEvent.click(screen.getByRole("tab", { name: "Details" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Datei" }));
     first.unmount();
     fetchMock.restore();
     await open("/documents/2");
-    expect(screen.getByRole("tab", { name: "Details" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "Datei" }).getAttribute("aria-selected")).toBe("true");
   });
 });

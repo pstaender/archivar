@@ -1,5 +1,5 @@
 import { mock } from "bun:test";
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import type { ArchiveDocument, Folder, LibraryItem, Stack, UploadedDocument } from "../src/shared/types";
@@ -57,6 +57,19 @@ export async function renderApp(ui: ReactElement, { path = "/", route = "*" }: {
 }
 
 let nextId = 1;
+
+/** Opens a document tab, also one in the „Mehr“ menu. */
+export function selectTab(name: string): void {
+  const tab = screen.queryByRole("tab", { name });
+  if (tab && tab.getAttribute("aria-haspopup") === null) {
+    fireEvent.click(tab);
+    return;
+  }
+  const trigger = document.querySelector<HTMLElement>('[role="tab"][aria-haspopup="menu"]');
+  if (!trigger) throw new Error(`No tab „${name}“`);
+  if (trigger.getAttribute("aria-expanded") !== "true") fireEvent.click(trigger);
+  fireEvent.click(screen.getByRole("menuitemradio", { name }));
+}
 
 export function makeDocument(overrides: Partial<ArchiveDocument> = {}): ArchiveDocument {
   const id = overrides.id ?? nextId++;
