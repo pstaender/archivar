@@ -1,7 +1,7 @@
 import { PREVIEW_SIZE } from "../shared/preview";
 import type { Job, JobCreate } from "../shared/jobs";
 import type { ImagePreset, ImagePresetInput } from "../shared/presets";
-import type { UserSettings } from "../shared/settings";
+import type { PdfQuality, UserSettings } from "../shared/settings";
 import type { Shape } from "../shared/shapes";
 import type { VectorArea } from "../vectorizer";
 import type { ApiToken, CreatedApiToken } from "../shared/tokens";
@@ -128,11 +128,11 @@ export const api = {
   /** The settings after applying a preset on top of `editSettings` (default: the stored ones); nothing is saved. */
   applyPreset: (id: number, presetId: number, editSettings?: EditSettings) =>
     request<{ editSettings: EditSettings; shapes: Shape[] | null }>(`/api/documents/${id}/apply-preset`, jsonBody("POST", { presetId, editSettings })),
-  /** Searchable PDF of the edited image with `text` (default: the stored text) as its text layer. */
-  exportPdf: async (id: number, text?: string) => download(await send(`/api/documents/${id}/pdf`, jsonBody("POST", { text })), `dokument-${id}.pdf`),
+  /** Searchable PDF of the edited image with its stored text; without `quality`, the user's setting applies. */
+  exportPdf: async (id: number, quality?: PdfQuality) => download(await send(`/api/documents/${id}/pdf`, jsonBody("POST", { quality })), `dokument-${id}.pdf`),
   /** One PDF of the documents in order: images as searchable pages, PDFs with all pages; other files are left out. */
-  exportCombinedPdf: async (documentIds: number[], title?: string) =>
-    download(await send("/api/export/pdf", jsonBody("POST", { documentIds, title })), "Dokumente.pdf"),
+  exportCombinedPdf: async (documentIds: number[], title?: string, quality?: PdfQuality) =>
+    download(await send("/api/export/pdf", jsonBody("POST", { documentIds, title, quality })), "Dokumente.pdf"),
   renderPreview: async (id: number, editSettings: EditSettings, signal?: AbortSignal) =>
     (await send(`/api/documents/${id}/render`, { ...jsonBody("POST", { editSettings }), signal })).blob(),
   /** `languages` changes the document's recognition languages (null: back to the default). */

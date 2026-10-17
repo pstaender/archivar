@@ -46,6 +46,32 @@ describe("Datei tab", () => {
     }
   });
 
+  test("the arrow next to PDF downloads it in another quality", async () => {
+    await open({ kind: "image", ocrStatus: "done", ocrText: "Hallo" });
+    const createObjectURL = spyOn(URL, "createObjectURL").mockReturnValue("blob:pdf");
+    const click = spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const posted = () => fetchMock.calls.filter((c) => c.method === "POST").map((c) => c.body);
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "PDF-Qualität wählen" }));
+      const items = screen.getAllByRole("menuitem");
+      expect(items.map((item) => item.querySelector(".menu__label")?.textContent)).toEqual(["Niedrig", "MittelStandard", "Hoch", "Original", "Eigene …"]);
+      fireEvent.click(screen.getByRole("menuitem", { name: /^Original/ }));
+      await settle();
+      expect(screen.queryByRole("menu") === null).toBe(true);
+
+      fireEvent.click(screen.getByRole("button", { name: "PDF-Qualität wählen" }));
+      fireEvent.click(screen.getByRole("menuitem", { name: /^Eigene/ }));
+      fireEvent.change(screen.getByLabelText("Qualität"), { target: { value: "3" } });
+      fireEvent.click(screen.getByRole("button", { name: "Herunterladen" }));
+      await settle();
+      expect(posted()).toEqual([{ quality: "original" }, { quality: 3 }]);
+      expect(localStorage.getItem("archivar.pdfCompression")).toBe("3");
+    } finally {
+      createObjectURL.mockRestore();
+      click.mockRestore();
+    }
+  });
+
   test("offers the PDF export only for images and not while OCR runs", async () => {
     const view = await open({ kind: "pdf", ocrStatus: "done" });
     expect(screen.queryByRole("button", { name: "PDF" })).toBeNull();

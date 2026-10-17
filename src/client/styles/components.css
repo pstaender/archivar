@@ -571,7 +571,10 @@
   background: var(--color-surface);
   box-shadow: var(--shadow-md);
 
-  & [role="menuitemradio"] {
+  & [role="menuitemradio"],
+  & [role="menuitem"] {
+    display: grid;
+    gap: 2px;
     padding: var(--space-2) var(--space-3);
     border: 0;
     border-radius: var(--radius-sm);
@@ -591,6 +594,59 @@
       font-weight: 600;
     }
   }
+}
+
+.menu__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.menu__hint {
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.menu__custom {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+}
+
+.split-button {
+  position: relative;
+  display: inline-flex;
+
+  & > .btn:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  & > .split-button__toggle {
+    margin-left: -1px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+}
+
+.split-button__toggle.btn--icon {
+  width: auto;
+  padding: 0 var(--space-2);
+}
+
+.split-button__menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 50;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 2 * var(--space-4)));
+}
+
+.split-button__menu--up {
+  top: auto;
+  bottom: calc(100% + var(--space-2));
 }
 
 .tabs__menu {

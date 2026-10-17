@@ -1,9 +1,7 @@
 import {
-  Download,
   FolderMinus,
   FolderPlus,
   Layers,
-  Loader,
   RatioLandscape,
   RatioPortrait,
   RatioSquare,
@@ -14,6 +12,7 @@ import {
   Wand,
   X,
 } from "../icons";
+import type { PdfQuality } from "../../shared/settings";
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router";
 import { moveToFolders } from "../../shared/folders";
@@ -21,6 +20,7 @@ import { LIBRARY_SORTS, type LibraryItem, type LibrarySort } from "../../shared/
 import { api } from "../api";
 import { BatchDialog } from "../components/BatchDialog";
 import { ConfirmDialog } from "../components/Dialog";
+import { PdfButton } from "../components/PdfButton";
 import { FolderTargetDialog } from "../components/FolderTargetDialog";
 import { ItemCard, itemKey, SmartStackCard } from "../components/ItemCard";
 import { SortableGrid } from "../components/SortableGrid";
@@ -427,13 +427,13 @@ export function SelectionBar({ items, allSelected, onSelectAll, onClear, onDone 
       onDone();
     });
 
-  const exportPdf = () =>
+  const exportPdf = (quality?: PdfQuality) =>
     run(async () => {
       setExporting(true);
       try {
         const title = items.length === 1 ? (items[0]!.type === "stack" ? items[0]!.stack.title : documentLabel(items[0]!.document)) : undefined;
         await whenEditsSaved();
-        const { blob, filename } = await api.exportCombinedPdf(documentIds, title);
+        const { blob, filename } = await api.exportCombinedPdf(documentIds, title, quality);
         saveBlob(blob, filename);
       } finally {
         setExporting(false);
@@ -486,10 +486,14 @@ export function SelectionBar({ items, allSelected, onSelectAll, onClear, onDone 
             </span>
           </button>
         )}
-        <button type="button" className="btn" onClick={exportPdf} disabled={working || !exportable} title="Bilder und PDFs der Auswahl als ein PDF herunterladen">
-          {exporting ? <Loader size={16} className="spin" /> : <Download size={16} />}
-          <span className="hide-mobile">PDF</span>
-        </button>
+        <PdfButton
+          up
+          onExport={exportPdf}
+          busy={exporting}
+          disabled={working || !exportable}
+          title="Bilder und PDFs der Auswahl als ein PDF herunterladen"
+          labelClassName="hide-mobile"
+        />
         <button type="button" className="btn btn--danger-ghost" onClick={() => setConfirmDelete(true)} disabled={working}>
           <Trash size={16} />
           <span className="hide-mobile">Löschen</span>

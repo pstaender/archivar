@@ -5,6 +5,7 @@ import type { Job } from "../shared/jobs";
 import type { ImagePreset } from "../shared/presets";
 import type { ApiToken, CreatedApiToken } from "../shared/tokens";
 import type { ArchiveDocument, EditSettings, Folder, LibraryItem, Quad, StackWithDocuments, UploadedDocument } from "../shared/types";
+import { PDFDocument, PDFName, PDFRawStream } from "pdf-lib";
 import { getDocumentProxy } from "unpdf";
 import { makePdf } from "../../test/pdf";
 import { OCR_TIMEOUT_MESSAGE } from "./services/ocr";
@@ -505,7 +506,7 @@ describe("settings", () => {
   const patchSettings = async (body: unknown) => (await patch("/api/settings", body)).json();
 
   test("stores the user's settings and ignores unknown values", async () => {
-    const defaults = { autoOcr: false, ocrAllText: false, pdfImageQuality: "300", importPresetId: null, importFolders: [], importOcrLanguages: null };
+    const defaults = { autoOcr: false, ocrAllText: false, pdfImageQuality: "medium", importPresetId: null, importFolders: [], importOcrLanguages: null };
     expect(await (await server.api("/api/settings")).json()).toEqual(defaults);
     expect(await patchSettings({ autoOcr: true, uploadEnhancement: "grayscale" })).toEqual({ ...defaults, autoOcr: true });
     expect(await patchSettings({ pdfImageQuality: "72", ocrAllText: "ja", importPresetId: -3 })).toEqual({ ...defaults, autoOcr: true });
@@ -513,6 +514,13 @@ describe("settings", () => {
     expect(await (await server.api("/api/settings")).json()).toEqual({ ...defaults, autoOcr: true, pdfImageQuality: "original", ocrAllText: true });
     expect(await patchSettings({ importOcrLanguages: ["fra", "xx", "fra"] })).toMatchObject({ importOcrLanguages: ["fra"] });
     expect(await patchSettings({ importOcrLanguages: ["xx"] })).toMatchObject({ importOcrLanguages: null });
+  });
+
+  test("turns the PDF resolutions stored before into the named qualities", async () => {
+    expect(await patchSettings({ pdfImageQuality: "150" })).toMatchObject({ pdfImageQuality: "low" });
+    expect(await patchSettings({ pdfImageQuality: "300" })).toMatchObject({ pdfImageQuality: "medium" });
+    server.ctx.db.query("UPDATE users SET settings = ?").run(JSON.stringify({ pdfImageQuality: "150" }));
+    expect(await (await server.api("/api/settings")).json()).toMatchObject({ pdfImageQuality: "low" });
   });
 
   const getDocument = async (id: number) => (await (await server.api(`/api/documents/${id}`)).json()) as ArchiveDocument;
@@ -565,18 +573,29 @@ describe("settings", () => {
     expect(server.ocr.calls).toBe(1);
   });
 
-  test("scales images in exported PDFs down to the chosen resolution", async () => {
+  test("scales images in exported PDFs down to the chosen quality, by default the setting's", async () => {
     const [doc] = await upload([{ name: "scan.jpg", data: await makeJpeg(3000, 4000, [250, 250, 250]), type: "image/jpeg" }]);
     await patch(`/api/documents/${doc!.id}`, { editSettings: { colorMode: "bw" } });
-    const size = async (pdfImageQuality: string) => {
-      await patchSettings({ pdfImageQuality });
-      return (await (await post(`/api/documents/${doc!.id}/pdf`, {})).arrayBuffer()).byteLength;
+    const imageWidth = async (res: Response) => {
+      const pdf = await PDFDocument.load(await res.arrayBuffer());
+      const image = pdf.context.enumerateIndirectObjects().find(([, obj]) => obj instanceof PDFRawStream && obj.dict.get(PDFName.of("Subtype")) === PDFName.of("Image"));
+      return Number((image![1] as PDFRawStream).dict.get(PDFName.of("Width"))!.toString());
     };
-    const original = await size("original");
-    const dpi300 = await size("300");
-    const dpi150 = await size("150");
-    expect(dpi300).toBeLessThan(original / 5);
-    expect(dpi150).toBeLessThan(dpi300);
+    const width = async (quality?: unknown) => imageWidth(await post(`/api/documents/${doc!.id}/pdf`, { quality }));
+    expect([await width("original"), await width("high"), await width("medium"), await width("low")]).toEqual([3000, 3000, 2630, 1316]);
+    expect(await width()).toBe(2630);
+    await patchSettings({ pdfImageQuality: "low" });
+    expect(await width()).toBe(1316);
+    expect(await width("nope")).toBe(1316);
+    expect(await imageWidth(await post("/api/export/pdf", { documentIds: [doc!.id], quality: "medium" }))).toBe(2630);
+  }, 30_000);
+
+  test("compresses color images by the custom level", async () => {
+    const noisy = new Uint8ClampedArray(600 * 800 * 4).map((_, i) => (i % 4 === 3 ? 255 : (i * 7919) % 251));
+    const [doc] = await upload([{ name: "foto.png", data: new Uint8Array(await createImage(600, 800, noisy).getBuffer("image/png")), type: "image/png" }]);
+    const size = async (quality: unknown) => (await (await post(`/api/documents/${doc!.id}/pdf`, { quality })).arrayBuffer()).byteLength;
+    expect(await size(0)).toBeLessThan((await size(10)) / 3);
+    expect(await size(-5)).toBe(await size(0));
   }, 30_000);
 });
 
@@ -1345,30 +1364,15 @@ describe("vectors", () => {
     await put(doc.id, { areas: [area] });
     await patch(`/api/documents/${doc.id}`, { shapes: [{ id: "s", type: "rect", x: 0, y: 0, width: 1, height: 0.25, color: "#ffffff" }] });
 
-    const raster = await server.ctx.imaging.pdfImage(server.ctx.documents.getById(doc.id)!);
-    expect([raster.width, raster.height]).toEqual([64, 48]);
-    expect(isWhite(await pixelOf(raster.jpeg, 5, 30))).toBe(true);
-    expect(isWhite(await pixelOf(raster.jpeg, 50, 30))).toBe(false);
-
-    const res = await post(`/api/documents/${doc.id}/pdf`, {});
-    expect(res.status).toBe(200);
-    const page = await Jimp.read(Buffer.from(await renderPdfPage(new Uint8Array(await res.arrayBuffer()), 1, 1)));
-    const at = (x: number, y: number) => page.getPixelColor(Math.round(x * page.bitmap.width), Math.round(y * page.bitmap.height)) >>> 8;
-    expect(isDark(at(0.1, 0.6))).toBe(true);
-    expect(isWhite(at(0.4, 0.6))).toBe(true);
-    expect(isWhite(at(0.1, 0.1))).toBe(true);
-    expect(isWhite(at(0.8, 0.6))).toBe(false);
-  });
-
-  test("are exported to the PDF as vectors over an image whose areas are left blank", async () => {
-    const doc = await uploadImage();
-    await put(doc.id, { areas: [area] });
-    await patch(`/api/documents/${doc.id}`, { shapes: [{ id: "s", type: "rect", x: 0, y: 0, width: 1, height: 0.25, color: "#ffffff" }] });
-
-    const raster = await server.ctx.imaging.pdfImage(server.ctx.documents.getById(doc.id)!);
-    expect([raster.width, raster.height]).toEqual([64, 48]);
-    expect(isWhite(await pixelOf(raster.jpeg, 5, 30))).toBe(true);
-    expect(isWhite(await pixelOf(raster.jpeg, 50, 30))).toBe(false);
+    const stored = server.ctx.documents.getById(doc.id)!;
+    for (const quality of ["medium", "original"] as const) {
+      const raster = await server.ctx.imaging.pdfImage(stored, quality);
+      expect([raster.width, raster.height]).toEqual([64, 48]);
+      expect(raster.image.kind).toBe(quality === "original" ? "png" : "jpeg");
+      if (raster.image.kind === "bilevel") throw new Error("expected a color image");
+      expect(isWhite(await pixelOf(raster.image.data, 5, 30))).toBe(true);
+      expect(isWhite(await pixelOf(raster.image.data, 50, 30))).toBe(false);
+    }
 
     const res = await post(`/api/documents/${doc.id}/pdf`, {});
     expect(res.status).toBe(200);

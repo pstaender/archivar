@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
 import { languageName, OCR_LANGUAGES } from "../../shared/languages";
 import { type PresetSteps, presetStepsFromSettings } from "../../shared/presets";
+import type { PdfQuality } from "../../shared/settings";
 import { SHAPE_COLORS, type Shape } from "../../shared/shapes";
 import type { ArchiveDocument, BwVariant, EditSettings, Quad, Rotation } from "../../shared/types";
 import { api, assetUrl, type OcrRequest } from "../api";
@@ -12,6 +13,7 @@ import { saveEditSettings, useEditSaving, whenEditsSaved } from "../editSaves";
 import { ConfirmDialog } from "../components/Dialog";
 import { EditableTitle } from "../components/EditableTitle";
 import { FolderPicker } from "../components/FolderPicker";
+import { PdfButton } from "../components/PdfButton";
 import { PresetDialog } from "../components/PresetDialog";
 import { type TabItem, TabBar } from "../components/TabBar";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
@@ -791,11 +793,11 @@ export function DetailsPanel({ doc, onFoldersChange }: { doc: ArchiveDocument; o
   if (doc.pageCount) rows.push(["Seiten", String(doc.pageCount)]);
   rows.push(["Hochgeladen", formatDateTime(doc.createdAt)], ["Geändert", formatDateTime(doc.updatedAt)]);
 
-  const exportPdf = async () => {
+  const exportPdf = async (quality?: PdfQuality) => {
     setExporting(true);
     try {
       await whenEditsSaved(doc.id);
-      const { blob, filename } = await api.exportPdf(doc.id);
+      const { blob, filename } = await api.exportPdf(doc.id, quality);
       saveBlob(blob, filename);
     } catch (error) {
       toast.error(error);
@@ -812,16 +814,13 @@ export function DetailsPanel({ doc, onFoldersChange }: { doc: ArchiveDocument; o
           Original
         </a>
         {doc.kind === "image" && (
-          <button
-            type="button"
-            className="btn btn--sm"
-            onClick={exportPdf}
+          <PdfButton
+            small
+            onExport={(quality) => void exportPdf(quality)}
+            busy={exporting}
             disabled={exporting || isOcrBusy(doc)}
             title="Bild mit dem gespeicherten Text als durchsuchbares PDF herunterladen"
-          >
-            {exporting ? <Loader size={16} className="spin" /> : <Download size={16} />}
-            PDF
-          </button>
+          />
         )}
       </div>
       <FolderPicker value={doc.folders} onChange={onFoldersChange} />

@@ -1,8 +1,24 @@
 import { normalizeFolderPath } from "./folders";
 import { isOcrLanguage } from "./languages";
 
-/** Resolution of images in exported PDFs, relative to an A4 page; "original" embeds the edited image unchanged. */
-export type PdfImageQuality = "300" | "150" | "original";
+/** Image quality in exported PDFs; "original" embeds the edited image in full resolution without loss. */
+export type PdfImageQuality = "low" | "medium" | "high" | "original";
+
+/** A preset, or a custom JPEG compression from 0 (strongest) to 10 (weakest). */
+export type PdfQuality = PdfImageQuality | number;
+
+export const MIN_PDF_COMPRESSION = 0;
+export const MAX_PDF_COMPRESSION = 10;
+
+export const PDF_IMAGE_QUALITIES: PdfImageQuality[] = ["low", "medium", "high", "original"];
+
+// Values stored before the presets had names.
+const LEGACY_PDF_QUALITIES: Record<string, PdfImageQuality> = { "150": "low", "300": "medium" };
+
+export function normalizePdfQuality(value: unknown, fallback: PdfImageQuality): PdfQuality {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.round(Math.min(MAX_PDF_COMPRESSION, Math.max(MIN_PDF_COMPRESSION, value)));
+  return PDF_IMAGE_QUALITIES.includes(value as PdfImageQuality) ? (value as PdfImageQuality) : fallback;
+}
 
 export interface UserSettings {
   /** Recognize text right after uploading. */
@@ -21,13 +37,12 @@ export interface UserSettings {
 export const DEFAULT_USER_SETTINGS: UserSettings = Object.freeze({
   autoOcr: true,
   ocrAllText: false,
-  pdfImageQuality: "300",
+  pdfImageQuality: "medium",
   importPresetId: null,
   importFolders: [],
   importOcrLanguages: null,
 });
 
-const PDF_IMAGE_QUALITIES: PdfImageQuality[] = ["300", "150", "original"];
 
 const flag = (value: unknown, fallback: boolean): boolean => (typeof value === "boolean" ? value : fallback);
 
@@ -49,7 +64,7 @@ export function normalizeUserSettings(input: unknown, base: UserSettings = DEFAU
   return {
     autoOcr: flag(src.autoOcr, base.autoOcr),
     ocrAllText: flag(src.ocrAllText, base.ocrAllText),
-    pdfImageQuality: oneOf(PDF_IMAGE_QUALITIES, src.pdfImageQuality, base.pdfImageQuality),
+    pdfImageQuality: oneOf(PDF_IMAGE_QUALITIES, LEGACY_PDF_QUALITIES[String(src.pdfImageQuality)] ?? src.pdfImageQuality, base.pdfImageQuality),
     importPresetId: "importPresetId" in src ? presetId(src.importPresetId) : base.importPresetId,
     importFolders: Array.isArray(src.importFolders) ? folderList(src.importFolders) : base.importFolders,
     importOcrLanguages: "importOcrLanguages" in src ? languageList(src.importOcrLanguages) : base.importOcrLanguages,

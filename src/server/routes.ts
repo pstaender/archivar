@@ -3,6 +3,7 @@ import { type AppConfig, type DocumentUpdate, type EditSettings, LIBRARY_SORTS, 
 import { type BatchOptions, duplicateNote, type JobCreate } from "../shared/jobs";
 import { isOcrLanguage } from "../shared/languages";
 import { type ImagePresetInput, normalizePresetName, normalizePresetSteps } from "../shared/presets";
+import { normalizePdfQuality } from "../shared/settings";
 import type { AppContext } from "./context";
 import { toPublicDocument } from "./db/documents";
 import { handle, HttpError, json, noContent, parseId, readJson } from "./http";
@@ -51,6 +52,7 @@ async function serveFile(file: Bun.BunFile, type: string, filename?: string): Pr
 export function createApiRoutes(ctx: AppContext) {
   const { archive } = ctx;
   const userId = (req: Request) => ctx.currentUser(req).id;
+  const pdfQuality = (req: Request, value: unknown) => normalizePdfQuality(value, ctx.users.settings(userId(req)).pdfImageQuality);
 
   return {
     "/api/me": {
@@ -209,19 +211,19 @@ export function createApiRoutes(ctx: AppContext) {
 
     "/api/export/pdf": {
       POST: handle(async (req: Req) => {
-        const body = await readJson<{ documentIds?: unknown; title?: unknown }>(req);
+        const body = await readJson<{ documentIds?: unknown; title?: unknown; quality?: unknown }>(req);
         if (!Array.isArray(body.documentIds) || body.documentIds.length === 0) throw new HttpError(400, "documentIds required");
         const ids = body.documentIds.map((id) => parseId(String(id)));
         const title = typeof body.title === "string" ? body.title : undefined;
-        return pdfResponse(await archive.exportCombinedPdf(userId(req), ids, title, ctx.users.settings(userId(req)).pdfImageQuality));
+        return pdfResponse(await archive.exportCombinedPdf(userId(req), ids, title, pdfQuality(req, body.quality)));
       }),
     },
 
     "/api/documents/:id/pdf": {
       POST: handle(async (req: Req) => {
-        const body = await readJson<{ text?: unknown }>(req).catch(() => ({ text: undefined }));
+        const body = await readJson<{ text?: unknown; quality?: unknown }>(req).catch(() => ({ text: undefined, quality: undefined }));
         const text = typeof body.text === "string" ? body.text : undefined;
-        return pdfResponse(await archive.exportPdf(userId(req), parseId(req.params.id), text, ctx.users.settings(userId(req)).pdfImageQuality));
+        return pdfResponse(await archive.exportPdf(userId(req), parseId(req.params.id), text, pdfQuality(req, body.quality)));
       }),
     },
 

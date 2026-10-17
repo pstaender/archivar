@@ -3,6 +3,7 @@ import { useEffect, useId, useState } from "react";
 import { languageName, OCR_LANGUAGES } from "../../shared/languages";
 import { describePreset } from "../../shared/presets";
 import { DEFAULT_USER_SETTINGS, type PdfImageQuality, type UserSettings } from "../../shared/settings";
+import { PDF_QUALITY_CHOICES } from "./PdfButton";
 import { useConfig } from "../hooks/config";
 import { usePresets } from "../hooks/presets";
 import { useSettings } from "../hooks/settings";
@@ -26,11 +27,11 @@ interface Choice<T extends string> {
   description: string;
 }
 
-const PDF_QUALITIES: Choice<PdfImageQuality>[] = [
-  { value: "300", label: "300 DPI", description: "Für A4 verkleinert und komprimiert, gut zum Drucken. Eine Schwarzweiß-Seite hat etwa 150–200 KB." },
-  { value: "150", label: "150 DPI", description: "Kleinere Dateien zum Lesen am Bildschirm oder für E-Mails." },
-  { value: "original", label: "Original", description: "Bilder in voller Auflösung, die größten Dateien." },
-];
+const PDF_QUALITIES: Choice<PdfImageQuality>[] = PDF_QUALITY_CHOICES.map(({ value, label, description }) => ({
+  value,
+  label,
+  description: value === "medium" ? `${description}. Eine Schwarzweiß-Seite hat etwa 150–200 KB.` : description,
+}));
 
 function ChoiceGroup<T extends string>({ legend, name, choices, value, disabled, onChange }: {
   legend: string;
@@ -130,7 +131,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         <div className="settings" role="tabpanel">
           {tab === "sizes" && (
             <ChoiceGroup
-              legend="Bildgröße im PDF-Export"
+              legend="Bildqualität im PDF-Export (Klick auf „PDF“; der Pfeil daneben bietet die anderen an)"
               name="pdfImageQuality"
               choices={PDF_QUALITIES}
               value={draft.pdfImageQuality}

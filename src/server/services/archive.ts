@@ -7,7 +7,7 @@ import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
 import { normalizeFolderPath } from "../../shared/folders";
 import { isOcrLanguage } from "../../shared/languages";
 import { applyFixedSteps, type PresetSteps } from "../../shared/presets";
-import type { PdfImageQuality } from "../../shared/settings";
+import type { PdfQuality } from "../../shared/settings";
 import type {
   ArchiveDocument,
   BwVariant,
@@ -276,11 +276,11 @@ export class ArchiveService {
   }
 
   /** The edited image as a PDF page with the text (default: the stored OCR text) as a searchable layer. */
-  async exportPdf(userId: number, id: number, text: string | undefined, imageQuality: PdfImageQuality): Promise<{ pdf: Uint8Array<ArrayBuffer>; filename: string }> {
+  async exportPdf(userId: number, id: number, text: string | undefined, quality: PdfQuality): Promise<{ pdf: Uint8Array<ArrayBuffer>; filename: string }> {
     const doc = this.getDocument(userId, id);
     if (doc.kind !== "image") throw new HttpError(400, "Only images can be exported as PDF");
     const title = doc.title.trim() || basename(doc.originalName, extname(doc.originalName));
-    const pdf = await createSearchablePdf([await this.pdfPart(userId, doc, text)], title, imageQuality);
+    const pdf = await createSearchablePdf([await this.pdfPart(userId, doc, quality, text)], title);
     return { pdf, filename: `${title}.pdf` };
   }
 
@@ -289,23 +289,23 @@ export class ArchiveService {
     userId: number,
     ids: number[],
     title: string | undefined,
-    imageQuality: PdfImageQuality,
+    quality: PdfQuality,
   ): Promise<{ pdf: Uint8Array<ArrayBuffer>; filename: string }> {
     const docs = ids.map((id) => this.getDocument(userId, id)).filter((doc) => doc.kind !== "file");
     if (docs.length === 0) throw new HttpError(400, "Keine Bilder oder PDFs ausgewählt");
     const parts: PdfPart[] = [];
-    for (const doc of docs) parts.push(await this.pdfPart(userId, doc));
+    for (const doc of docs) parts.push(await this.pdfPart(userId, doc, quality));
     const name = title?.trim() || "Dokumente";
-    return { pdf: await createSearchablePdf(parts, name, imageQuality), filename: `${name}.pdf` };
+    return { pdf: await createSearchablePdf(parts, name), filename: `${name}.pdf` };
   }
 
-  private async pdfPart(userId: number, doc: StoredDocument, text?: string): Promise<PdfPart> {
+  private async pdfPart(userId: number, doc: StoredDocument, quality: PdfQuality, text?: string): Promise<PdfPart> {
     if (doc.kind === "pdf") return { kind: "pdf", name: doc.originalName, data: await this.storage.read(doc.storageKey) };
-    const { jpeg, width, height, vectors } = await this.imaging.pdfImage(doc);
+    const { image, width, height, vectors } = await this.imaging.pdfImage(doc, quality);
     const layout = this.documents.getOcrLayout(userId, doc.id);
     const current = layout && JSON.stringify(layout.editSettings) === JSON.stringify(doc.editSettings) ? layout : null;
     const overlay = vectors.length > 0 ? { width, height, vectors, shapes: doc.shapes } : null;
-    return { kind: "image", jpeg, bilevel: doc.editSettings.colorMode === "bw", text: text ?? doc.ocrText, layout: current, overlay };
+    return { kind: "image", image, text: text ?? doc.ocrText, layout: current, overlay };
   }
 
   async autoBw(userId: number, id: number, settings: Partial<EditSettings> = {}): Promise<BwVariant[]> {

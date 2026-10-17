@@ -32,9 +32,9 @@ describe("SettingsDialog", () => {
     await renderApp(<SettingsDialog open onClose={onClose} />);
 
     expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import", "API"]);
-    expect(radio(/^Original.*voller Auflösung/).checked).toBe(true);
+    expect(radio(/^Original.*Volle Auflösung/).checked).toBe(true);
     expect(screen.getByText("Standard")).toBeTruthy();
-    fireEvent.click(radio(/^150 DPI/));
+    fireEvent.click(radio(/^Niedrig.*150 DPI/));
 
     tab("Import");
     expect(checkbox(/Text nach dem Upload erkennen/).checked).toBe(true);
@@ -44,7 +44,7 @@ describe("SettingsDialog", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(fetchMock.calls.find((c) => c.method === "PATCH")?.body).toEqual({
       ...DEFAULT_USER_SETTINGS,
-      pdfImageQuality: "150",
+      pdfImageQuality: "low",
       ocrAllText: true,
     });
     expect(screen.getByText("Einstellungen gespeichert")).toBeTruthy();

@@ -16,13 +16,12 @@ import {
   StandardFonts,
   TextRenderingMode,
 } from "pdf-lib";
-import type { PdfImageQuality } from "../../shared/settings";
 import type { Shape } from "../../shared/shapes";
 import type { VectorArea } from "../../vectorizer";
 import { pdfColor, vectorAreasPdfOperators } from "../../vectorizer/server/pdf";
 import type { OcrLayout } from "../db/documents";
 import { HttpError } from "../http";
-import { type PdfImage, preparePdfImage } from "./pdfImage";
+import type { PdfImage } from "./pdfImage";
 
 // The page gets A4's long side; the image keeps its aspect ratio.
 const PAGE_LONG_SIDE = 842;
@@ -43,8 +42,7 @@ export interface PdfOverlay {
 }
 
 export type PdfPart =
-  /** `bilevel` for black-and-white images, which are stored as lossless 1-bit images when downscaled. */
-  | { kind: "image"; jpeg: Uint8Array; bilevel: boolean; text: string; layout: OcrLayout | null; overlay?: PdfOverlay | null }
+  | { kind: "image"; image: PdfImage; text: string; layout: OcrLayout | null; overlay?: PdfOverlay | null }
   /** An uploaded PDF; all its pages are copied as they are. */
   | { kind: "pdf"; name: string; data: Uint8Array };
 
@@ -53,7 +51,7 @@ export type PdfPart =
  * can be searched and copied. The text goes onto the recognized line positions when its lines still match them (same
  * number of lines, e.g. after fixing typos); otherwise it is spread evenly over the page.
  */
-export async function createSearchablePdf(parts: PdfPart[], title: string, imageQuality: PdfImageQuality): Promise<Uint8Array<ArrayBuffer>> {
+export async function createSearchablePdf(parts: PdfPart[], title: string): Promise<Uint8Array<ArrayBuffer>> {
   const pdf = await PDFDocument.create();
   pdf.setTitle(title);
   pdf.setProducer("archivar");
@@ -61,7 +59,7 @@ export async function createSearchablePdf(parts: PdfPart[], title: string, image
   for (const part of parts) {
     if (part.kind === "image") {
       font ??= await pdf.embedFont(StandardFonts.Helvetica);
-      await addImagePage(pdf, font, part, await preparePdfImage(part.jpeg, imageQuality, part.bilevel));
+      await addImagePage(pdf, font, part);
     } else {
       await appendPdf(pdf, part);
     }
@@ -79,8 +77,8 @@ async function appendPdf(pdf: PDFDocument, { name, data }: Extract<PdfPart, { ki
   for (const page of await pdf.copyPages(source, source.getPageIndices())) pdf.addPage(page);
 }
 
-async function addImagePage(pdf: PDFDocument, font: PDFFont, { text, layout, overlay }: Extract<PdfPart, { kind: "image" }>, image: PdfImage) {
-  const page = image.kind === "jpeg" ? await addJpegPage(pdf, image.data) : addBilevelPage(pdf, image);
+async function addImagePage(pdf: PDFDocument, font: PDFFont, { image, text, layout, overlay }: Extract<PdfPart, { kind: "image" }>) {
+  const page = image.kind === "bilevel" ? addBilevelPage(pdf, image) : await addEncodedPage(pdf, image);
   if (overlay) drawOverlay(pdf, page, overlay);
 
   const lines = text
@@ -97,8 +95,8 @@ function pageFor(pdf: PDFDocument, width: number, height: number): PDFPage {
   return pdf.addPage([width * scale, height * scale]);
 }
 
-async function addJpegPage(pdf: PDFDocument, jpeg: Uint8Array): Promise<PDFPage> {
-  const image = await pdf.embedJpg(jpeg);
+async function addEncodedPage(pdf: PDFDocument, { kind, data }: Extract<PdfImage, { kind: "jpeg" | "png" }>): Promise<PDFPage> {
+  const image = kind === "jpeg" ? await pdf.embedJpg(data) : await pdf.embedPng(data);
   const page = pageFor(pdf, image.width, image.height);
   page.drawImage(image, { x: 0, y: 0, width: page.getWidth(), height: page.getHeight() });
   return page;

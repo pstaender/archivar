@@ -317,7 +317,7 @@ describe("LibraryPage", () => {
       await renderApp(<LibraryPage />);
       fireEvent.click(screen.getByLabelText("Seite A auswählen"));
       fireEvent.click(screen.getByLabelText("Alt auswählen"));
-      fireEvent.click(screen.getByRole("button", { name: /PDF/ }));
+      fireEvent.click(screen.getByRole("button", { name: "PDF" }));
       await waitFor(() => expect(downloads).toEqual(["Dokumente.pdf"]));
       expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toEqual({ documentIds: [a.id, 50, 51] });
     } finally {
@@ -333,10 +333,10 @@ describe("LibraryPage", () => {
     await renderApp(<LibraryPage />);
 
     fireEvent.click(screen.getByLabelText("Notiz auswählen"));
-    expect((screen.getByRole("button", { name: /PDF/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "PDF" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByLabelText("Notiz abwählen"));
     fireEvent.click(screen.getByLabelText("Urlaub auswählen"));
-    fireEvent.click(screen.getByRole("button", { name: /PDF/ }));
+    fireEvent.click(screen.getByRole("button", { name: "PDF" }));
     await waitFor(() => expect(fetchMock.calls.some((c) => c.method === "POST")).toBe(true));
     expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toEqual({ documentIds: [photo.id], title: "Urlaub" });
   });

@@ -6,12 +6,14 @@ import { PREVIEW_SIZE } from "../../shared/preview";
 import { drawShapes } from "../../shared/shapes";
 import type { VectorArea } from "../../vectorizer";
 import { blankVectorAreas, paintVectorAreas } from "../../vectorizer/server/paint";
+import type { PdfQuality } from "../../shared/settings";
 import type { DocumentKind, EditSettings } from "../../shared/types";
 import { convertibleTypeForExtension } from "../../shared/uploads";
 import type { StoredDocument } from "../db/documents";
 import { derivedKeys, type FileStorage } from "../storage";
 import type { ImageConverter } from "./magick";
 import { inspectPdf, renderPdfPage } from "./pdf";
+import { type PdfImage, preparePdfImage } from "./pdfImage";
 
 export const THUMBNAIL_SIZE = 480;
 const JPEG_QUALITY = 90;
@@ -197,30 +199,40 @@ export class ImagingService {
   }
 
   /**
-   * The image for the PDF export. Vectorized areas are left blank (their background color), as the PDF draws them as
-   * vectors on top, which also lets the image compress better; shapes are painted as usual.
+   * The image for the PDF export in the requested quality. Vectorized areas are left blank (their background color),
+   * as the PDF draws them as vectors on top, which also lets the image compress better; shapes are painted as usual.
+   * "original" renders the edits again instead of starting from the stored JPEG, so the image has no compression loss.
    */
-  async pdfImage(doc: StoredDocument): Promise<{ jpeg: Uint8Array; width: number; height: number; vectors: VectorArea[] }> {
+  async pdfImage(doc: StoredDocument, quality: PdfQuality): Promise<{ image: PdfImage; width: number; height: number; vectors: VectorArea[] }> {
     const vectors = doc.vectorCount > 0 ? this.vectorAreas(doc) : [];
-    if (vectors.length === 0) {
-      const jpeg = await this.processedJpeg(doc);
-      return { jpeg, width: 0, height: 0, vectors };
+    // Canvas instead of Jimp for the stored JPEGs: jpeg-js refuses to decode large scans with its default memory limit.
+    const { createCanvas, ImageData, loadImage } = await import("@napi-rs/canvas");
+    let canvas;
+    let painted = false;
+    if (quality === "original") {
+      const original = await this.loadOriginal(doc);
+      const { data, width, height } = (isDefaultEditSettings(doc.editSettings) ? original : applyEdits(original, doc.editSettings)).bitmap;
+      canvas = createCanvas(width, height);
+      canvas.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(data.buffer, data.byteOffset, data.length), width, height), 0, 0);
+    } else {
+      painted = vectors.length === 0;
+      const encoded = painted ? await this.processedJpeg(doc) : await this.storage.read(await this.editedKey(doc));
+      const image = await loadImage(Buffer.from(encoded));
+      canvas = createCanvas(image.width, image.height);
+      canvas.getContext("2d").drawImage(image, 0, 0);
     }
-    // Canvas instead of Jimp: jpeg-js refuses to decode large scans with its default memory limit.
-    const { createCanvas, loadImage } = await import("@napi-rs/canvas");
-    const image = await loadImage(Buffer.from(await this.storage.read(await this.editedKey(doc))));
-    const { width, height } = image;
-    const canvas = createCanvas(width, height);
+    const { width, height } = canvas;
     const ctx = canvas.getContext("2d");
-    ctx.drawImage(image, 0, 0);
-    blankVectorAreas(ctx, vectors, width, height);
-    for (const shape of doc.shapes) {
-      ctx.fillStyle = shape.color;
-      const x = Math.round(shape.x * width);
-      const y = Math.round(shape.y * height);
-      ctx.fillRect(x, y, Math.round((shape.x + shape.width) * width) - x, Math.round((shape.y + shape.height) * height) - y);
+    if (!painted) {
+      blankVectorAreas(ctx, vectors, width, height);
+      for (const shape of doc.shapes) {
+        ctx.fillStyle = shape.color;
+        const x = Math.round(shape.x * width);
+        const y = Math.round(shape.y * height);
+        ctx.fillRect(x, y, Math.round((shape.x + shape.width) * width) - x, Math.round((shape.y + shape.height) * height) - y);
+      }
     }
-    return { jpeg: await canvas.encode("jpeg", JPEG_QUALITY), width, height, vectors };
+    return { image: await preparePdfImage(canvas, quality, doc.editSettings.colorMode === "bw"), width, height, vectors };
   }
 
   async ocrImages(doc: StoredDocument): Promise<OcrImage[]> {
