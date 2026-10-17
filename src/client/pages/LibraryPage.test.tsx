@@ -62,6 +62,44 @@ describe("LibraryPage", () => {
     expect(screen.getByText("Noch nichts archiviert")).toBeTruthy();
   });
 
+  test("smart stacks group series in the view, open on their own and can become real stacks", async () => {
+    const scans = [1, 2, 3].map((n) => makeDocument({ id: 20 + n, title: `Scan ${n}`, createdAt: `2026-10-0${n}T10:00:00.000Z` }));
+    const other = makeDocument({ id: 30, title: "Rechnung", createdAt: "2026-09-01T10:00:00.000Z" });
+    fetchMock = mockFetch({
+      "GET /api/folders": () => [],
+      "GET /api/library": () => [docItem(scans[2]!), docItem(other), docItem(scans[0]!), docItem(scans[1]!)],
+      "POST /api/stacks": () => ({ ...makeStack({ id: 99, title: "Scan 3" }), documents: [] }),
+    });
+    const { router } = await renderApp(<LibraryPage />, { route: "/" });
+    expect(screen.getByText("4 Einträge")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Smarte Stapel" }));
+    expect(screen.getByText("2 Einträge")).toBeTruthy();
+    expect(localStorage.getItem("archivar.smartStacks")).toBe("true");
+    const card = screen.getByRole("link", { name: /Scan …/ });
+    expect(card.getAttribute("href")).toBe("/?smart=21-22-23");
+    expect(card.textContent).toContain("Namensfolge · Smarter Stapel");
+
+    fireEvent.click(screen.getByLabelText("Scan … auswählen"));
+    expect(screen.getByText("3 ausgewählt")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Stapeln/ }));
+    await waitFor(() => expect(fetchMock.calls.some((c) => c.method === "POST")).toBe(true));
+    expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toEqual({ documentIds: [21, 22, 23] });
+
+    await act(() => router.navigate("/?smart=21-22-23"));
+    expect(screen.getByRole("heading", { name: "Scan …" })).toBeTruthy();
+    expect(screen.getByText(/Smarter Stapel · 3 Dokumente/)).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: /^Scan \d/ }).map((link) => link.getAttribute("href"))).toEqual(["/documents/21", "/documents/22", "/documents/23"]);
+    expect(screen.getByRole("link", { name: "Zurück zu „Alle Dokumente“" }).getAttribute("href")).toBe("/");
+  });
+
+  test("smart stacks are off in the custom order", async () => {
+    localStorage.setItem("archivar.smartStacks", "true");
+    fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [] });
+    await renderApp(<LibraryPage />, { path: "/folders/wichtig" });
+    expect((screen.getByRole("button", { name: "Smarte Stapel" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   test("selecting items and stacking them creates a stack from all contained documents", async () => {
     const a = makeDocument({ title: "Seite A" });
     const stack = makeStack({ title: "Alt", documentIds: [50, 51] });

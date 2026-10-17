@@ -11,17 +11,18 @@ import {
   Trash,
   Upload,
   Wand,
+  WandSparkles,
   X,
 } from "../icons";
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, useNavigate, useSearchParams } from "react-router";
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router";
 import { moveToFolders } from "../../shared/folders";
 import { LIBRARY_SORTS, type LibraryItem, type LibrarySort } from "../../shared/types";
 import { api } from "../api";
 import { BatchDialog } from "../components/BatchDialog";
 import { ConfirmDialog } from "../components/Dialog";
 import { FolderTargetDialog } from "../components/FolderTargetDialog";
-import { ItemCard, itemKey } from "../components/ItemCard";
+import { ItemCard, itemKey, SmartStackCard } from "../components/ItemCard";
 import { SortableGrid } from "../components/SortableGrid";
 import { useFolders } from "../hooks/folders";
 import { useToast } from "../hooks/toast";
@@ -31,6 +32,7 @@ import { useRefreshOnUpload, useUpload } from "../hooks/upload";
 import { usePolling } from "../hooks/usePolling";
 import { useResource } from "../hooks/useResource";
 import { rememberDocumentOrder } from "../documentOrder";
+import { type DisplayItem, groupSmartStacks, type SmartStack, smartStackKey } from "../smartStacks";
 import { saveBlob } from "../download";
 import { documentLabel, isOcrBusy } from "../format";
 import { folderHref, useCurrentFolder } from "../routes";
@@ -101,6 +103,29 @@ function useCardShape(): [CardShape, (shape: CardShape) => void] {
   return [shape, update];
 }
 
+const SMART_STACKS_KEY = "archivar.smartStacks";
+
+function useSmartStacksSetting(): [boolean, (on: boolean) => void] {
+  const [on, setOn] = useState(() => {
+    try {
+      return localStorage.getItem(SMART_STACKS_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
+  const update = (next: boolean) => {
+    setOn(next);
+    try {
+      localStorage.setItem(SMART_STACKS_KEY, String(next));
+    } catch {}
+  };
+  return [on, update];
+}
+
+const displayKey = (item: DisplayItem) => (item.type === "smart" ? smartStackKey(item) : itemKey(item));
+const displayTitle = (item: DisplayItem) => (item.type === "smart" ? item.title : itemTitle(item));
+const sameIds = (stack: SmartStack, ids: number[]) => stack.documents.length === ids.length && stack.documents.every((doc) => ids.includes(doc.id));
+
 const itemRef = (item: LibraryItem) => ({ type: item.type, id: item.type === "stack" ? item.stack.id : item.document.id });
 const itemTitle = (item: LibraryItem) => (item.type === "stack" ? item.stack.title : documentLabel(item.document));
 
@@ -112,18 +137,29 @@ export function LibraryPage() {
   const toast = useToast();
   const [sort, setSort] = useStoredSort(folder ? "folder" : "overview");
   const [cardShape, setCardShape] = useCardShape();
+  const [smartStacks, setSmartStacks] = useSmartStacksSetting();
+  const location = useLocation();
+  // A smart stack opened from the library: only its documents, given in the URL as it is not stored anywhere.
+  const smartParam = params.get("smart");
+  const smartIds = useMemo(() => (smartParam ? smartParam.split("-").map(Number).filter(Number.isInteger) : null), [smartParam]);
   const library = useResource(() => api.library({ folder, q, sort }), [folder, q, sort]);
   useRefreshOnUpload(library.refresh);
   useRefreshOnEditSave(library.refresh);
   useRefreshOnJobProgress(library.refresh);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  useEffect(() => setSelected(new Set()), [folder, q]);
+  const allItems = library.data ?? [];
+  const items = smartIds
+    ? smartIds.flatMap((id) => allItems.filter((item) => item.type === "document" && item.document.id === id))
+    : allItems;
+  const grouping = smartStacks && sort !== "custom" && !smartIds;
+  const displayItems: DisplayItem[] = useMemo(() => (grouping ? groupSmartStacks(items) : items), [grouping, library.data, smartIds]);
 
-  const items = library.data ?? [];
+  useEffect(() => setSelected(new Set()), [folder, q, grouping, smartParam]);
+
   useEffect(() => {
-    if (library.data) rememberDocumentOrder(library.data.flatMap((item) => (item.type === "document" ? [item.document.id] : [])));
-  }, [library.data]);
+    if (library.data) rememberDocumentOrder(items.flatMap((item) => (item.type === "document" ? [item.document.id] : [])));
+  }, [library.data, smartParam]);
   const busy = items.some((item) => item.type === "document" && isOcrBusy(item.document));
 
   usePolling(busy, library.refresh, POLL_INTERVAL);
@@ -136,7 +172,22 @@ export function LibraryPage() {
       return next;
     });
 
-  const selectedItems = items.filter((item) => selected.has(itemKey(item)));
+  // A selected smart stack stands for its documents, e.g. to turn them into a real stack.
+  const selectedItems: LibraryItem[] = displayItems.flatMap((item) =>
+    !selected.has(displayKey(item)) ? [] : item.type === "smart" ? item.documents.map((document) => ({ type: "document" as const, document })) : [item],
+  );
+  const smartHref = (stack: SmartStack) => {
+    const next = new URLSearchParams(params);
+    next.set("smart", stack.documents.map((doc) => doc.id).join("-"));
+    return `${location.pathname}?${next}`;
+  };
+  const withoutSmart = () => {
+    const next = new URLSearchParams(params);
+    next.delete("smart");
+    const search = next.toString();
+    return search ? `${location.pathname}?${search}` : location.pathname;
+  };
+  const openedSmartStack = smartIds ? groupSmartStacks(allItems).find((item): item is SmartStack => item.type === "smart" && sameIds(item, smartIds)) : undefined;
 
   const reorder = (next: LibraryItem[]) => {
     if (!folder) return;
@@ -153,21 +204,47 @@ export function LibraryPage() {
     return <Navigate to={folderHref(legacyFolder, rest.toString())} replace />;
   }
 
-  const title = q ? `Suche „${q}“` : folder ? folder.split("/").join(" / ") : "Alle Dokumente";
+  const listTitle = q ? `Suche „${q}“` : folder ? folder.split("/").join(" / ") : "Alle Dokumente";
+  const title = smartIds ? (openedSmartStack?.title ?? "Smarter Stapel") : listTitle;
 
   return (
     <div className="page">
       <header className="page__header">
         <div>
           <h1>{title}</h1>
-          {!library.loading && (
+          {!library.loading && smartIds && (
             <p className="muted small">
-              {items.length === 1 ? "1 Eintrag" : `${items.length} Einträge`}
+              Smarter Stapel · {items.length === 1 ? "1 Dokument" : `${items.length} Dokumente`} ·{" "}
+              <Link to={withoutSmart()} className="underline">
+                Zurück zu „{listTitle}“
+              </Link>
+            </p>
+          )}
+          {!library.loading && !smartIds && (
+            <p className="muted small">
+              {displayItems.length === 1 ? "1 Eintrag" : `${displayItems.length} Einträge`}
               {sort === "custom" && items.length > 1 && " · Karten ziehen, um sie anzuordnen"}
             </p>
           )}
         </div>
         <div className="library-controls">
+          {!smartIds && (
+            <button
+              type="button"
+              className={`btn btn--sm ${grouping ? "is-active" : ""}`}
+              aria-pressed={grouping}
+              disabled={sort === "custom"}
+              onClick={() => setSmartStacks(!smartStacks)}
+              title={
+                sort === "custom"
+                  ? "Nicht bei eigener Reihenfolge"
+                  : "Fasst Dateien zusammen, die nach Name oder Uploadzeit zusammengehören – nur in der Ansicht, nichts wird gespeichert"
+              }
+            >
+              <WandSparkles size={16} />
+              Smarte Stapel
+            </button>
+          )}
           <div className="segmented segmented--icons" role="radiogroup" aria-label="Kartenformat">
             {CARD_SHAPES.map(({ value, label, Icon }) => (
               <button
@@ -202,31 +279,41 @@ export function LibraryPage() {
 
       {library.error && <div className="alert alert--error">{library.error.message}</div>}
 
-      {!library.loading && items.length === 0 && !library.error && <EmptyLibrary filtered={Boolean(folder || q)} />}
+      {!library.loading && items.length === 0 && !library.error && <EmptyLibrary filtered={Boolean(folder || q || smartIds)} />}
 
       <div className="library" data-card-shape={cardShape}>
-        <SortableGrid
-          items={items}
-          itemKey={itemKey}
-          itemLabel={itemTitle}
+        <SortableGrid<DisplayItem>
+          items={displayItems}
+          itemKey={displayKey}
+          itemLabel={displayTitle}
           busy={library.loading}
-          onReorder={sort === "custom" ? reorder : undefined}
-          renderItem={(item) => (
-            <ItemCard
-              item={item}
-              selected={selected.has(itemKey(item))}
-              selectionMode={selected.size > 0}
-              onToggle={() => toggle(itemKey(item))}
-            />
-          )}
+          onReorder={sort === "custom" && !smartIds ? (next) => reorder(next as LibraryItem[]) : undefined}
+          renderItem={(item) =>
+            item.type === "smart" ? (
+              <SmartStackCard
+                stack={item}
+                href={smartHref(item)}
+                selected={selected.has(displayKey(item))}
+                selectionMode={selected.size > 0}
+                onToggle={() => toggle(displayKey(item))}
+              />
+            ) : (
+              <ItemCard
+                item={item}
+                selected={selected.has(itemKey(item))}
+                selectionMode={selected.size > 0}
+                onToggle={() => toggle(itemKey(item))}
+              />
+            )
+          }
         />
       </div>
 
       {selectedItems.length > 0 && (
         <SelectionBar
           items={selectedItems}
-          allSelected={selectedItems.length === items.length}
-          onSelectAll={() => setSelected(new Set(items.map(itemKey)))}
+          allSelected={displayItems.every((item) => selected.has(displayKey(item)))}
+          onSelectAll={() => setSelected(new Set(displayItems.map(displayKey)))}
           onClear={() => setSelected(new Set())}
           onDone={() => {
             setSelected(new Set());

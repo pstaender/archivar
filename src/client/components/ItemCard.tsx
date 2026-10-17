@@ -1,9 +1,10 @@
-import { Check, FileText, Layers, Loader, ScanText } from "../icons";
+import { Check, FileText, Layers, Loader, ScanText, WandSparkles } from "../icons";
 import { type MouseEvent, useState } from "react";
 import { Link } from "react-router";
 import type { ArchiveDocument, LibraryItem } from "../../shared/types";
 import { assetUrl } from "../api";
 import { documentLabel, formatDate, isOcrBusy, OCR_STATUS_LABEL } from "../format";
+import type { SmartStack } from "../smartStacks";
 
 interface ItemCardProps {
   item: LibraryItem;
@@ -93,6 +94,55 @@ export function ItemCard({ item, selected, selectionMode, onToggle }: ItemCardPr
         onClick={onToggle}
         aria-pressed={selected}
         aria-label={selected ? `${title} abwählen` : `${title} auswählen`}
+      >
+        <Check size={14} strokeWidth={3} />
+      </button>
+    </article>
+  );
+}
+
+interface SmartStackCardProps {
+  stack: SmartStack;
+  /** Shows only the stack's documents. */
+  href: string;
+  selected: boolean;
+  selectionMode: boolean;
+  onToggle: () => void;
+}
+
+/** A group of documents that seem to belong together; it only exists in this view. */
+export function SmartStackCard({ stack, href, selected, selectionMode, onToggle }: SmartStackCardProps) {
+  const [cover] = stack.documents;
+  const onClick = (e: MouseEvent) => {
+    if (selectionMode || e.metaKey || e.ctrlKey || e.shiftKey) {
+      e.preventDefault();
+      onToggle();
+    }
+  };
+  return (
+    <article className={`card card--stack card--smart ${selected ? "is-selected" : ""}`}>
+      <Link to={href} className="card__link" onClick={onClick} draggable={false}>
+        <div className="card__media">
+          <div className="card__layers" aria-hidden />
+          {cover && <Thumbnail {...documentThumbnail(cover)} alt={stack.title} />}
+          <span className="card__badge" title="Smarter Stapel">
+            <WandSparkles size={12} aria-hidden />
+            {stack.documents.length}
+          </span>
+        </div>
+        <div className="card__body">
+          <h2 className="card__title" title={stack.title}>
+            {stack.title}
+          </h2>
+          <p className="card__meta">{stack.reason === "name" ? "Namensfolge" : "Zusammen hochgeladen"} · Smarter Stapel</p>
+        </div>
+      </Link>
+      <button
+        type="button"
+        className="card__check"
+        onClick={onToggle}
+        aria-pressed={selected}
+        aria-label={selected ? `${stack.title} abwählen` : `${stack.title} auswählen`}
       >
         <Check size={14} strokeWidth={3} />
       </button>
