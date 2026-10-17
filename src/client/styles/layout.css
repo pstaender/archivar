@@ -37,15 +37,10 @@
 }
 
 .logo__mark {
-  display: none;
-  width: 18px;
-  height: 22px;
-  border-radius: 3px;
-  background:
-    linear-gradient(var(--color-bg) 0 0) 4px 6px / 10px 2px no-repeat,
-    linear-gradient(var(--color-bg) 0 0) 4px 10px / 10px 2px no-repeat,
-    linear-gradient(var(--color-bg) 0 0) 4px 14px / 6px 2px no-repeat,
-    var(--color-primary);
+  width: 28px;
+  height: 28px;
+  flex: none;
+  background: url("../assets/archivar.svg") center / contain no-repeat;
 }
 
 .search {
