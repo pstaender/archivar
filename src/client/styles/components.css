@@ -1039,3 +1039,59 @@
     box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-focus);
   }
 }
+
+.access__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.login {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: var(--space-4);
+}
+
+.login__card {
+  display: grid;
+  gap: var(--space-4);
+  width: min(360px, 100%);
+  padding: var(--space-6);
+  border: var(--border-size) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.login__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  & h1 {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: 650;
+    letter-spacing: -0.03em;
+  }
+}
+
+.login__check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+
+  & input {
+    margin-top: 2px;
+    accent-color: var(--color-text);
+  }
+}
+
+.login__error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}

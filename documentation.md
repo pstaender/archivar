@@ -17,8 +17,8 @@ Archive photos, scans, documents and PDFs in the browser – on desktop and on t
 - Group documents into ordered stacks with a title
 - Hierarchical folders as labels (e.g. `wichtig/2026`); selected documents and stacks can be moved into or added to existing folders (or a new one), or removed from the folder being viewed
 - "PDF" for a selection downloads all its images (as searchable pages) and PDFs, including the documents of selected stacks, as one PDF
-- "Einstellungen" (sidebar, stored per user on the server), in three tabs: "Bildgrößen" – the image resolution in exported PDFs (300 DPI for A4 by default, 150 DPI, or original); "Import" – "Text nach dem Upload erkennen", "Alle Textteile erkennen", the OCR language for uploads ("Automatisch" recognizes with the default languages and again in the detected language if it is another one), the image preset applied to uploads and folders every upload is added to; "API" – personal access tokens. In PDFs, black-and-white pages are stored as lossless 1-bit images (about 150–200 KB per A4 text page at 300 DPI), others as JPEG
-- REST API, SQLite database, multi-user ready (currently a single default user without login)
+- "Einstellungen" (sidebar, stored per user on the server), in four tabs: "Bildgrößen" – the image resolution in exported PDFs (300 DPI for A4 by default, 150 DPI, or original); "Import" – "Text nach dem Upload erkennen", "Alle Textteile erkennen", the OCR language for uploads ("Automatisch" recognizes with the default languages and again in the detected language if it is another one), the image preset applied to uploads and folders every upload is added to; "API" – personal access tokens; "Zugriff" – password and passkeys (see [Access](#access)). In PDFs, black-and-white pages are stored as lossless 1-bit images (about 150–200 KB per A4 text page at 300 DPI), others as JPEG
+- Optional login with a password or passkeys; REST API, SQLite database, multi-user ready
 
 ## Getting started
 
@@ -50,12 +50,36 @@ Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install i
 | `ARCHIVAR_OCR_LANGS`     | `deu+eng`                  | Tesseract languages            |
 | `ARCHIVAR_MAX_UPLOAD_MB` | `512`                      | Max request body size          |
 | `ARCHIVAR_UVDOC_MODEL`   | `models/uvdoc.onnx`        | UVDoc ONNX model               |
+| `ARCHIVAR_ORIGIN`        | from the request           | Public address for passkeys, e.g. `https://archiv.example.org` (otherwise `Host` / `X-Forwarded-Proto` / `X-Forwarded-Host`) |
+
+## Access
+
+Without a password archivar is open to everyone who can reach it. Under „Einstellungen" → „Zugriff" a password can be set, changed or removed (changing and removing need the current one). With a password every browser has to log in; with only one user the login asks for the password alone, with several also for the user name. A login lasts until „Abmelden" or 30 days without use; changing the password ends all other sessions. API tokens keep working.
+
+Passkeys are an alternative to the password: tick „Passkey für dieses Gerät anlegen" when logging in (or use „Passkey für dieses Gerät" in „Zugriff"), then „Mit Passkey anmelden" works without the password. They are listed and deleted in „Zugriff"; removing the password deletes them too. Browsers offer passkeys only over HTTPS or on `localhost`.
+
+A forgotten password is reset on the server (the server can keep running):
+
+```sh
+bun run password            # asks for the new password; add the user name if there are several users
+echo "$PASSWORD" | bun run password anna
+bun run password --remove   # no login any more, also deletes the passkeys
+```
 
 ## API
 
 | Method | Path                                | Description                                   |
 | ------ | ----------------------------------- | --------------------------------------------- |
 | GET    | `/api/me`                           | Current user                                  |
+| GET    | `/api/auth/status`                  | `{ user, passwordSet, usernameRequired, passkeyLogin }`; `user` is null when a login is needed |
+| POST   | `/api/auth/login`                   | `{ name?, password }`, sets the session cookie |
+| POST   | `/api/auth/logout`                  | Ends the session                              |
+| PUT    | `/api/auth/password`                | `{ password, currentPassword }` sets or changes the password |
+| DELETE | `/api/auth/password`                | `{ currentPassword }` removes it and all passkeys |
+| GET    | `/api/auth/passkeys`                | The user's passkeys                           |
+| POST   | `/api/auth/passkeys/options`, `/api/auth/passkeys` | Register a passkey (WebAuthn options, then `{ challengeId, response, name }`) |
+| DELETE | `/api/auth/passkeys/:id`            | Delete a passkey                              |
+| POST   | `/api/auth/passkey/options`, `/api/auth/passkey` | Log in with a passkey                |
 | GET    | `/api/config`                       | Feature flags (`dewarpAvailable`, `convertibleImageTypes`) |
 | GET    | `/api/settings`                     | User settings (`autoOcr`, `autoDewarp`, `ocrAllText`, `uploadEnhancement`, `pdfImageQuality`) |
 | PATCH  | `/api/settings`                     | Update user settings (unknown values are ignored) |
@@ -92,7 +116,7 @@ Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install i
 ### Using the API from scripts
 
 Create a token under „Einstellungen" → „API" and send it as `Authorization: Bearer <token>`. Requests with an unknown or revoked token get `401`. Only a SHA-256 hash of each token is stored.
-There is no login yet, so requests without a token still act as the default user – do not expose archivar to untrusted networks.
+Without a password (see [Access](#access)) requests without a token act as the default user – set one before exposing archivar to untrusted networks.
 
 [`scripts/upload.sh`](scripts/upload.sh) uploads files with `curl`:
 

@@ -31,7 +31,7 @@ describe("SettingsDialog", () => {
     const onClose = mock();
     await renderApp(<SettingsDialog open onClose={onClose} />);
 
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import", "API"]);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import", "API", "Zugriff"]);
     expect(radio(/^Original.*Volle Auflösung/).checked).toBe(true);
     expect(screen.getByText("Standard")).toBeTruthy();
     fireEvent.click(radio(/^Niedrig.*150 DPI/));

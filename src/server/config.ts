@@ -10,6 +10,8 @@ export interface Config {
   maxUploadBytes: number;
   uvdocModelPath: string;
   segmentationModelPath: string;
+  /** Public origin for passkeys, e.g. `https://archiv.example.org`; otherwise taken from each request. */
+  origin: string | null;
 }
 
 export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
@@ -24,5 +26,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     maxUploadBytes: Number(env.ARCHIVAR_MAX_UPLOAD_MB ?? 512) * 1024 * 1024,
     uvdocModelPath: resolve(env.ARCHIVAR_UVDOC_MODEL ?? "models/uvdoc.onnx"),
     segmentationModelPath: resolve(env.ARCHIVAR_DOCSEG_MODEL ?? "models/docseg.onnx"),
+    origin: env.ARCHIVAR_ORIGIN?.replace(/\/+$/, "") || null,
   };
 }

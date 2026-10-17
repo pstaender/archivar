@@ -5,6 +5,8 @@ import type { PdfQuality, UserSettings } from "../shared/settings";
 import type { Shape } from "../shared/shapes";
 import type { VectorArea } from "../vectorizer";
 import type { ApiToken, CreatedApiToken } from "../shared/tokens";
+import type { AuthStatus, Passkey } from "../shared/auth";
+import type { AuthenticationResponseJSON, PublicKeyCredentialCreationOptionsJSON, PublicKeyCredentialRequestOptionsJSON, RegistrationResponseJSON } from "@simplewebauthn/browser";
 import type {
   AppConfig,
   ArchiveDocument,
@@ -34,11 +36,24 @@ export class ApiRequestError extends Error {
   }
 }
 
+/** Fired when a request is turned down because the session ended, so the login is shown again. */
+export const LOGGED_OUT_EVENT = "archivar:logged-out";
+
+function reportLoggedOut(path: string, status: number): void {
+  if (status === 401 && !path.startsWith("/api/auth/")) window.dispatchEvent(new Event(LOGGED_OUT_EVENT));
+}
+
+interface PasskeyChallenge<T> {
+  challengeId: string;
+  options: T;
+}
+
 async function send(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   if (typeof init.body === "string") headers.set("Content-Type", "application/json");
   const res = await fetch(path, { ...init, headers });
   if (!res.ok) {
+    reportLoggedOut(path, res.status);
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     throw new ApiRequestError(res.status, body?.error ?? res.statusText);
   }
@@ -63,7 +78,10 @@ function sendWithProgress<T>(path: string, body: FormData, onProgress?: (loaded:
     xhr.onload = () => {
       const response = xhr.response as (T & { error?: string }) | null;
       if (xhr.status >= 200 && xhr.status < 300) resolve(response as T);
-      else reject(new ApiRequestError(xhr.status, response?.error ?? (xhr.statusText || "Upload fehlgeschlagen")));
+      else {
+        reportLoggedOut(path, xhr.status);
+        reject(new ApiRequestError(xhr.status, response?.error ?? (xhr.statusText || "Upload fehlgeschlagen")));
+      }
     };
     xhr.onerror = () => reject(new ApiRequestError(0, "Upload fehlgeschlagen"));
     // Without these the promise would never settle and block the upload queue until the page is reloaded.
@@ -103,6 +121,18 @@ export interface UploadOptions {
 
 export const api = {
   me: () => request<User>("/api/me"),
+  authStatus: () => request<AuthStatus>("/api/auth/status"),
+  login: (name: string | null, password: string) => request<void>("/api/auth/login", jsonBody("POST", { name, password })),
+  logout: () => request<void>("/api/auth/logout", jsonBody("POST", {})),
+  setPassword: (password: string, currentPassword: string | null) => request<void>("/api/auth/password", jsonBody("PUT", { password, currentPassword })),
+  removePassword: (currentPassword: string) => request<void>("/api/auth/password", jsonBody("DELETE", { currentPassword })),
+  passkeys: () => request<Passkey[]>("/api/auth/passkeys"),
+  deletePasskey: (id: number) => request<void>(`/api/auth/passkeys/${id}`, { method: "DELETE" }),
+  passkeyRegistration: () => request<PasskeyChallenge<PublicKeyCredentialCreationOptionsJSON>>("/api/auth/passkeys/options", jsonBody("POST", {})),
+  registerPasskey: (challengeId: string, response: RegistrationResponseJSON, name: string) =>
+    request<Passkey>("/api/auth/passkeys", jsonBody("POST", { challengeId, response, name })),
+  passkeyLogin: (name: string | null) => request<PasskeyChallenge<PublicKeyCredentialRequestOptionsJSON>>("/api/auth/passkey/options", jsonBody("POST", { name })),
+  loginWithPasskey: (challengeId: string, response: AuthenticationResponseJSON) => request<void>("/api/auth/passkey", jsonBody("POST", { challengeId, response })),
   settings: () => request<UserSettings>("/api/settings"),
   updateSettings: (update: Partial<UserSettings>) => request<UserSettings>("/api/settings", jsonBody("PATCH", update)),
   config: () => request<AppConfig>("/api/config"),

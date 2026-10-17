@@ -1,6 +1,6 @@
 import type { Database } from "bun:sqlite";
 import type { User } from "../shared/types";
-import { DEFAULT_USER_NAME } from "./db/database";
+import { AuthRepository } from "./db/auth";
 import { DocumentRepository } from "./db/documents";
 import { FolderRepository } from "./db/folders";
 import { JobRepository } from "./db/jobs";
@@ -11,6 +11,7 @@ import { UserRepository } from "./db/users";
 import { VectorRepository } from "./db/vectors";
 import { HttpError } from "./http";
 import { ArchiveService } from "./services/archive";
+import { AuthService } from "./services/auth";
 import type { DewarpEngine } from "./services/dewarp";
 import type { DocumentSegmenter } from "./services/documentSegmentation";
 import { ImagingService } from "./services/imaging";
@@ -36,6 +37,9 @@ export interface AppContext {
   imaging: ImagingService;
   ocrEngine: OcrEngine;
   archive: ArchiveService;
+  auth: AuthService;
+  /** Sessions and passkeys. */
+  authStore: AuthRepository;
   currentUser(req: Request): User;
 }
 
@@ -47,6 +51,7 @@ export interface ContextOptions {
   segmenter: DocumentSegmenter;
   imageConverter?: ImageConverter | null;
   ocrPageTimeoutMs?: number;
+  origin?: string | null;
 }
 
 export function createContext(options: ContextOptions): AppContext {
@@ -65,8 +70,10 @@ export function createContext(options: ContextOptions): AppContext {
   const dewarp = options.dewarpEngine;
   const archive = new ArchiveService(documents, stacks, folders, storage, imaging, ocr, dewarp, options.segmenter, options.ocrEngine, vectors);
   const jobQueue = new JobQueue(jobs, archive);
+  const authStore = new AuthRepository(db);
+  const auth = new AuthService(users, authStore, options.origin);
 
-  // There is no login yet: requests without a bearer token act as the default user.
+  // Scripts send a bearer token; browsers get a session cookie when the user has a password.
   const currentUser = (req: Request): User => {
     const bearer = req.headers.get("Authorization")?.match(/^Bearer\s+(\S+)$/i)?.[1];
     if (bearer) {
@@ -75,10 +82,10 @@ export function createContext(options: ContextOptions): AppContext {
       if (!user) throw new HttpError(401, "Invalid API token");
       return user;
     }
-    const user = users.findByName(DEFAULT_USER_NAME);
-    if (!user) throw new HttpError(500, "Default user missing");
+    const user = auth.requestUser(req);
+    if (!user) throw new HttpError(401, "Login required");
     return user;
   };
 
-  return { db, storage, users, folders, documents, stacks, presets, jobs, tokens, vectors, jobQueue, ocr, ocrEngine: options.ocrEngine, dewarp, imaging, archive, currentUser };
+  return { db, storage, users, folders, documents, stacks, presets, jobs, tokens, vectors, jobQueue, ocr, ocrEngine: options.ocrEngine, dewarp, imaging, archive, auth, authStore, currentUser };
 }

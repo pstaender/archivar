@@ -1,10 +1,20 @@
 import { expect, test } from "bun:test";
-import { migrate, migrations, openDatabase } from "./database";
+import { Database } from "bun:sqlite";
+import { migrate, migrations } from "./database";
 
 const versionBefore = (table: string) => migrations.findIndex((sql) => sql.includes(`CREATE TABLE ${table}_new`));
 
+/** A database as it was before the migration that rebuilds `table`. */
+function databaseBefore(table: string): Database {
+  const db = new Database(":memory:", { strict: true });
+  db.exec("PRAGMA foreign_keys = ON");
+  migrate(db, versionBefore(table));
+  db.query("INSERT INTO users (name) VALUES ('default')").run();
+  return db;
+}
+
 test("rebuilding the documents table keeps the rows that reference documents", () => {
-  const db = openDatabase(":memory:");
+  const db = databaseBefore("documents");
   const insert = db.query("INSERT INTO documents (user_id, original_name, mime_type, kind, size, storage_key, copy_of) VALUES (1, 'a.jpg', 'image/jpeg', 'image', 1, 'k', ?) RETURNING id");
   const original = (insert.get(null) as { id: number }).id;
   const copy = (insert.get(original) as { id: number }).id;
@@ -12,7 +22,6 @@ test("rebuilding the documents table keeps the rows that reference documents", (
   db.query("INSERT INTO document_folders (document_id, folder_id) VALUES (?, 1)").run(copy);
   db.query("INSERT INTO document_vectors (document_id, areas, area_count, geometry) VALUES (?, '[]', 0, '')").run(copy);
 
-  db.exec(`PRAGMA user_version = ${versionBefore("documents")}`);
   migrate(db);
 
   expect(db.query("SELECT copy_of AS copyOf FROM documents WHERE id = ?").get(copy)).toEqual({ copyOf: original });
@@ -25,14 +34,13 @@ test("rebuilding the documents table keeps the rows that reference documents", (
 });
 
 test("rebuilding the stacks table keeps its documents and folders", () => {
-  const db = openDatabase(":memory:");
+  const db = databaseBefore("stacks");
   const insert = db.query("INSERT INTO stacks (user_id, title) VALUES (1, 'Steuer') RETURNING id");
   const stack = (insert.get() as { id: number }).id;
   db.query("INSERT INTO documents (user_id, original_name, mime_type, kind, size, storage_key, stack_id) VALUES (1, 'a.jpg', 'image/jpeg', 'image', 1, 'k', ?)").run(stack);
   db.query("INSERT INTO folders (user_id, path) VALUES (1, 'wichtig')").run();
   db.query("INSERT INTO stack_folders (stack_id, folder_id) VALUES (?, 1)").run(stack);
 
-  db.exec(`PRAGMA user_version = ${versionBefore("stacks")}`);
   migrate(db);
 
   expect(db.query("SELECT stack_id AS stackId FROM documents").get()).toEqual({ stackId: stack });

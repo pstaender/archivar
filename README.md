@@ -10,6 +10,7 @@ The following features are available:
 - Organizing documents into folders
 - Export file(s) as searchable PDF
 
+- Optional login with a password or passkeys (reset with `bun run password`)
 - REST API with personal access tokens, e.g. to upload from a script ([example](scripts/upload.sh))
 
 [More details in the software documentation.](documentation.md)
@@ -37,7 +38,7 @@ This tool is vibe coded: most of the code was written by an AI coding assistant.
 ## Upcoming features
 
 - multi language support (i18n), currently german only
-- user management / login / logout
+- user management
 
 ## License
 

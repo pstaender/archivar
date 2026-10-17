@@ -8,17 +8,19 @@ import { useConfig } from "../hooks/config";
 import { usePresets } from "../hooks/presets";
 import { useSettings } from "../hooks/settings";
 import { useToast } from "../hooks/toast";
+import { AccessSettings } from "./AccessSettings";
 import { ApiTokens } from "./ApiTokens";
 import { Dialog } from "./Dialog";
 import { FolderPicker } from "./FolderPicker";
 import { Switch } from "./Switch";
 
-type Tab = "sizes" | "import" | "api";
+type Tab = "sizes" | "import" | "api" | "access";
 
 const TABS: { tab: Tab; label: string }[] = [
   { tab: "sizes", label: "Bildgrößen" },
   { tab: "import", label: "Import" },
   { tab: "api", label: "API" },
+  { tab: "access", label: "Zugriff" },
 ];
 
 interface Choice<T extends string> {
@@ -199,6 +201,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             </>
           )}
           {tab === "api" && <ApiTokens />}
+          {tab === "access" && <AccessSettings />}
         </div>
       )}
     </Dialog>

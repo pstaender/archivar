@@ -60,11 +60,76 @@ async function serveFile(file: Bun.BunFile, type: string, filename?: string): Pr
 export function createApiRoutes(ctx: AppContext) {
   const { archive } = ctx;
   const userId = (req: Request) => ctx.currentUser(req).id;
+  const withSession = (req: Request, token: string | null) => {
+    const res = noContent();
+    res.headers.append("Set-Cookie", ctx.auth.sessionCookie(req, token));
+    return res;
+  };
   const pdfQuality = (req: Request, value: unknown) => normalizePdfQuality(value, ctx.users.settings(userId(req)).pdfImageQuality);
 
   return {
     "/api/me": {
       GET: handle((req: Req) => json(ctx.currentUser(req))),
+    },
+
+    "/api/auth/status": {
+      GET: handle((req: Req) => json(ctx.auth.status(req))),
+    },
+
+    "/api/auth/login": {
+      POST: handle(async (req: Req) => {
+        const body = await readJson(req);
+        return withSession(req, await ctx.auth.login(body.name, body.password));
+      }),
+    },
+
+    "/api/auth/logout": {
+      POST: handle((req: Req) => {
+        ctx.auth.logout(req);
+        return withSession(req, null);
+      }),
+    },
+
+    "/api/auth/password": {
+      PUT: handle(async (req: Req) => {
+        const body = await readJson(req);
+        return withSession(req, await ctx.auth.changePassword(ctx.currentUser(req), body.password, body.currentPassword));
+      }),
+      DELETE: handle(async (req: Req) => {
+        const body = await readJson(req);
+        await ctx.auth.removePassword(ctx.currentUser(req), body.currentPassword);
+        return withSession(req, null);
+      }),
+    },
+
+    "/api/auth/passkey/options": {
+      POST: handle(async (req: Req) => json(await ctx.auth.loginOptions(req, (await readJson(req)).name))),
+    },
+
+    "/api/auth/passkey": {
+      POST: handle(async (req: Req) => {
+        const body = await readJson(req);
+        return withSession(req, await ctx.auth.loginWithPasskey(req, body.challengeId, body.response));
+      }),
+    },
+
+    "/api/auth/passkeys": {
+      GET: handle((req: Req) => json(ctx.auth.passkeys(ctx.currentUser(req)))),
+      POST: handle(async (req: Req) => {
+        const body = await readJson(req);
+        return json(await ctx.auth.register(req, ctx.currentUser(req), body.challengeId, body.response, body.name), 201);
+      }),
+    },
+
+    "/api/auth/passkeys/options": {
+      POST: handle(async (req: Req) => json(await ctx.auth.registrationOptions(req, ctx.currentUser(req)))),
+    },
+
+    "/api/auth/passkeys/:id": {
+      DELETE: handle((req: Req) => {
+        if (!ctx.auth.deletePasskey(ctx.currentUser(req), parseId(req.params.id))) throw new HttpError(404, "Passkey not found");
+        return noContent();
+      }),
     },
 
     "/api/settings": {

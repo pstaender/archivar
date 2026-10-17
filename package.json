@@ -32,6 +32,8 @@
     "@jimp/plugin-rotate": "^1.6.1",
     "@jimp/types": "^1.6.1",
     "@napi-rs/canvas": "^1.0.11",
+    "@simplewebauthn/browser": "^14.0.0",
+    "@simplewebauthn/server": "^14.0.3",
     "@techstark/opencv-js": "4.12.0-release.1",
     "fastest-levenshtein": "^1.0.16",
     "franc": "^6.2.0",
@@ -52,6 +54,7 @@
     "test:client": "bun test --preload ./test/happydom.ts src/client",
     "typecheck": "tsc --noEmit",
     "setup:uvdoc": "bash scripts/setup-uvdoc.sh",
-    "setup:docseg": "bash scripts/setup-docseg.sh"
+    "setup:docseg": "bash scripts/setup-docseg.sh",
+    "password": "bun scripts/password.ts"
   }
 }

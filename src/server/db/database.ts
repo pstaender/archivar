@@ -222,16 +222,41 @@ export const migrations: string[] = [
   DROP TABLE stacks;
   ALTER TABLE stacks_new RENAME TO stacks;
   `,
+  `
+  ALTER TABLE users ADD COLUMN password_hash TEXT;
+
+  CREATE TABLE sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    last_seen_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX sessions_user ON sessions(user_id);
+
+  CREATE TABLE passkeys (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    credential_id TEXT NOT NULL UNIQUE,
+    public_key BLOB NOT NULL,
+    counter INTEGER NOT NULL DEFAULT 0,
+    transports TEXT NOT NULL DEFAULT '[]',
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    last_used_at TEXT
+  );
+  CREATE INDEX passkeys_user ON passkeys(user_id, id);
+  `,
 ];
 
-export function migrate(db: Database): void {
+/** `until`: the number of migrations to apply (tests stop before a later one). */
+export function migrate(db: Database, until = migrations.length): void {
   const { user_version: current } = db.query("PRAGMA user_version").get() as { user_version: number };
-  if (current >= migrations.length) return;
+  if (current >= until) return;
   // Rebuilding a table drops the old one, which would run the ON DELETE actions of the tables referencing it.
   const { foreign_keys: foreignKeys } = db.query("PRAGMA foreign_keys").get() as { foreign_keys: number };
   db.exec("PRAGMA foreign_keys = OFF");
   try {
-    for (let version = current; version < migrations.length; version++) {
+    for (let version = current; version < until; version++) {
       db.transaction(() => {
         db.exec(migrations[version]!);
         if (db.query("PRAGMA foreign_key_check").all().length > 0) throw new Error(`Migration ${version + 1} breaks foreign keys`);

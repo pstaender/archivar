@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { RouteObject } from "react-router";
 import { AppShell } from "./components/AppShell";
+import { AuthGate } from "./hooks/auth";
 import { ConfigProvider } from "./hooks/config";
 import { FoldersProvider } from "./hooks/folders";
 import { JobsProvider } from "./hooks/jobs";
@@ -17,19 +18,21 @@ import { StackPage } from "./pages/StackPage";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <ConfigProvider>
-      <ToastProvider>
-        <SettingsProvider>
-          <FoldersProvider>
-            <PresetsProvider>
-              <JobsProvider>
-                <UploadProvider>{children}</UploadProvider>
-              </JobsProvider>
-            </PresetsProvider>
-          </FoldersProvider>
-        </SettingsProvider>
-      </ToastProvider>
-    </ConfigProvider>
+    <ToastProvider>
+      <AuthGate>
+        <ConfigProvider>
+          <SettingsProvider>
+            <FoldersProvider>
+              <PresetsProvider>
+                <JobsProvider>
+                  <UploadProvider>{children}</UploadProvider>
+                </JobsProvider>
+              </PresetsProvider>
+            </FoldersProvider>
+          </SettingsProvider>
+        </ConfigProvider>
+      </AuthGate>
+    </ToastProvider>
   );
 }
 
