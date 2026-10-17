@@ -9,6 +9,7 @@ import { SettingsProvider } from "./hooks/settings";
 import { ToastProvider } from "./hooks/toast";
 import { UploadProvider } from "./hooks/upload";
 import { DocumentPage } from "./pages/DocumentPage";
+import { PresetsPage } from "./pages/PresetsPage";
 import { JobsPage } from "./pages/JobsPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
@@ -46,6 +47,7 @@ export const routes: RouteObject[] = [
       { path: "documents/:id", element: <DocumentPage /> },
       { path: "stacks/:id", element: <StackPage /> },
       { path: "jobs", element: <JobsPage /> },
+      { path: "presets", element: <PresetsPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

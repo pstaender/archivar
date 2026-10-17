@@ -3,7 +3,8 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { DEFAULT_USER_SETTINGS } from "../../shared/settings";
 import type { ImagePreset } from "../../shared/presets";
 import { type FetchMock, mockFetch, renderApp } from "../../../test/client";
-import { PresetList } from "./PresetList";
+import { FolderTree } from "../components/FolderTree";
+import { PresetsPage } from "./PresetsPage";
 
 let fetchMock: FetchMock;
 afterEach(() => fetchMock.restore());
@@ -25,16 +26,18 @@ function setup(presets: ImagePreset[], settings = {}) {
       return undefined;
     },
   });
-  return renderApp(<PresetList />);
+  return renderApp(<PresetsPage />);
 }
 
 const preset = (id: number, name: string, steps: ImagePreset["steps"]): ImagePreset => ({ id, name, steps, createdAt: "" });
 
-describe("PresetList", () => {
-  test("lists the presets with their steps in gray", async () => {
-    await setup([preset(1, "Beleg", { autoDewarp: true, autoBw: true }), preset(2, "Hell", { brightness: 0.1 })]);
-    expect(screen.getByText("Beleg")).toBeTruthy();
-    expect(screen.getByText("Automatisch entzerren, Automatisch SW").className).toBe("preset-list__summary");
+describe("PresetsPage", () => {
+  test("lists the presets with their steps and marks the import preset", async () => {
+    await setup([preset(1, "Beleg", { autoDewarp: true, autoBw: true }), preset(2, "Hell", { brightness: 0.1 })], { importPresetId: 2 });
+    expect(screen.getByRole("heading", { name: "Bildeinstellungen" })).toBeTruthy();
+    const steps = screen.getByRole("list", { name: "Schritte von Beleg" });
+    expect(Array.from(steps.children).map((li) => li.textContent)).toEqual(["Automatisch entzerren", "Automatisch SW"]);
+    expect(screen.getByRole("heading", { name: "Hell Beim Import" })).toBeTruthy();
     expect(screen.getByText("Helligkeit +10 %")).toBeTruthy();
   });
 
@@ -53,8 +56,16 @@ describe("PresetList", () => {
     fireEvent.click(screen.getByRole("button", { name: "Beleg löschen" }));
     expect(screen.getByText(/bei Imports angewendet/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Löschen" }));
-    await waitFor(() => expect(screen.getByText("Im Tab „Bearbeiten“ speichern")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Noch keine Bildeinstellungen/)).toBeTruthy());
     expect(screen.queryByText("Beleg")).toBeNull();
     expect(fetchMock.calls.find((c) => c.path === "/api/settings" && c.method === "PATCH")?.body).toEqual({ importPresetId: null });
   });
+});
+
+test("the sidebar links to the presets page with their number", async () => {
+  fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/presets": () => [preset(1, "Beleg", { autoBw: true }), preset(2, "Hell", { brightness: 0.1 })] });
+  await renderApp(<FolderTree />);
+  const link = screen.getByRole("link", { name: /Bildeinstellungen/ });
+  expect(link.getAttribute("href")).toBe("/presets");
+  expect(link.textContent).toBe("Bildeinstellungen2");
 });

@@ -1,10 +1,11 @@
-import { ChevronRight, Folder, FolderOpen, Inbox, Pencil, Plus, Trash, Wand } from "../icons";
+import { ChevronRight, Folder, FolderOpen, Inbox, Pencil, Plus, Sliders, Trash, Wand } from "../icons";
 import { type FormEvent, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { buildFolderTree, type FolderNode, isWithinFolder } from "../../shared/folders";
 import { api } from "../api";
 import { useFolders } from "../hooks/folders";
 import { useJobs } from "../hooks/jobs";
+import { usePresets } from "../hooks/presets";
 import { useToast } from "../hooks/toast";
 import { folderHref, useCurrentFolder } from "../routes";
 import { ConfirmDialog } from "./Dialog";
@@ -39,6 +40,7 @@ export function FolderTree({ onNavigate }: FolderTreeProps) {
   const active = useCurrentFolder() ?? "";
   const { pathname } = useLocation();
   const { activeCount } = useJobs();
+  const { presets } = usePresets();
   const tree = useMemo(
     () => buildFolderTree(folders.map((f) => ({ id: f.id, path: f.path, count: f.documentCount + f.stackCount }))),
     [folders],
@@ -75,6 +77,13 @@ export function FolderTree({ onNavigate }: FolderTreeProps) {
             {activeCount}
           </span>
         )}
+      </Link>
+
+      <Link to="/presets" className={`folder-tree__row ${pathname === "/presets" ? "is-active" : ""}`} onClick={onNavigate}>
+        <span className="folder-tree__toggle" />
+        <Sliders size={16} aria-hidden />
+        <span className="folder-tree__name">Bildeinstellungen</span>
+        {presets.length > 0 && <span className="folder-tree__count">{presets.length}</span>}
       </Link>
 
       <div className="folder-tree__heading">

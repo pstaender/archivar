@@ -1,14 +1,15 @@
 import { Pencil, Trash } from "../icons";
 import { useState } from "react";
-import { describePreset, type ImagePreset } from "../../shared/presets";
+import { describeStep, type ImagePreset, presetStepList } from "../../shared/presets";
 import { api } from "../api";
 import { usePresets } from "../hooks/presets";
 import { useSettings } from "../hooks/settings";
 import { useToast } from "../hooks/toast";
-import { ConfirmDialog } from "./Dialog";
-import { PresetDialog } from "./PresetDialog";
+import { ConfirmDialog } from "../components/Dialog";
+import { PresetDialog } from "../components/PresetDialog";
 
-export function PresetList() {
+/** The saved image presets, to edit and delete them. */
+export function PresetsPage() {
   const { presets, reload } = usePresets();
   const { settings, save: saveSettings } = useSettings();
   const toast = useToast();
@@ -39,26 +40,51 @@ export function PresetList() {
   };
 
   return (
-    <section className="preset-list" aria-label="Bildeinstellungen">
-      <div className="folder-tree__heading">
-        <h3>Bildeinstellungen</h3>
-      </div>
-      {presets.length === 0 && <p className="folder-tree__empty">Im Tab „Bearbeiten“ speichern</p>}
-      <ul className="preset-list__items">
+    <div className="page">
+      <header className="page__header">
+        <div>
+          <h1>Bildeinstellungen</h1>
+          <p className="muted small">
+            Gespeicherte Bearbeitungsschritte für Bilder: im Tab „Bearbeiten“ anwenden, beim Import (Einstellungen → Import) und in der Stapelverarbeitung.
+          </p>
+        </div>
+      </header>
+
+      {presets.length === 0 && (
+        <div className="empty-state">
+          <p className="muted">Noch keine Bildeinstellungen. Speichere die Bearbeitung eines Bildes im Tab „Bearbeiten“ oder „Formen“ als Bildeinstellung.</p>
+        </div>
+      )}
+
+      <ul className="presets" aria-label="Bildeinstellungen">
         {presets.map((preset) => (
-          <li key={preset.id} className="preset-list__item">
-            <div className="preset-list__text">
-              <span className="preset-list__name">{preset.name}</span>
-              <span className="preset-list__summary">{describePreset(preset.steps)}</span>
-            </div>
-            <div className="preset-list__actions">
-              <button type="button" className="btn btn--ghost btn--icon btn--sm" onClick={() => setEditing(preset)} aria-label={`${preset.name} bearbeiten`} title="Bearbeiten">
-                <Pencil size={14} />
+          <li key={preset.id} className="preset-card">
+            <div className="preset-card__header">
+              <h2>
+                {preset.name}
+                {settings.importPresetId === preset.id && <span className="preset-card__badge">Beim Import</span>}
+              </h2>
+              <button type="button" className="btn btn--sm" onClick={() => setEditing(preset)} aria-label={`${preset.name} bearbeiten`}>
+                <Pencil size={16} />
+                Bearbeiten
               </button>
-              <button type="button" className="btn btn--ghost btn--icon btn--sm" onClick={() => setDeleting(preset)} aria-label={`${preset.name} löschen`} title="Löschen">
-                <Trash size={14} />
+              <button
+                type="button"
+                className="btn btn--ghost btn--icon btn--sm"
+                onClick={() => setDeleting(preset)}
+                aria-label={`${preset.name} löschen`}
+                title="Löschen"
+              >
+                <Trash size={16} />
               </button>
             </div>
+            <ul className="preset-card__steps" aria-label={`Schritte von ${preset.name}`}>
+              {presetStepList(preset.steps).map((step) => (
+                <li key={step} className="chip">
+                  {describeStep(preset.steps, step)}
+                </li>
+              ))}
+            </ul>
           </li>
         ))}
       </ul>
@@ -85,6 +111,6 @@ export function PresetList() {
         onConfirm={() => deleting && remove(deleting)}
         onClose={() => setDeleting(null)}
       />
-    </section>
+    </div>
   );
 }

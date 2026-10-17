@@ -4,7 +4,6 @@ import { Link, Outlet, useLocation, useNavigate, useSearchParams } from "react-r
 import { isLibraryPath } from "../routes";
 import { DropZone } from "./DropZone";
 import { FolderTree } from "./FolderTree";
-import { PresetList } from "./PresetList";
 import { SettingsDialog } from "./SettingsDialog";
 import { UploadButtons } from "./UploadButtons";
 import { UploadProgress } from "./UploadProgress";
@@ -30,7 +29,6 @@ export function AppShell() {
       </header>
       <aside className="sidebar">
         <FolderTree onNavigate={() => setSidebarOpen(false)} />
-        <PresetList />
         <SidebarFooter />
       </aside>
       <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
