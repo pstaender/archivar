@@ -6,7 +6,7 @@ import { languageName } from "../../shared/languages";
 import { api, assetUrl } from "../api";
 import { useJobs } from "../hooks/jobs";
 import { useToast } from "../hooks/toast";
-import { formatDateTime, formatRelativeTime } from "../format";
+import { formatDateTime, formatDuration, formatRelativeTime } from "../format";
 
 const STATE_LABELS: Record<JobItemState, string> = {
   pending: "Wartet",
@@ -115,6 +115,7 @@ function JobCard({ job, now, removing, onRemove }: { job: Job; now: Date; removi
             <time dateTime={job.createdAt} title={formatDateTime(job.createdAt)}>
               {formatRelativeTime(job.createdAt, now)}
             </time>
+            {job.finishedAt && ` · Dauer: ${formatDuration(new Date(job.finishedAt).getTime() - new Date(job.createdAt).getTime())}`}
             {jobDescription(job) && ` · ${jobDescription(job)}`}
           </p>
         </div>

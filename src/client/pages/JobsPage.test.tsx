@@ -16,6 +16,7 @@ const batch: Job = {
   options: { preset: { name: "OCR Optimiert", steps: { autoBw: true } }, ocr: true, languages: ["fra"], allText: true },
   createdAt: "2026-10-17T10:00:00.000Z",
   active: true,
+  finishedAt: null,
   items: [
     { id: 1, name: "Rechnung", state: "done", error: null, note: null, document: doc(10, "Rechnung") },
     { id: 2, name: "Brief", state: "ocr", error: null, note: null, document: doc(11, "Brief") },
@@ -31,6 +32,7 @@ const upload: Job = {
   options: null,
   createdAt: "2026-10-16T09:00:00.000Z",
   active: false,
+  finishedAt: "2026-10-16T09:01:25.000Z",
   items: [{ id: 6, name: "scan.jpg", state: "done", error: null, note: "Bereits vorhanden als „Rechnung“", document: doc(14, "scan") }],
 };
 
@@ -52,7 +54,8 @@ describe("JobsPage", () => {
     expect(screen.getByRole("link", { name: "Rechnung" }).getAttribute("href")).toBe("/documents/10");
     expect(screen.queryByRole("button", { name: "Auftrag entfernen" })).toBeTruthy();
     const imported = screen.getByRole("region", { name: /^Import vom/ });
-    expect(imported.textContent).toContain("1 Datei");
+    expect(imported.textContent).toContain("Dauer: 1 Minute 25 Sekunden · 1 Datei");
+    expect(running.textContent).not.toContain("Dauer");
     expect(imported.textContent).toContain("Bereits vorhanden als „Rechnung“");
     expect(imported.querySelector("time")?.getAttribute("dateTime")).toBe(upload.createdAt);
   });

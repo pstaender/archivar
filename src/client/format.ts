@@ -35,6 +35,24 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   return formatDateTime(iso);
 }
 
+const unit = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** E.g. "45 Sekunden", "2 Minuten 5 Sekunden" (seconds only below 10 minutes), "1 Stunde 20 Minuten". */
+export function formatDuration(ms: number): string {
+  const seconds = Math.max(1, Math.round(ms / 1000));
+  if (seconds < 60) return unit(seconds, "Sekunde", "Sekunden");
+  if (seconds < 600) {
+    const rest = seconds % 60;
+    const minutes = unit(Math.floor(seconds / 60), "Minute", "Minuten");
+    return rest ? `${minutes} ${unit(rest, "Sekunde", "Sekunden")}` : minutes;
+  }
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return unit(minutes, "Minute", "Minuten");
+  const rest = minutes % 60;
+  const hours = unit(Math.floor(minutes / 60), "Stunde", "Stunden");
+  return rest ? `${hours} ${unit(rest, "Minute", "Minuten")}` : hours;
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const units = ["KB", "MB", "GB"];

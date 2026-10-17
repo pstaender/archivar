@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { formatBytes, formatDateTime, formatRelativeTime, isOcrBusy } from "./format";
+import { formatBytes, formatDateTime, formatDuration, formatRelativeTime, isOcrBusy } from "./format";
 
 test("formatBytes", () => {
   expect(formatBytes(512)).toBe("512 B");
@@ -24,4 +24,14 @@ test("formatRelativeTime counts back today, names the weekday within six days an
   expect(formatRelativeTime(at(2026, 9, 12, 9, 5, 0), now)).toBe("Montag, 09:05");
   expect(formatRelativeTime(at(2026, 9, 9, 9, 5, 0), now)).toBe("Freitag, 09:05");
   expect(formatRelativeTime(at(2026, 9, 8, 9, 5, 0), now)).toBe(formatDateTime(at(2026, 9, 8, 9, 5, 0)));
+});
+
+test("formatDuration shows seconds, minutes and hours", () => {
+  expect(formatDuration(200)).toBe("1 Sekunde");
+  expect(formatDuration(45_000)).toBe("45 Sekunden");
+  expect(formatDuration(60_000)).toBe("1 Minute");
+  expect(formatDuration(125_000)).toBe("2 Minuten 5 Sekunden");
+  expect(formatDuration(14 * 60_000 + 40_000)).toBe("15 Minuten");
+  expect(formatDuration(80 * 60_000)).toBe("1 Stunde 20 Minuten");
+  expect(formatDuration(2 * 3_600_000)).toBe("2 Stunden");
 });

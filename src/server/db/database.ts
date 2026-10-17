@@ -133,6 +133,10 @@ const migrations: string[] = [
   );
   CREATE INDEX api_tokens_user ON api_tokens(user_id, id);
   `,
+  `
+  ALTER TABLE job_items ADD COLUMN finished_at TEXT;
+  ALTER TABLE job_items ADD COLUMN ocr_finished_at TEXT;
+  `,
 ];
 
 export function migrate(db: Database): void {

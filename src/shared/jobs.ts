@@ -55,6 +55,8 @@ export interface Job {
   createdAt: string;
   /** Some items are not finished yet (including their text recognition). */
   active: boolean;
+  /** When the last item finished; null while active and for jobs from before finish times were stored. */
+  finishedAt: string | null;
   items: JobItem[];
 }
 

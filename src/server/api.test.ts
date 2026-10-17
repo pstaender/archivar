@@ -821,6 +821,9 @@ describe("jobs", () => {
       ["notiz", "skipped", null],
     ]);
     expect(job!.active).toBe(false);
+    expect(created.finishedAt).toBeNull();
+    const finishedAt = job!.finishedAt!;
+    expect(finishedAt >= job!.createdAt).toBe(true);
     expect(server.ctx.documents.getById(photo.id)).toMatchObject({ editSettings: { colorMode: "grayscale" }, ocrLanguages: ["fra"], ocrAllText: true });
     expect(server.ctx.documents.getById(pdf!.id)?.editSettings.colorMode).toBe("color");
     expect(server.ocr.recognizedLanguages).toEqual([["fra"], ["fra"]]);
@@ -828,8 +831,11 @@ describe("jobs", () => {
     // Items wait for the text recognition they queued.
     server.ctx.documents.setOcrResult(photo.id, { status: "running" });
     expect((await jobs())[0]).toMatchObject({ active: true, items: [{ state: "ocr" }, {}, {}] });
+    expect((await jobs())[0]!.finishedAt).toBeNull();
     server.ctx.documents.setOcrResult(photo.id, { status: "failed", error: "kaputt" });
     expect(states((await jobs())[0])?.[0]).toEqual(["foto", "failed", "kaputt"]);
+    // A later recognition run does not extend the job.
+    expect((await jobs())[0]!.finishedAt).toBe(finishedAt);
   });
 
   test("batch jobs need documents of the user and something to do", async () => {
@@ -869,6 +875,7 @@ describe("jobs", () => {
       ["b.jpg", "failed", "Netzwerkfehler"],
       ["c.jpg", "failed", "Der Upload wurde abgebrochen."],
     ]);
+    expect((await jobs())[0]!.finishedAt).toEqual(expect.any(String));
     expect((await server.api(`/api/jobs/${job.id}`, { method: "DELETE" })).status).toBe(204);
     expect(await jobs()).toEqual([]);
   });

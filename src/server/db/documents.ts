@@ -236,6 +236,15 @@ export class DocumentRepository {
         language: result.language ?? null,
         allText: result.allText ? 1 : 0,
       });
+    // Job items wait for their document's text recognition; only the first run after the item counts.
+    if (result.status === "done" || result.status === "failed") {
+      this.db
+        .query(
+          `UPDATE job_items SET ocr_finished_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+           WHERE document_id = ? AND ocr = 1 AND status = 'done' AND ocr_finished_at IS NULL`,
+        )
+        .run(id);
+    }
   }
 
   /** Documents with text but no detected language (recognized before languages were detected, or unclear). */
