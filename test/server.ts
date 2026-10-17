@@ -18,6 +18,8 @@ export class FakeOcrEngine implements OcrEngine {
   /** Images passed to recognize(). */
   images: Uint8Array[] = [];
   result: OcrResult = { text: "Hallo Welt", confidence: 91 };
+  /** Results for explicitly requested languages (key: codes joined with "+"); others get `result`. */
+  resultsByLanguage: Record<string, OcrResult> = {};
   error: Error | null = null;
   orientation: Orientation | null = { rotation: 0, confidence: 10 };
   orientationInputs = 0;
@@ -36,7 +38,7 @@ export class FakeOcrEngine implements OcrEngine {
     this.recognizedLanguages.push(languages);
     if (this.hang) return new Promise(() => {});
     if (this.error) throw this.error;
-    return this.result;
+    return (languages && this.resultsByLanguage[languages.join("+")]) || this.result;
   }
 
   async terminate(): Promise<void> {

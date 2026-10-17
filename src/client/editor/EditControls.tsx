@@ -1,5 +1,13 @@
 import { AutoCrop, AutoRotate, Contrast, Crop, Eraser, Loader, RotateCcw, RotateCw, Scan, WandSparkles } from "../icons";
 import { type CSSProperties, useEffect, useId } from "react";
+import {
+  GRAY_MIX_CHANNELS,
+  GRAY_MIX_MAX,
+  GRAY_MIX_MIN,
+  GRAY_MIX_PRESETS,
+  grayMixPresetId,
+  LUMA_GRAY_MIX,
+} from "../../shared/image/grayMix";
 import { DENOISE_LABELS, formatPercent as percent, formatSigned as signed } from "../../shared/presets";
 import type { ColorMode, EditSettings } from "../../shared/types";
 import { boundingRect, type GeometryMode, rotateSettings } from "./geometry";
@@ -213,6 +221,7 @@ export function EditControls({
             <Slider label="Farbton" value={settings.hue} min={-180} max={180} step={1} format={(v) => `${signed(v)}°`} onChange={(v) => set("hue", v)} />
           </>
         )}
+        {settings.colorMode === "grayscale" && <GrayMixControls value={settings.grayMix} onChange={(mix) => set("grayMix", mix)} />}
         {settings.colorMode === "bw" && (
           <Slider label="Schwelle" value={settings.bwThreshold} min={0} max={255} step={1} defaultValue={128} onChange={(v) => set("bwThreshold", v)} />
         )}
@@ -238,6 +247,60 @@ export function EditControls({
         </div>
       </section>
     </div>
+  );
+}
+
+const CUSTOM = "custom";
+
+/** Sliders per hue like Photoshop's „Schwarzweiß“; they start at the weights of the plain conversion (stored as null). */
+function GrayMixControls({ value, onChange }: { value: EditSettings["grayMix"]; onChange: (mix: EditSettings["grayMix"]) => void }) {
+  const id = useId();
+  const presetId = grayMixPresetId(value) ?? CUSTOM;
+  const mix = value ?? LUMA_GRAY_MIX;
+  const choose = (next: string) => {
+    if (next === "luma") return onChange(null);
+    const preset = GRAY_MIX_PRESETS.find((p) => p.id === next);
+    if (preset) onChange(preset.mix);
+  };
+  return (
+    <>
+      <div className="slider">
+        <label htmlFor={id} className="slider__header">
+          Kanäle
+        </label>
+        <select id={id} className="input input--sm" value={presetId} onChange={(e) => choose(e.target.value)}>
+          <option value="luma">Standard</option>
+          {GRAY_MIX_PRESETS.map((preset) => (
+            <option key={preset.id} value={preset.id}>
+              {preset.label}
+            </option>
+          ))}
+          {presetId === CUSTOM && <option value={CUSTOM}>Eigene Werte</option>}
+        </select>
+      </div>
+      {GRAY_MIX_CHANNELS.map(({ key, label }) => (
+        <Slider
+          key={key}
+          label={label}
+          value={mix[key]}
+          min={GRAY_MIX_MIN}
+          max={GRAY_MIX_MAX}
+          step={1}
+          defaultValue={LUMA_GRAY_MIX[key]}
+          format={(v) => `${v} %`}
+          onChange={(v) => {
+            const next = { ...mix, [key]: v };
+            onChange(grayMixPresetId(next) === "luma" ? null : next);
+          }}
+        />
+      ))}
+      <div className="button-row">
+        <button type="button" className="btn btn--sm" onClick={() => onChange(null)} disabled={presetId === "luma"}>
+          <RotateCcw size={16} />
+          Alle zurücksetzen
+        </button>
+      </div>
+    </>
   );
 }
 

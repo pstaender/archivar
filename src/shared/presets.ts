@@ -1,5 +1,7 @@
-import { DEFAULT_EDIT_SETTINGS } from "./editSettings";
-import type { ColorMode, EditSettings, Rotation } from "./types";
+import { DEFAULT_EDIT_SETTINGS, normalizeQuad } from "./editSettings";
+import { describeGrayMix, normalizeGrayMix } from "./image/grayMix";
+import { isAxisAlignedRect } from "./image/perspective";
+import type { ColorMode, EditSettings, GrayMix, Quad, Rotation } from "./types";
 
 /**
  * The edit steps an image preset applies. Automatic steps are worked out again for every image; the others set fixed
@@ -10,9 +12,12 @@ export interface PresetSteps {
   rotation?: Rotation;
   autoDewarp?: boolean;
   autoCrop?: boolean;
+  /** Fixed crop or perspective corners, relative to the rotated (and dewarped) image like `EditSettings.corners`. */
+  crop?: Quad;
   /** Picks brightness, contrast and threshold for black and white, like „Automatisch SW“. */
   autoBw?: boolean;
   colorMode?: ColorMode;
+  grayMix?: GrayMix;
   brightness?: number;
   contrast?: number;
   saturation?: number;
@@ -48,8 +53,10 @@ export const PRESET_STEPS: PresetStep[] = [
   "rotation",
   "autoDewarp",
   "autoCrop",
+  "crop",
   "autoBw",
   "colorMode",
+  "grayMix",
   "brightness",
   "contrast",
   "saturation",
@@ -64,7 +71,8 @@ export const AUTO_STEPS: PresetStep[] = ["autoRotate", "autoDewarp", "autoCrop",
 /** Steps an automatic step replaces, because it sets those values itself. */
 const REPLACED_BY: Partial<Record<PresetStep, PresetStep[]>> = {
   autoRotate: ["rotation"],
-  autoBw: ["colorMode", "brightness", "contrast", "bwThreshold"],
+  autoCrop: ["crop"],
+  autoBw: ["colorMode", "grayMix", "brightness", "contrast", "bwThreshold"],
 };
 
 const ROTATIONS: Rotation[] = [0, 90, 180, 270];
@@ -82,6 +90,10 @@ export function normalizePresetSteps(input: unknown): PresetSteps {
   for (const step of AUTO_STEPS) if (src[step] === true) steps[step as "autoRotate"] = true;
   if (ROTATIONS.includes(src.rotation as Rotation)) steps.rotation = src.rotation as Rotation;
   if (COLOR_MODES.includes(src.colorMode as ColorMode)) steps.colorMode = src.colorMode as ColorMode;
+  const crop = normalizeQuad(src.crop);
+  if (crop) steps.crop = crop;
+  const grayMix = normalizeGrayMix(src.grayMix);
+  if (grayMix) steps.grayMix = grayMix;
   const values = {
     brightness: number(src.brightness, -1, 1),
     contrast: number(src.contrast, -1, 1),
@@ -109,19 +121,23 @@ export interface AutoApplied {
   bw?: boolean;
 }
 
-/** The steps that reproduce the settings that differ from the defaults; hand-drawn crops cannot be reused and are left out. */
+/** The steps that reproduce the settings that differ from the defaults; hand-drawn corners become a fixed crop. */
 export function presetStepsFromSettings(settings: EditSettings, auto: AutoApplied = {}): PresetSteps {
   const d = DEFAULT_EDIT_SETTINGS;
   const steps: PresetSteps = {};
   if (auto.rotation) steps.autoRotate = true;
   else if (settings.rotation !== d.rotation) steps.rotation = settings.rotation;
   if (settings.dewarp) steps.autoDewarp = true;
-  if (settings.corners && auto.crop) steps.autoCrop = true;
+  if (settings.corners) {
+    if (auto.crop) steps.autoCrop = true;
+    else steps.crop = settings.corners;
+  }
   if (auto.bw) steps.autoBw = true;
   else {
     if (settings.colorMode !== d.colorMode) steps.colorMode = settings.colorMode;
     if (settings.brightness !== d.brightness) steps.brightness = settings.brightness;
     if (settings.contrast !== d.contrast) steps.contrast = settings.contrast;
+    if (settings.colorMode === "grayscale" && settings.grayMix) steps.grayMix = settings.grayMix;
     if (settings.colorMode === "bw" && settings.bwThreshold !== d.bwThreshold) steps.bwThreshold = settings.bwThreshold;
   }
   if (settings.autoLevels) steps.autoLevels = true;
@@ -136,7 +152,8 @@ export function presetStepsFromSettings(settings: EditSettings, auto: AutoApplie
 /** The steps' fixed values written onto `settings`; automatic steps need the image and are left to the server. */
 export function applyFixedSteps(settings: EditSettings, steps: PresetSteps): EditSettings {
   const next = { ...settings };
-  for (const key of ["colorMode", "brightness", "contrast", "saturation", "hue", "bwThreshold", "denoise", "autoLevels"] as const) {
+  if (steps.crop) next.corners = steps.crop;
+  for (const key of ["colorMode", "grayMix", "brightness", "contrast", "saturation", "hue", "bwThreshold", "denoise", "autoLevels"] as const) {
     if (steps[key] !== undefined) (next as Record<string, unknown>)[key] = steps[key];
   }
   return next;
@@ -158,10 +175,14 @@ export function describeStep(steps: PresetSteps, step: PresetStep): string {
       return "Automatisch entzerren";
     case "autoCrop":
       return "Auto-Zuschnitt";
+    case "crop":
+      return isAxisAlignedRect(steps.crop!) ? "Fester Ausschnitt" : "Feste Entzerrung";
     case "autoBw":
       return "Automatisch SW";
     case "colorMode":
       return COLOR_MODE_LABELS[steps.colorMode!];
+    case "grayMix":
+      return `Graustufen-Kanäle: ${describeGrayMix(steps.grayMix!)}`;
     case "brightness":
       return `Helligkeit ${formatPercent(steps.brightness!)}`;
     case "contrast":

@@ -2,6 +2,7 @@ import { describe, expect, mock, test } from "bun:test";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
 import type { EditSettings } from "../../shared/types";
+import { GRAY_MIX_PRESETS, LUMA_GRAY_MIX } from "../../shared/image/grayMix";
 import { EditControls } from "./EditControls";
 import { rectQuad } from "./geometry";
 
@@ -27,6 +28,34 @@ function setup(overrides: Partial<EditSettings> = {}, mode: "none" | "crop" | "p
 const dewarp = { rotation: 0 as const, columns: 31, rows: 45, points: new Array(2790).fill(0) };
 
 describe("EditControls", () => {
+  test("grayscale shows a slider per hue, starting at the plain conversion", () => {
+    const { onChange } = setup({ colorMode: "grayscale" });
+    const reds = screen.getByLabelText("Rottöne") as HTMLInputElement;
+    expect(reds.value).toBe(String(LUMA_GRAY_MIX.reds));
+    expect((screen.getByLabelText("Kanäle") as HTMLSelectElement).value).toBe("luma");
+    expect((screen.getByRole("button", { name: "Alle zurücksetzen" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(reds, { target: { value: "150" } });
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ grayMix: { ...LUMA_GRAY_MIX, reds: 150 } }));
+  });
+
+  test("grayscale channels can be picked from filters and reset all at once", () => {
+    const red = GRAY_MIX_PRESETS.find((p) => p.id === "red")!.mix;
+    const { onChange } = setup({ colorMode: "grayscale", grayMix: { ...red, blues: 0 } });
+    const select = screen.getByLabelText("Kanäle") as HTMLSelectElement;
+    expect(select.value).toBe("custom");
+    expect((screen.getByLabelText("Blautöne") as HTMLInputElement).value).toBe("0");
+    fireEvent.change(select, { target: { value: "red" } });
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ grayMix: red }));
+    fireEvent.click(screen.getByRole("button", { name: "Alle zurücksetzen" }));
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ grayMix: null }));
+  });
+
+  test("moving the channels back to the plain conversion stores no mix", () => {
+    const { onChange } = setup({ colorMode: "grayscale", grayMix: { ...LUMA_GRAY_MIX, reds: 31 } });
+    fireEvent.change(screen.getByLabelText("Rottöne"), { target: { value: String(LUMA_GRAY_MIX.reds) } });
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ grayMix: null }));
+  });
+
   test("rotating also rotates an existing crop", () => {
     const corners = rectQuad(0, 0, 1, 0.5);
     const { onChange } = setup({ corners });

@@ -75,6 +75,12 @@ describe("applyEdits", () => {
     expect(g).toBe(b!);
   });
 
+  test("grayscale with channels weights each hue", () => {
+    const mix = { reds: 100, yellows: 0, greens: 0, cyans: 0, blues: -100, magentas: 0 };
+    expect(applyEdits(solid(1, 1, [200, 0, 0, 255]), settings({ colorMode: "grayscale", grayMix: mix })).bitmap.data[0]).toBe(200);
+    expect(applyEdits(solid(1, 1, [0, 0, 200, 255]), settings({ colorMode: "grayscale", grayMix: mix })).bitmap.data[0]).toBe(0);
+  });
+
   test("black and white uses the threshold", () => {
     const src = solid(2, 2, [120, 120, 120, 255]);
     expect(applyEdits(src, settings({ colorMode: "bw", bwThreshold: 100 })).bitmap.data[0]).toBe(255);

@@ -1,7 +1,9 @@
 import { Loader } from "../icons";
 import { useEffect, useId, useState } from "react";
+import { languageName, OCR_LANGUAGES } from "../../shared/languages";
 import { describePreset } from "../../shared/presets";
 import { DEFAULT_USER_SETTINGS, type PdfImageQuality, type UserSettings } from "../../shared/settings";
+import { useConfig } from "../hooks/config";
 import { usePresets } from "../hooks/presets";
 import { useSettings } from "../hooks/settings";
 import { useToast } from "../hooks/toast";
@@ -68,7 +70,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const toast = useToast();
   const { settings: stored, loaded, save } = useSettings();
   const { presets } = usePresets();
+  const { ocrLanguages: defaultLanguages } = useConfig();
   const presetSelectId = useId();
+  const languageSelectId = useId();
   const [tab, setTab] = useState<Tab>("sizes");
   const [draft, setDraft] = useState<UserSettings>(stored);
   const [saving, setSaving] = useState(false);
@@ -141,6 +145,29 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               <Switch checked={draft.ocrAllText} onChange={(value) => set("ocrAllText", value)} hint="Übernimmt auch unsichere, vermutlich fehlerhafte Textteile.">
                 Alle Textteile erkennen
               </Switch>
+              <div className="settings__field">
+                <label htmlFor={languageSelectId} className="field__label">
+                  Sprache der Texterkennung
+                </label>
+                <select
+                  id={languageSelectId}
+                  className="input"
+                  value={draft.importOcrLanguages?.[0] ?? ""}
+                  onChange={(e) => set("importOcrLanguages", e.target.value ? [e.target.value] : null)}
+                >
+                  <option value="">Automatisch</option>
+                  {OCR_LANGUAGES.map(({ code, name }) => (
+                    <option key={code} value={code}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+                <p className="muted small">
+                  {draft.importOcrLanguages
+                    ? "Gilt für alle hochgeladenen Bilder und PDFs; einzelne Dokumente lassen sich im Tab „Text“ neu erkennen."
+                    : `Erkennt zuerst mit ${defaultLanguages.map(languageName).join(" und ")}. Ist der Text in einer anderen Sprache, wird er in dieser Sprache neu erkannt.`}
+                </p>
+              </div>
               <div className="settings__field">
                 <label htmlFor={presetSelectId} className="field__label">
                   Bildeinstellung anwenden

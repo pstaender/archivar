@@ -125,6 +125,7 @@ export function createApiRoutes(ctx: AppContext) {
           runOcr: formFlag(form.get("ocr"), settings.autoOcr),
           ocrAllText: formFlag(form.get("ocrAllText"), settings.ocrAllText),
           preset: preset?.steps,
+          ocrLanguages: settings.importOcrLanguages,
         }).catch((error: unknown) => {
           if (tracked) ctx.jobs.updateItem(tracked.id, { status: "failed", error: error instanceof Error ? error.message : String(error) });
           throw error;

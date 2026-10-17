@@ -1,3 +1,4 @@
+import { normalizeGrayMix } from "./image/grayMix";
 import type { ColorMode, DewarpGrid, EditSettings, Point, Quad, Rotation } from "./types";
 
 export const DEFAULT_EDIT_SETTINGS: EditSettings = Object.freeze({
@@ -9,6 +10,7 @@ export const DEFAULT_EDIT_SETTINGS: EditSettings = Object.freeze({
   saturation: 0,
   hue: 0,
   colorMode: "color",
+  grayMix: null,
   bwThreshold: 128,
   denoise: 0,
   autoLevels: false,
@@ -80,6 +82,7 @@ export function normalizeEditSettings(input: unknown, base: EditSettings = DEFAU
     saturation: clamp(src.saturation ?? base.saturation, -100, 100, base.saturation),
     hue: clamp(src.hue ?? base.hue, -180, 180, base.hue),
     colorMode,
+    grayMix: "grayMix" in src ? normalizeGrayMix(src.grayMix) : base.grayMix,
     bwThreshold: Math.round(clamp(src.bwThreshold ?? base.bwThreshold, 0, 255, base.bwThreshold)),
     denoise: Math.round(clamp(src.denoise ?? base.denoise, 0, 3, base.denoise)),
     autoLevels: typeof src.autoLevels === "boolean" ? src.autoLevels : base.autoLevels,

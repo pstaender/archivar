@@ -15,7 +15,7 @@ function mockSettings(stored = {}, presets: unknown[] = [], routes: Parameters<t
     ...routes,
     "GET /api/presets": () => presets,
     "GET /api/folders": () => [],
-    "GET /api/config": () => ({ dewarpAvailable: true, convertibleImageTypes: [] }),
+    "GET /api/config": () => ({ dewarpAvailable: true, convertibleImageTypes: [], ocrLanguages: ["deu", "eng"] }),
     "GET /api/settings": () => ({ ...DEFAULT_USER_SETTINGS, ...stored }),
     "PATCH /api/settings": (_url, init) => ({ ...DEFAULT_USER_SETTINGS, ...stored, ...JSON.parse(String(init.body)) }),
   });
@@ -96,6 +96,21 @@ describe("SettingsDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(fetchMock.calls.find((c) => c.method === "PATCH")?.body).toMatchObject({ importPresetId: 4, importFolders: ["eingang/2026"] });
+  });
+
+  test("chooses the language uploads are recognized in, or automatic detection", async () => {
+    fetchMock = mockSettings();
+    const onClose = mock();
+    await renderApp(<SettingsDialog open onClose={onClose} />);
+    tab("Import");
+    const select = screen.getByLabelText("Sprache der Texterkennung") as HTMLSelectElement;
+    expect(select.value).toBe("");
+    await screen.findByText(/Erkennt zuerst mit Deutsch und Englisch/);
+    fireEvent.change(select, { target: { value: "fra" } });
+    expect(screen.getByText(/Gilt für alle hochgeladenen/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(fetchMock.calls.find((c) => c.method === "PATCH")?.body).toMatchObject({ importOcrLanguages: ["fra"] });
   });
 
   test("creates API tokens, shows the new one once and deletes them", async () => {

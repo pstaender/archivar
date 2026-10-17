@@ -3,7 +3,7 @@
 Archive photos, scans, documents and PDFs in the browser – on desktop and on the phone.
 
 - Upload one or many files via button or drag & drop, or take a photo with the phone camera
-- Edit images: crop, perspective correction, rotation, brightness, contrast, saturation, hue, grayscale, black & white, noise removal, auto levels – with live preview
+- Edit images: crop, perspective correction, rotation, brightness, contrast, saturation, hue, grayscale (with Photoshop-like channel sliders per hue), black & white, noise removal, auto levels – with live preview
 - "Entrauschen" with [OpenCV.js](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html): edge-preserving smoothing (bilateral filter) and, in black & white, removal of isolated specks; clicking again increases the strength (Leicht, Mittel, Stark, Aus)
 - "Auto-Drehen" turns photos upright using Tesseract's orientation detection; "Auto-Zuschnitt" finds the page or photo outline with OpenCV and crops (or straightens) it. Uploads with OCR are turned upright automatically
 - Automatic dewarping of curved/bent pages with [UVDoc](https://github.com/tanguymagne/UVDoc), running server-side via ONNX Runtime
@@ -16,7 +16,7 @@ Archive photos, scans, documents and PDFs in the browser – on desktop and on t
 - Group documents into ordered stacks with a title
 - Hierarchical folders as labels (e.g. `wichtig/2026`); selected documents and stacks can be moved into or added to existing folders (or a new one), or removed from the folder being viewed
 - "PDF" for a selection downloads all its images (as searchable pages) and PDFs, including the documents of selected stacks, as one PDF
-- "Einstellungen" (sidebar, stored per user on the server), in three tabs: "Bildgrößen" – the image resolution in exported PDFs (300 DPI for A4 by default, 150 DPI, or original); "Bildbearbeitung" – how uploads with OCR are prepared (black & white – the default –, grayscale, "Auto-Rotation" which only turns them upright, or original) and "Automatisch entzerren"; "OCR" – "Nach dem Upload erkennen" and "Alle Textteile erkennen". In PDFs, black-and-white pages are stored as lossless 1-bit images (about 150–200 KB per A4 text page at 300 DPI), others as JPEG
+- "Einstellungen" (sidebar, stored per user on the server), in three tabs: "Bildgrößen" – the image resolution in exported PDFs (300 DPI for A4 by default, 150 DPI, or original); "Import" – "Text nach dem Upload erkennen", "Alle Textteile erkennen", the OCR language for uploads ("Automatisch" recognizes with the default languages and again in the detected language if it is another one), the image preset applied to uploads and folders every upload is added to; "API" – personal access tokens. In PDFs, black-and-white pages are stored as lossless 1-bit images (about 150–200 KB per A4 text page at 300 DPI), others as JPEG
 - REST API, SQLite database, multi-user ready (currently a single default user without login)
 
 ## Getting started

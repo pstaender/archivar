@@ -12,6 +12,11 @@ export interface OcrResult {
 
 export interface OcrOptions {
   allText?: boolean;
+  /**
+   * For documents without their own languages: when the text turns out to be in another supported language than the
+   * default ones, recognize it again in that language, keep the more confident result and remember the language.
+   */
+  detectLanguage?: boolean;
 }
 
 export interface Orientation {
@@ -154,23 +159,19 @@ export class OcrQueue {
     try {
       const images = await this.imaging.ocrImages(doc);
       if (images.length === 0) throw new Error("Document type does not support OCR");
-      const results: OcrResult[] = [];
-      for (const image of images) results.push(await this.recognize(image.data, doc.ocrLanguages ?? undefined));
-      let removed = 0;
-      const lines: OcrTextLine[][] = [];
-      const texts = results.map((result) => {
-        if (options.allText || !result.paragraphs) {
-          lines.push(allOcrLines(result.paragraphs ?? []));
-          return result.text;
+      let result = await this.recognizeAll(images, doc.ocrLanguages ?? undefined, options);
+      let language = detectLanguage(result.text);
+      if (options.detectLanguage && !doc.ocrLanguages && language && !this.engine.languages.includes(language)) {
+        const detected = language;
+        const retry = await this.recognizeAll(images, [detected], options);
+        if (retry.confidence >= result.confidence) {
+          result = retry;
+          language = detectLanguage(retry.text) ?? detected;
+          this.documents.setOcrLanguages(documentId, [detected]);
         }
-        const filtered = filterOcrText(result.paragraphs);
-        removed += filtered.removed;
-        lines.push(filtered.removed > 0 ? filtered.lines : allOcrLines(result.paragraphs));
-        return filtered.removed > 0 ? filtered.text : result.text;
-      });
-      const text = texts.join("\n\n").trim();
-      const confidence = results.reduce((sum, r) => sum + r.confidence, 0) / results.length;
-      this.documents.setOcrResult(documentId, { status: "done", text, confidence, error: null, removed, language: detectLanguage(text), allText: options.allText === true });
+      }
+      const { text, confidence, removed, lines } = result;
+      this.documents.setOcrResult(documentId, { status: "done", text, confidence, error: null, removed, language, allText: options.allText === true });
       this.documents.setOcrLayout(documentId, doc.kind === "image" && images[0] ? toLayout(doc, images[0], lines[0] ?? []) : null);
     } catch (error) {
       this.documents.setOcrResult(documentId, {
@@ -178,6 +179,26 @@ export class OcrQueue {
         error: error instanceof OcrTimeoutError ? OCR_TIMEOUT_MESSAGE : error instanceof Error ? error.message : String(error),
       });
     }
+  }
+
+  private async recognizeAll(images: OcrImage[], languages: string[] | undefined, options: OcrOptions) {
+    const results: OcrResult[] = [];
+    for (const image of images) results.push(await this.recognize(image.data, languages));
+    let removed = 0;
+    const lines: OcrTextLine[][] = [];
+    const texts = results.map((result) => {
+      if (options.allText || !result.paragraphs) {
+        lines.push(allOcrLines(result.paragraphs ?? []));
+        return result.text;
+      }
+      const filtered = filterOcrText(result.paragraphs);
+      removed += filtered.removed;
+      lines.push(filtered.removed > 0 ? filtered.lines : allOcrLines(result.paragraphs));
+      return filtered.removed > 0 ? filtered.text : result.text;
+    });
+    const text = texts.join("\n\n").trim();
+    const confidence = results.reduce((sum, r) => sum + r.confidence, 0) / results.length;
+    return { text, confidence, removed, lines };
   }
 
   private async recognize(image: Uint8Array, languages?: string[]): Promise<OcrResult> {

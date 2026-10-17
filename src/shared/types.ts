@@ -25,9 +25,20 @@ export interface EditSettings {
   saturation: number;
   hue: number;
   colorMode: ColorMode;
+  /** Weights per hue for grayscale (percent); null converts by brightness. */
+  grayMix: GrayMix | null;
   bwThreshold: number;
   denoise: number;
   autoLevels: boolean;
+}
+
+export interface GrayMix {
+  reds: number;
+  yellows: number;
+  greens: number;
+  cyans: number;
+  blues: number;
+  magentas: number;
 }
 
 export interface BwVariant {

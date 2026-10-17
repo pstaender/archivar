@@ -49,6 +49,8 @@ export interface UploadOptions {
   ocrAllText?: boolean;
   /** Image preset applied to every uploaded image. */
   preset?: PresetSteps;
+  /** Recognition languages for the uploads; null or left out detects the language (`OcrOptions.detectLanguage`). */
+  ocrLanguages?: string[] | null;
 }
 
 export interface UploadFile {
@@ -126,6 +128,10 @@ export class ArchiveService {
         this.documents.findBySha256(userId, sha256, doc.id).map((other) => ({ id: other.id, title: other.title.trim() || other.originalName })),
       );
       if (options.folders?.length) this.folders.setForDocument(userId, doc.id, options.folders);
+      if (options.ocrLanguages?.length && doc.kind !== "file") {
+        this.documents.setOcrLanguages(doc.id, options.ocrLanguages);
+        doc = this.documents.get(userId, doc.id)!;
+      }
       if (doc.kind === "image" && options.preset) doc = await this.applyPresetOnUpload(doc, options.preset);
       const size = await this.imaging.renderDerivatives(doc);
       if (size && !isDefaultEditSettings(doc.editSettings)) this.documents.update(userId, doc.id, size);
@@ -141,7 +147,7 @@ export class ArchiveService {
 
     if (options.runOcr) {
       for (const doc of created) {
-        if (doc.kind !== "file" && doc.ocrStatus !== "done") this.ocr.enqueue(doc.id, { allText: options.ocrAllText });
+        if (doc.kind !== "file" && doc.ocrStatus !== "done") this.ocr.enqueue(doc.id, { allText: options.ocrAllText, detectLanguage: !options.ocrLanguages?.length });
       }
     }
 

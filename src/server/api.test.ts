@@ -4,7 +4,7 @@ import { PREVIEW_SIZE } from "../shared/preview";
 import type { Job } from "../shared/jobs";
 import type { ImagePreset } from "../shared/presets";
 import type { ApiToken, CreatedApiToken } from "../shared/tokens";
-import type { ArchiveDocument, EditSettings, Folder, LibraryItem, StackWithDocuments, UploadedDocument } from "../shared/types";
+import type { ArchiveDocument, EditSettings, Folder, LibraryItem, Quad, StackWithDocuments, UploadedDocument } from "../shared/types";
 import { getDocumentProxy } from "unpdf";
 import { makePdf } from "../../test/pdf";
 import { OCR_TIMEOUT_MESSAGE } from "./services/ocr";
@@ -504,12 +504,45 @@ describe("settings", () => {
   const patchSettings = async (body: unknown) => (await patch("/api/settings", body)).json();
 
   test("stores the user's settings and ignores unknown values", async () => {
-    const defaults = { autoOcr: false, ocrAllText: false, pdfImageQuality: "300", importPresetId: null, importFolders: [] };
+    const defaults = { autoOcr: false, ocrAllText: false, pdfImageQuality: "300", importPresetId: null, importFolders: [], importOcrLanguages: null };
     expect(await (await server.api("/api/settings")).json()).toEqual(defaults);
     expect(await patchSettings({ autoOcr: true, uploadEnhancement: "grayscale" })).toEqual({ ...defaults, autoOcr: true });
     expect(await patchSettings({ pdfImageQuality: "72", ocrAllText: "ja", importPresetId: -3 })).toEqual({ ...defaults, autoOcr: true });
     expect(await patchSettings({ pdfImageQuality: "original", ocrAllText: true })).toMatchObject({ pdfImageQuality: "original", ocrAllText: true });
     expect(await (await server.api("/api/settings")).json()).toEqual({ ...defaults, autoOcr: true, pdfImageQuality: "original", ocrAllText: true });
+    expect(await patchSettings({ importOcrLanguages: ["fra", "xx", "fra"] })).toMatchObject({ importOcrLanguages: ["fra"] });
+    expect(await patchSettings({ importOcrLanguages: ["xx"] })).toMatchObject({ importOcrLanguages: null });
+  });
+
+  const getDocument = async (id: number) => (await (await server.api(`/api/documents/${id}`)).json()) as ArchiveDocument;
+
+  test("recognizes uploads in the import language", async () => {
+    await patchSettings({ importOcrLanguages: ["ita"] });
+    const doc = await uploadImage("scan.jpg", { ocr: "true" });
+    expect(doc.ocrLanguages).toEqual(["ita"]);
+    await server.ctx.ocr.idle();
+    expect(server.ocr.recognizedLanguages).toEqual([["ita"]]);
+  });
+
+  test("recognizes uploads again in the detected language when it is not a default one", async () => {
+    const french = "Madame, Monsieur, nous accusons réception de vos documents et vous remercions.";
+    server.ocr.result = { text: "Madame, Monsieur, nous accusons r6ception de vos documents et vous remerclons.", confidence: 70 };
+    server.ocr.resultsByLanguage = { fra: { text: french, confidence: 88 } };
+    const doc = await uploadImage("lettre.jpg", { ocr: "true" });
+    await server.ctx.ocr.idle();
+    expect(server.ocr.recognizedLanguages).toEqual([undefined, ["fra"]]);
+    expect(await getDocument(doc.id)).toMatchObject({ ocrText: french, ocrConfidence: 88, ocrLanguage: "fra", ocrLanguages: ["fra"] });
+
+    server.ocr.resultsByLanguage = { fra: { text: french, confidence: 40 } };
+    const worse = await uploadImage("lettre2.jpg", { ocr: "true" });
+    await server.ctx.ocr.idle();
+    expect(await getDocument(worse.id)).toMatchObject({ ocrConfidence: 70, ocrLanguages: null });
+
+    server.ocr.result = { text: "Sehr geehrte Damen und Herren, hiermit bestätigen wir den Eingang.", confidence: 90 };
+    server.ocr.recognizedLanguages = [];
+    await uploadImage("brief.jpg", { ocr: "true" });
+    await server.ctx.ocr.idle();
+    expect(server.ocr.recognizedLanguages).toEqual([undefined]);
   });
 
   test("every user starts with black and white, auto levels and rotation as import preset, also without OCR", async () => {
@@ -721,6 +754,23 @@ describe("image presets", () => {
     expect(editSettings.dewarp?.rotation).toBe(90);
     expect(server.ctx.documents.getById(doc.id)?.editSettings.rotation).toBe(0);
     expect((await post(`/api/documents/${doc.id}/apply-preset`, { presetId: 999 })).status).toBe(404);
+  });
+
+  test("applies a fixed crop and grayscale channels from a preset", async () => {
+    const doc = await uploadImage();
+    const crop: Quad = [
+      { x: 0.1, y: 0.1 },
+      { x: 0.9, y: 0.1 },
+      { x: 0.9, y: 0.9 },
+      { x: 0.1, y: 0.9 },
+    ];
+    const grayMix = { reds: 120, yellows: 110, greens: -10, cyans: -50, blues: -50, magentas: 120 };
+    const preset = await createPreset({ name: "Formular", steps: { crop, colorMode: "grayscale", grayMix } });
+    expect(preset.steps).toEqual({ crop, colorMode: "grayscale", grayMix });
+    const res = await post(`/api/documents/${doc.id}/apply-preset`, { presetId: preset.id });
+    expect(((await res.json()) as { editSettings: EditSettings }).editSettings).toMatchObject({ corners: crop, colorMode: "grayscale", grayMix });
+    const saved = (await (await patch(`/api/documents/${doc.id}`, { editSettings: { corners: crop, colorMode: "grayscale", grayMix } })).json()) as ArchiveDocument;
+    expect(saved.editSettings.grayMix).toEqual(grayMix);
   });
 
   test("uploads get the import preset instead of the OCR preparation, and the import folders", async () => {

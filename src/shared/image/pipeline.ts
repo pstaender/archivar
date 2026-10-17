@@ -1,5 +1,6 @@
 import type { EditSettings, Quad } from "../types";
 import { adjustColor } from "./color";
+import { mixGray } from "./grayMix";
 import { removeSpecks, smoothNoise } from "./denoise";
 import { createImage, type JimpImage } from "./jimp";
 import { isAxisAlignedRect, warpPerspective } from "./perspective";
@@ -58,7 +59,8 @@ export function applyEdits(source: JimpImage, settings: EditSettings): JimpImage
   if (settings.colorMode === "color") {
     adjustColor(image.bitmap, settings.saturation, settings.hue);
   } else if (settings.colorMode === "grayscale") {
-    image.greyscale();
+    if (settings.grayMix) mixGray(image.bitmap.data, settings.grayMix);
+    else image.greyscale();
   } else {
     binarize(image, settings.bwThreshold);
     if (settings.denoise > 0) removeSpecks(image.bitmap, settings.denoise);

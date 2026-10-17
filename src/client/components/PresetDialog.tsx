@@ -10,6 +10,7 @@ import {
   pickSteps,
   presetStepList,
 } from "../../shared/presets";
+import { GRAY_MIX_PRESETS, grayMixPresetId } from "../../shared/image/grayMix";
 import type { ColorMode, Rotation } from "../../shared/types";
 import { Slider } from "../editor/EditControls";
 import { Dialog } from "./Dialog";
@@ -128,6 +129,24 @@ export function PresetDialog({ open, title, initialName, steps, editValues, subm
                     <option value="color">Farbe</option>
                     <option value="grayscale">Graustufen</option>
                     <option value="bw">S/W</option>
+                  </select>
+                )}
+                {editValues && on && step === "grayMix" && (
+                  <select
+                    className="input input--sm"
+                    aria-label="Graustufen-Kanäle"
+                    value={grayMixPresetId(values.grayMix ?? null) ?? "custom"}
+                    onChange={(e) => {
+                      const preset = GRAY_MIX_PRESETS.find((p) => p.id === e.target.value);
+                      if (preset) setValue("grayMix", preset.mix);
+                    }}
+                  >
+                    {GRAY_MIX_PRESETS.map((preset) => (
+                      <option key={preset.id} value={preset.id}>
+                        {preset.label}
+                      </option>
+                    ))}
+                    {grayMixPresetId(values.grayMix ?? null) === null && <option value="custom">Eigene Werte</option>}
                   </select>
                 )}
                 {editValues && on && step === "rotation" && (
