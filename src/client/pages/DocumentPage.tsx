@@ -26,6 +26,8 @@ import { useFolders } from "../hooks/folders";
 import { usePresets } from "../hooks/presets";
 import { useSettings } from "../hooks/settings";
 import { useLeaveGuard } from "../hooks/leaveGuard";
+import { useArrowNavigation } from "../hooks/arrowNavigation";
+import { documentOrder } from "../documentOrder";
 import { usePolling } from "../hooks/usePolling";
 import { useToast } from "../hooks/toast";
 import { useResource } from "../hooks/useResource";
@@ -34,6 +36,26 @@ import { documentLabel, formatBytes, formatDateTime, isOcrBusy, OCR_STATUS_LABEL
 type Tab = "edit" | "text" | "shapes" | "details";
 
 const IMAGE_TABS: Tab[] = ["edit", "shapes"];
+const TABS: Tab[] = ["edit", "text", "shapes", "details"];
+const TAB_KEY = "archivar.documentTab";
+
+/** The tab chosen last, for all documents. */
+function storedTab(): Tab {
+  try {
+    const tab = localStorage.getItem(TAB_KEY) as Tab | null;
+    return tab && TABS.includes(tab) ? tab : "text";
+  } catch {
+    return "text";
+  }
+}
+
+function storeTab(tab: Tab): void {
+  try {
+    localStorage.setItem(TAB_KEY, tab);
+  } catch {
+    // The tab is then just not remembered.
+  }
+}
 
 const OCR_POLL_INTERVAL = 2000;
 
@@ -81,7 +103,7 @@ export function DocumentPage() {
   const stack = useResource(() => (stackId ? api.stack(stackId) : Promise.resolve(null)), [stackId]);
   const doc = resource.data;
 
-  const [tab, setTab] = useState<Tab>("text");
+  const [tab, setTab] = useState<Tab>(storedTab);
   const [draft, setDraft] = useState<EditSettings>(DEFAULT_EDIT_SETTINGS);
   const [mode, setMode] = useState<GeometryMode>("none");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -112,6 +134,17 @@ export function DocumentPage() {
   const shapesDirty = useMemo(() => doc !== undefined && JSON.stringify(shapes) !== JSON.stringify(doc.shapes), [shapes, doc]);
   const leave = useLeaveGuard(dirty || shapesDirty);
 
+  // Inside a stack its pages, otherwise the documents of the library page it was opened from.
+  const libraryOrder = useMemo(() => documentOrder(), [id]);
+  const siblings = stackId ? (stack.data?.documentIds ?? []) : libraryOrder;
+  const position = doc ? siblings.indexOf(doc.id) : -1;
+  const neighbour = (offset: number) => (position >= 0 ? siblings[position + offset] : undefined);
+  const goTo = (offset: number) => {
+    const target = neighbour(offset);
+    if (target) navigate(stackId ? `/documents/${target}?stack=${stackId}` : `/documents/${target}`);
+  };
+  useArrowNavigation(neighbour(-1) ? () => goTo(-1) : null, neighbour(1) ? () => goTo(1) : null);
+
   if (resource.error) {
     return (
       <div className="page">
@@ -125,8 +158,6 @@ export function DocumentPage() {
   if (!doc) return <div className="page-loading">Lade …</div>;
 
   const backHref = stackId ? `/stacks/${stackId}` : "/";
-  const siblings = stack.data?.documentIds ?? [];
-  const position = siblings.indexOf(doc.id);
 
   const update = async (change: Parameters<typeof api.updateDocument>[1]) => {
     try {
@@ -180,7 +211,11 @@ export function DocumentPage() {
   };
 
   const unsavedIn = (current: Tab) => (current === "edit" && dirty) || (current === "shapes" && shapesDirty);
-  const selectTab = (next: Tab) => (next !== tab && unsavedIn(tab) ? leave.guard(() => setTab(next)) : setTab(next));
+  const chooseTab = (next: Tab) => {
+    storeTab(next);
+    setTab(next);
+  };
+  const selectTab = (next: Tab) => (next !== tab && unsavedIn(tab) ? leave.guard(() => chooseTab(next)) : chooseTab(next));
 
   const autoDewarp = async () => {
     setDewarping(true);
@@ -327,11 +362,6 @@ export function DocumentPage() {
     }
   };
 
-  const goTo = (offset: number) => {
-    const target = siblings[position + offset];
-    if (target) navigate(`/documents/${target}?stack=${stackId}`);
-  };
-
   return (
     <div className="page page--document">
       <header className="page__header page__header--detail">
@@ -356,17 +386,25 @@ export function DocumentPage() {
           </p>
         </div>
         <div className="page__actions">
-          {stack.data && (
+          {(stack.data || (position >= 0 && siblings.length > 1)) && (
             <>
-              <button type="button" className="btn btn--ghost btn--icon" onClick={() => goTo(-1)} disabled={position <= 0} aria-label="Vorherige Seite">
+              <button
+                type="button"
+                className="btn btn--ghost btn--icon"
+                onClick={() => goTo(-1)}
+                disabled={!neighbour(-1)}
+                aria-label={stack.data ? "Vorherige Seite" : "Vorheriges Dokument"}
+                title={`${stack.data ? "Vorherige Seite" : "Vorheriges Dokument"} (←)`}
+              >
                 <ChevronLeft size={18} />
               </button>
               <button
                 type="button"
                 className="btn btn--ghost btn--icon"
                 onClick={() => goTo(1)}
-                disabled={position < 0 || position >= siblings.length - 1}
-                aria-label="Nächste Seite"
+                disabled={!neighbour(1)}
+                aria-label={stack.data ? "Nächste Seite" : "Nächstes Dokument"}
+                title={`${stack.data ? "Nächste Seite" : "Nächstes Dokument"} (→)`}
               >
                 <ChevronRight size={18} />
               </button>

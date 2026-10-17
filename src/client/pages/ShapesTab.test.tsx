@@ -6,7 +6,10 @@ import { type FetchMock, makeDocument, mockFetch, renderApp } from "../../../tes
 import { DocumentPage } from "./DocumentPage";
 
 let fetchMock: FetchMock;
-afterEach(() => fetchMock.restore());
+afterEach(() => {
+  fetchMock.restore();
+  localStorage.clear();
+});
 
 const shape: Shape = { id: "a", type: "rect", x: 0.1, y: 0.1, width: 0.2, height: 0.2, color: "#000000" };
 

@@ -16,6 +16,7 @@ import { useRefreshOnJobProgress } from "../hooks/jobs";
 import { useRefreshOnUpload, useUpload } from "../hooks/upload";
 import { usePolling } from "../hooks/usePolling";
 import { useResource } from "../hooks/useResource";
+import { rememberDocumentOrder } from "../documentOrder";
 import { saveBlob } from "../download";
 import { documentLabel, isOcrBusy } from "../format";
 import { folderHref, useCurrentFolder } from "../routes";
@@ -76,6 +77,9 @@ export function LibraryPage() {
   useEffect(() => setSelected(new Set()), [folder, q]);
 
   const items = library.data ?? [];
+  useEffect(() => {
+    if (library.data) rememberDocumentOrder(library.data.flatMap((item) => (item.type === "document" ? [item.document.id] : [])));
+  }, [library.data]);
   const busy = items.some((item) => item.type === "document" && isOcrBusy(item.document));
 
   usePolling(busy, library.refresh, POLL_INTERVAL);
