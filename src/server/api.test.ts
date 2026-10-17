@@ -1405,3 +1405,66 @@ describe("vectors", () => {
     expect(server.ctx.db.query("SELECT COUNT(*) AS n FROM document_vectors").get()).toEqual({ n: 0 });
   });
 });
+
+describe("duplicates", () => {
+  const getDocument = async (id: number) => (await (await server.api(`/api/documents/${id}`)).json()) as ArchiveDocument;
+  const duplicate = async (id: number) => {
+    const res = await post(`/api/documents/${id}/duplicate`, {});
+    expect(res.status).toBe(201);
+    return (await res.json()) as ArchiveDocument;
+  };
+  const storageKey = (id: number) => server.ctx.documents.getById(id)!.storageKey;
+
+  test("copy the edits, text, folders and shapes and share the original file", async () => {
+    const doc = await uploadImage("Brief.jpg", { folders: JSON.stringify(["wichtig"]) });
+    await patch(`/api/documents/${doc.id}`, { editSettings: { rotation: 90 }, ocrText: "Hallo", shapes: [{ id: "s", type: "rect", x: 0, y: 0, width: 0.1, height: 0.1, color: "#000000" }] });
+    const copy = await duplicate(doc.id);
+    expect(copy).toMatchObject({ title: "Brief (Kopie)", folders: ["wichtig"], ocrText: "Hallo", copyOf: { id: doc.id, title: "Brief" }, copies: [] });
+    expect(copy.editSettings.rotation).toBe(90);
+    expect(copy.shapes).toHaveLength(1);
+    expect(storageKey(copy.id)).toBe(storageKey(doc.id));
+    expect((await server.api(`/api/documents/${copy.id}/thumbnail`)).status).toBe(200);
+    expect((await getDocument(doc.id)).copies).toEqual([{ id: copy.id, title: "Brief (Kopie)" }]);
+
+    // Duplicates of a duplicate belong to the original.
+    const second = await duplicate(copy.id);
+    expect(second.copyOf).toEqual({ id: doc.id, title: "Brief" });
+    expect((await getDocument(doc.id)).copies.map((c) => c.id)).toEqual([copy.id, second.id]);
+  });
+
+  test("are placed after the document in its stack", async () => {
+    const [a, b] = [await uploadImage(), await uploadImage()];
+    const stack = (await (await post("/api/stacks", { documentIds: [a.id, b.id] })).json()) as StackWithDocuments;
+    const copy = await duplicate(a.id);
+    const updated = (await (await server.api(`/api/stacks/${stack.id}`)).json()) as StackWithDocuments;
+    expect(updated.documentIds).toEqual([a.id, copy.id, b.id]);
+  });
+
+  test("keep the file when the original is deleted; the oldest becomes the new original", async () => {
+    const doc = await uploadImage();
+    const [first, second] = [await duplicate(doc.id), await duplicate(doc.id)];
+    const key = storageKey(doc.id);
+    expect((await server.api(`/api/documents/${doc.id}`, { method: "DELETE" })).status).toBe(204);
+    expect(await server.ctx.storage.exists(key)).toBe(true);
+    expect(await getDocument(first.id)).toMatchObject({ copyOf: null, copies: [{ id: second.id }] });
+    expect((await getDocument(second.id)).copyOf?.id).toBe(first.id);
+    expect((await server.api(`/api/documents/${second.id}/file`)).status).toBe(200);
+
+    await server.api(`/api/documents/${first.id}`, { method: "DELETE" });
+    await server.api(`/api/documents/${second.id}`, { method: "DELETE" });
+    expect(await server.ctx.storage.exists(key)).toBe(false);
+  });
+
+  test("can be made independent with their own copy of the file", async () => {
+    const doc = await uploadImage();
+    const copy = await duplicate(doc.id);
+    expect((await post(`/api/documents/${doc.id}/detach`, {})).status).toBe(400);
+    const res = await post(`/api/documents/${copy.id}/detach`, {});
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ copyOf: null });
+    expect((await getDocument(doc.id)).copies).toEqual([]);
+    expect(storageKey(copy.id)).not.toBe(storageKey(doc.id));
+    await server.api(`/api/documents/${doc.id}`, { method: "DELETE" });
+    expect((await server.api(`/api/documents/${copy.id}/file`)).status).toBe(200);
+  });
+});

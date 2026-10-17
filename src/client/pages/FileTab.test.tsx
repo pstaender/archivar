@@ -10,9 +10,10 @@ afterEach(() => {
   localStorage.clear();
 });
 
-async function open(overrides: Parameters<typeof makeDocument>[0] = {}) {
+async function open(overrides: Parameters<typeof makeDocument>[0] = {}, routes: Parameters<typeof mockFetch>[0] = {}) {
   const doc = makeDocument({ id: 7, ...overrides });
   fetchMock = mockFetch({
+    ...routes,
     "GET /api/config": () => ({ dewarpAvailable: false, convertibleImageTypes: [], ocrLanguages: ["deu", "eng"] }),
     "GET /api/settings": () => DEFAULT_USER_SETTINGS,
     "GET /api/folders": () => [],
@@ -98,5 +99,38 @@ describe("Datei tab", () => {
     selectTab("Formen");
     expect(screen.getByRole("tab", { name: "Formen" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByRole("menu") === null).toBe(true);
+  });
+
+  test("duplicates the document and opens the copy", async () => {
+    const copy = makeDocument({ id: 8, title: "Brief (Kopie)", copyOf: { id: 7, title: "Brief" } });
+    const { router } = await open(
+      { title: "Brief" },
+      { "POST /api/documents/7/duplicate": () => copy, "GET /api/documents/8": () => copy },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Duplizieren" }));
+    await screen.findByRole("button", { name: "Eigenständig machen" });
+    expect(router.state.location.pathname).toBe("/documents/8");
+    expect(screen.getByRole("link", { name: "Brief" }).getAttribute("href")).toBe("/documents/7");
+  });
+
+  test("lists the duplicates and warns that they keep the file when the original is deleted", async () => {
+    await open({ title: "Brief", copies: [{ id: 8, title: "Kopie A" }, { id: 9, title: "Kopie B" }] });
+    expect(screen.getByRole("link", { name: "Kopie A" }).getAttribute("href")).toBe("/documents/8");
+    expect(screen.getByRole("link", { name: "Kopie B" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Eigenständig machen" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Dokument löschen" }));
+    expect(screen.getByText(/Die Originaldatei bleibt für die 2 Duplikate erhalten, „Kopie A“ wird zum neuen Original\./)).toBeTruthy();
+  });
+
+  test("makes a duplicate independent", async () => {
+    await open(
+      { copyOf: { id: 3, title: "Brief" } },
+      { "POST /api/documents/7/detach": () => makeDocument({ id: 7 }) },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Eigenständig machen" }));
+    await settle();
+    expect(screen.queryByRole("button", { name: "Eigenständig machen" }) === null).toBe(true);
+    expect(screen.queryByText("Duplikat von") === null).toBe(true);
+    expect(fetchMock.calls.some((c) => c.method === "POST" && c.path === "/api/documents/7/detach")).toBe(true);
   });
 });

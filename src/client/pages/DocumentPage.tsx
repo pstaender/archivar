@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FileText, Loader, SavePlus, ScanText, Trash } from "../icons";
+import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FileText, Loader, SavePlus, ScanText, Trash, Unlink } from "../icons";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
@@ -388,6 +388,35 @@ export function DocumentPage() {
     }
   };
 
+  const duplicate = async () => {
+    try {
+      await whenEditsSaved(doc.id);
+      const copy = await api.duplicateDocument(doc.id);
+      toast.success("Duplikat erstellt");
+      void reloadFolders();
+      if (stackId) void stack.refresh();
+      navigate(stackId ? `/documents/${copy.id}?stack=${stackId}` : `/documents/${copy.id}`);
+    } catch (error) {
+      toast.error(error);
+    }
+  };
+
+  const detach = async () => {
+    try {
+      resource.setData(await api.detachDocument(doc.id));
+      toast.success("Das Dokument hat jetzt eine eigene Originaldatei");
+    } catch (error) {
+      toast.error(error);
+    }
+  };
+
+  const heir = doc.copies[0];
+  const deleteMessage =
+    `„${documentLabel(doc)}“ inklusive Bearbeitungen und erkanntem Text endgültig löschen?` +
+    (heir
+      ? ` Die Originaldatei bleibt für ${doc.copies.length === 1 ? "das Duplikat" : `die ${doc.copies.length} Duplikate`} erhalten, „${heir.title}“ wird zum neuen Original.`
+      : "");
+
   return (
     <div className="page page--document">
       <header className="page__header page__header--detail">
@@ -573,7 +602,9 @@ export function DocumentPage() {
                 onSavePreset={() => setPresetDialogSteps({ shapes })}
               />
             )}
-            {tab === "details" && <DetailsPanel doc={doc} onFoldersChange={(folders) => update({ folders })} />}
+            {tab === "details" && (
+              <DetailsPanel doc={doc} onFoldersChange={(folders) => update({ folders })} onDuplicate={duplicate} onDetach={detach} />
+            )}
           </div>
         </aside>
       </div>
@@ -581,7 +612,7 @@ export function DocumentPage() {
       <ConfirmDialog
         open={confirmDelete}
         title="Dokument löschen"
-        message={`„${documentLabel(doc)}“ inklusive Bearbeitungen und erkanntem Text endgültig löschen?`}
+        message={deleteMessage}
         confirmLabel="Löschen"
         danger
         onConfirm={remove}
@@ -784,9 +815,25 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
   );
 }
 
-export function DetailsPanel({ doc, onFoldersChange }: { doc: ArchiveDocument; onFoldersChange: (folders: string[]) => void }) {
+interface DetailsPanelProps {
+  doc: ArchiveDocument;
+  onFoldersChange: (folders: string[]) => void;
+  onDuplicate: () => Promise<void>;
+  onDetach: () => Promise<void>;
+}
+
+export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach }: DetailsPanelProps) {
   const toast = useToast();
   const [exporting, setExporting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await action();
+    } finally {
+      setBusy(false);
+    }
+  };
   const rows: [string, string][] = [
     ["Dateiname", doc.originalName],
     ["Typ", doc.mimeType],
@@ -825,9 +872,58 @@ export function DetailsPanel({ doc, onFoldersChange }: { doc: ArchiveDocument; o
             title="Bild mit dem gespeicherten Text als durchsuchbares PDF herunterladen"
           />
         )}
+        <button
+          type="button"
+          className="btn btn--sm"
+          onClick={() => void run(onDuplicate)}
+          disabled={busy}
+          title="Kopie mit denselben Bearbeitungen anlegen, die dieselbe Originaldatei verwendet"
+        >
+          <Copy size={16} />
+          Duplizieren
+        </button>
+        {doc.copyOf && (
+          <button
+            type="button"
+            className="btn btn--sm"
+            onClick={() => void run(onDetach)}
+            disabled={busy}
+            title="Die Originaldatei kopieren und die Verknüpfung zum Original aufheben"
+          >
+            <Unlink size={16} />
+            Eigenständig machen
+          </button>
+        )}
       </div>
       <FolderPicker value={doc.folders} onChange={onFoldersChange} />
       <dl className="details">
+        {doc.copyOf && (
+          <div className="details__row">
+            <dt>Duplikat von</dt>
+            <dd>
+              <Link to={`/documents/${doc.copyOf.id}`} className="underline">
+                {doc.copyOf.title}
+              </Link>
+              <span className="muted"> (verwendet dessen Originaldatei)</span>
+            </dd>
+          </div>
+        )}
+        {doc.copies.length > 0 && (
+          <div className="details__row">
+            <dt>Duplikate</dt>
+            <dd>
+              <ul className="details__links">
+                {doc.copies.map((copy) => (
+                  <li key={copy.id}>
+                    <Link to={`/documents/${copy.id}`} className="underline">
+                      {copy.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </dd>
+          </div>
+        )}
         {rows.map(([label, value]) => (
           <div key={label} className="details__row">
             <dt>{label}</dt>

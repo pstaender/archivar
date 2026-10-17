@@ -99,13 +99,22 @@ export interface ArchiveDocument {
   ocrLanguages: string[] | null;
   metadata: Record<string, unknown>;
   folders: string[];
+  /** The document this one was duplicated from; both use its original file. */
+  copyOf: DocumentRef | null;
+  /** Duplicates that use this document's original file. */
+  copies: DocumentRef[];
   createdAt: string;
   updatedAt: string;
 }
 
+export interface DocumentRef {
+  id: number;
+  title: string;
+}
+
 /** Upload response: also names the documents that already had the same file content (SHA-256). */
 export interface UploadedDocument extends ArchiveDocument {
-  duplicates: { id: number; title: string }[];
+  duplicates: DocumentRef[];
 }
 
 export interface Stack {

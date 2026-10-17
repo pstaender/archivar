@@ -118,6 +118,10 @@ export const api = {
   saveVectors: (id: number, areas: VectorArea[]) =>
     request<{ document: ArchiveDocument; areas: VectorArea[] }>(`/api/documents/${id}/vectors`, jsonBody("PUT", { areas })),
   deleteDocument: (id: number) => request<void>(`/api/documents/${id}`, { method: "DELETE" }),
+  /** A copy that uses the same original file. */
+  duplicateDocument: (id: number) => request<ArchiveDocument>(`/api/documents/${id}/duplicate`, jsonBody("POST", {})),
+  /** Gives a duplicate its own copy of the original file. */
+  detachDocument: (id: number) => request<ArchiveDocument>(`/api/documents/${id}/detach`, jsonBody("POST", {})),
   detectDewarp: (id: number, rotation: Rotation) =>
     request<DewarpGrid>(`/api/documents/${id}/dewarp`, jsonBody("POST", { rotation })),
   detectOrientation: (id: number) => request<{ rotation: Rotation | null }>(`/api/documents/${id}/orientation`, jsonBody("POST", {})),

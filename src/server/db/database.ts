@@ -158,6 +158,11 @@ const migrations: string[] = [
     geometry TEXT NOT NULL
   );
   `,
+  // Duplicates share the original file of the document they were made from.
+  `
+  ALTER TABLE documents ADD COLUMN copy_of INTEGER REFERENCES documents(id) ON DELETE SET NULL;
+  CREATE INDEX documents_copy_of ON documents(copy_of);
+  `,
 ];
 
 export function migrate(db: Database): void {

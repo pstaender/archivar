@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { normalizeEditSettings } from "../../shared/editSettings";
 import { normalizeShapes, type ShapeLayer, shapeGeometry } from "../../shared/shapes";
-import type { ArchiveDocument, DocumentKind, EditSettings, OcrStatus } from "../../shared/types";
+import type { ArchiveDocument, DocumentKind, DocumentRef, EditSettings, OcrStatus } from "../../shared/types";
 import { escapeLike, type FolderRepository } from "./folders";
 
 interface DocumentRow {
@@ -28,6 +28,7 @@ interface DocumentRow {
   ocr_language: string | null;
   ocr_languages: string | null;
   shapes: string | null;
+  copy_of: number | null;
   metadata: string;
   created_at: string;
   updated_at: string;
@@ -296,6 +297,48 @@ export class DocumentRepository {
     })();
   }
 
+  /** Copies the document with its settings, text, folders and vector areas; the copy uses the same original file. */
+  duplicate(userId: number, id: number, title: string): StoredDocument {
+    const columns =
+      "user_id, original_name, mime_type, kind, size, storage_key, sha256, width, height, page_count, edit_settings, shapes, ocr_text, ocr_status, ocr_confidence, ocr_error, ocr_removed, ocr_all_text, ocr_language, ocr_languages, ocr_layout, metadata";
+    const copyId = this.db.transaction(() => {
+      const row = this.db
+        .query(
+          `INSERT INTO documents (${columns}, title, copy_of)
+           SELECT ${columns}, $title, COALESCE(copy_of, id) FROM documents WHERE user_id = $userId AND id = $id
+           RETURNING id`,
+        )
+        .get({ userId, id, title }) as { id: number };
+      this.db.query("INSERT INTO document_folders (document_id, folder_id) SELECT ?, folder_id FROM document_folders WHERE document_id = ?").run(row.id, id);
+      this.db
+        .query("INSERT INTO document_vectors (document_id, areas, area_count, geometry) SELECT ?, areas, area_count, geometry FROM document_vectors WHERE document_id = ?")
+        .run(row.id, id);
+      return row.id;
+    })();
+    return this.get(userId, copyId)!;
+  }
+
+  /** Makes a duplicate independent with its own copy of the original file. */
+  detach(userId: number, id: number, storageKey: string): void {
+    this.db
+      .query("UPDATE documents SET copy_of = NULL, storage_key = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE user_id = ? AND id = ?")
+      .run(storageKey, userId, id);
+  }
+
+  /** Before the document is deleted, its oldest duplicate becomes the original of the others. */
+  handOverCopies(id: number): void {
+    this.db.transaction(() => {
+      const heir = this.db.query("SELECT MIN(id) AS id FROM documents WHERE copy_of = ?").get(id) as { id: number | null };
+      if (heir.id === null) return;
+      this.db.query("UPDATE documents SET copy_of = NULL WHERE id = ?").run(heir.id);
+      this.db.query("UPDATE documents SET copy_of = ? WHERE copy_of = ?").run(heir.id, id);
+    })();
+  }
+
+  storageKeyInUse(storageKey: string): boolean {
+    return this.db.query("SELECT 1 FROM documents WHERE storage_key = ? LIMIT 1").get(storageKey) !== null;
+  }
+
   delete(userId: number, id: number): boolean {
     return this.db.query("DELETE FROM documents WHERE user_id = ? AND id = ?").run(userId, id).changes > 0;
   }
@@ -310,9 +353,36 @@ export class DocumentRepository {
     return result;
   }
 
+  /** Originals and duplicates of the documents, by id. */
+  private relations(rows: DocumentRow[]): { refs: Map<number, DocumentRef>; copies: Map<number, DocumentRef[]> } {
+    const refs = new Map<number, DocumentRef>();
+    const copies = new Map<number, DocumentRef[]>();
+    if (rows.length === 0) return { refs, copies };
+    const originals = [...new Set(rows.map((r) => r.copy_of).filter((id): id is number => id !== null))];
+    const found = this.db
+      .query(
+        `SELECT id, title, original_name AS originalName, copy_of AS copyOf FROM documents
+         WHERE id IN (SELECT value FROM json_each($originals)) OR copy_of IN (SELECT value FROM json_each($ids))
+         ORDER BY id`,
+      )
+      .all({ originals: JSON.stringify(originals), ids: JSON.stringify(rows.map((r) => r.id)) }) as {
+      id: number;
+      title: string;
+      originalName: string;
+      copyOf: number | null;
+    }[];
+    for (const row of found) {
+      const ref = { id: row.id, title: row.title.trim() || row.originalName };
+      refs.set(row.id, ref);
+      if (row.copyOf !== null) copies.set(row.copyOf, [...(copies.get(row.copyOf) ?? []), ref]);
+    }
+    return { refs, copies };
+  }
+
   private hydrate(rows: DocumentRow[]): StoredDocument[] {
     const folders = this.folders.pathsForDocuments(rows.map((r) => r.id));
     const vectors = this.vectorSummaries(rows.map((r) => r.id));
+    const relations = this.relations(rows);
     return rows.map((row) => {
       const editSettings = normalizeEditSettings(JSON.parse(row.edit_settings));
       const layer = row.shapes ? (JSON.parse(row.shapes) as ShapeLayer) : null;
@@ -347,6 +417,8 @@ export class DocumentRepository {
       ocrLanguages: row.ocr_languages ? row.ocr_languages.split("+") : null,
       metadata: JSON.parse(row.metadata),
       folders: folders.get(row.id) ?? [],
+      copyOf: row.copy_of === null ? null : (relations.refs.get(row.copy_of) ?? null),
+      copies: relations.copies.get(row.id) ?? [],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       };

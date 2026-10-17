@@ -234,12 +234,41 @@ export class ArchiveService {
     return { document: toPublicDocument(updated), areas };
   }
 
+  /** The original file stays as long as a duplicate uses it; the oldest duplicate then becomes the original. */
   async deleteDocument(userId: number, id: number): Promise<void> {
     const doc = this.getDocument(userId, id);
+    this.documents.handOverCopies(id);
     this.documents.delete(userId, id);
     if (doc.stackId !== null) this.stacks.deleteIfEmpty(doc.stackId);
-    await this.storage.delete(doc.storageKey);
+    if (!this.documents.storageKeyInUse(doc.storageKey)) await this.storage.delete(doc.storageKey);
     await this.storage.delete(derivedKeys.dir(id));
+  }
+
+  /** A copy with the same edits, text and folders that uses the same original file, placed after the document in its stack. */
+  async duplicateDocument(userId: number, id: number): Promise<ArchiveDocument> {
+    const doc = this.getDocument(userId, id);
+    const title = `${doc.title.trim() || basename(doc.originalName, extname(doc.originalName))} (Kopie)`;
+    const copy = this.documents.duplicate(userId, id, title);
+    await this.storage.copy(derivedKeys.dir(id), derivedKeys.dir(copy.id));
+    if (doc.stackId !== null) {
+      const ids = this.getStack(userId, doc.stackId).documentIds.filter((docId) => docId !== copy.id);
+      ids.splice(ids.indexOf(id) + 1, 0, copy.id);
+      this.documents.assignToStack(userId, doc.stackId, ids);
+      this.stacks.touch(doc.stackId);
+    }
+    if (copy.ocrStatus === "pending" || copy.ocrStatus === "running") this.ocr.enqueue(copy.id, { allText: copy.ocrAllText });
+    return toPublicDocument(this.documents.get(userId, copy.id)!);
+  }
+
+  /** Gives a duplicate its own copy of the original file and ends its relation to the original. */
+  async detachDocument(userId: number, id: number): Promise<ArchiveDocument> {
+    const doc = this.getDocument(userId, id);
+    if (doc.copyOf === null) throw new HttpError(400, "Document is not a duplicate");
+    if (!(await this.storage.exists(doc.storageKey))) throw new HttpError(404, "File not found");
+    const storageKey = `originals/${userId}/${crypto.randomUUID()}${extname(doc.storageKey)}`;
+    await this.storage.copy(doc.storageKey, storageKey);
+    this.documents.detach(userId, id, storageKey);
+    return toPublicDocument(this.documents.get(userId, id)!);
   }
 
   /** Detects the language of texts stored without one; returns how many were found. */

@@ -1,4 +1,4 @@
-import { mkdir, rm } from "node:fs/promises";
+import { cp, mkdir, rm } from "node:fs/promises";
 import { dirname, join, normalize } from "node:path";
 import { PREVIEW_SIZE } from "../shared/preview";
 import { HttpError } from "./http";
@@ -28,6 +28,15 @@ export class FileStorage {
 
   async exists(key: string): Promise<boolean> {
     return this.file(key).exists();
+  }
+
+  /** Copies a file or directory; a missing source copies nothing. */
+  async copy(from: string, to: string): Promise<void> {
+    try {
+      await cp(this.path(from), this.path(to), { recursive: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
   }
 
   async delete(key: string): Promise<void> {
