@@ -8,5 +8,5 @@ data
 .DS_Store
 coverage
 *.tsbuildinfo
-# models/*.onnx
+models/*.onnx
 /claude_answers.md
