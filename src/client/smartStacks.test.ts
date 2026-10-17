@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { LibraryItem } from "../shared/types";
 import { docItem, makeDocument, makeStack, stackItem } from "../../test/client";
-import { groupSmartStacks, seriesName, type SmartStack } from "./smartStacks";
+import { groupSmartStacks, nameSimilarity, seriesName, similarityThreshold, similarNames, type SmartStack } from "./smartStacks";
 
 const at = (minutes: number) => new Date(Date.UTC(2026, 9, 17, 10, 0) + minutes * 60_000).toISOString();
 const doc = (id: number, title: string, minutes: number) => docItem(makeDocument({ id, title, createdAt: at(minutes) }));
@@ -53,6 +53,35 @@ describe("smart stacks", () => {
   test("keep real stacks and the library order, and place a smart stack where its first document was", () => {
     const items: LibraryItem[] = [doc(5, "Notiz", 100), stackItem(makeStack({ id: 9 })), doc(4, "IMG_0011", 50), doc(3, "IMG_0010", 0)];
     expect(shape(groupSmartStacks(items))).toEqual([5, "stack", "name:IMG …:3,4"]);
+  });
+
+  test("need 80 % of a short name to match, down to 60 % for long ones", () => {
+    expect(similarityThreshold(5)).toBe(0.8);
+    expect(similarityThreshold(19)).toBeCloseTo(0.7);
+    expect(similarityThreshold(40)).toBeCloseTo(0.6);
+    expect(nameSimilarity("rechnung januar", "rechnung juni")).toBeCloseTo(1 - 4 / 15);
+    expect(similarNames("Rechnung Telekom Januar", "Rechnung Telekom Februar")).toBe(true);
+    expect(similarNames("Kontoauszug März", "Kontoauszug Mai")).toBe(true);
+    expect(similarNames("Brief", "Bild")).toBe(false);
+    expect(similarNames("Vertrag Miete", "Rechnung Strom")).toBe(false);
+    // Only digits differ: that is for the series rule, else a scanner's files would all look alike.
+    expect(similarNames("scan_20260823_143439_000261", "scan_20260901_091500_000990")).toBe(false);
+  });
+
+  test("group similar names that are no numbered series, in name order", () => {
+    const items: LibraryItem[] = [
+      doc(1, "Rechnung Telekom März", 0),
+      doc(2, "Urlaubsfoto", 100),
+      doc(3, "Rechnung Telekom Januar", 200),
+      doc(4, "Rechnung Telekom Februar", 300),
+      doc(5, "Mietvertrag", 400),
+    ];
+    expect(shape(groupSmartStacks(items))).toEqual(["similar:Rechnung Telekom …:4,3,1", 2, 5]);
+  });
+
+  test("scanner files far apart in their counter stay apart", () => {
+    const items: LibraryItem[] = [doc(1, "scan_20260823_143439_000261", 0), doc(2, "scan_20260901_091500_000990", 9000)];
+    expect(shape(groupSmartStacks(items))).toEqual([1, 2]);
   });
 
   test("leaves single documents alone", () => {

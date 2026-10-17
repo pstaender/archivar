@@ -101,6 +101,12 @@ export function ItemCard({ item, selected, selectionMode, onToggle }: ItemCardPr
   );
 }
 
+const SMART_REASONS: Record<SmartStack["reason"], string> = {
+  name: "Namensfolge",
+  similar: "Ähnliche Namen",
+  time: "Zusammen hochgeladen",
+};
+
 interface SmartStackCardProps {
   stack: SmartStack;
   /** Shows only the stack's documents. */
@@ -134,7 +140,7 @@ export function SmartStackCard({ stack, href, selected, selectionMode, onToggle 
           <h2 className="card__title" title={stack.title}>
             {stack.title}
           </h2>
-          <p className="card__meta">{stack.reason === "name" ? "Namensfolge" : "Zusammen hochgeladen"} · Smarter Stapel</p>
+          <p className="card__meta">{SMART_REASONS[stack.reason]} · Smarter Stapel</p>
         </div>
       </Link>
       <button
