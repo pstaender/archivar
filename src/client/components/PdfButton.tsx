@@ -126,7 +126,7 @@ export function PdfButton({ onExport, busy, disabled, title, small, up, labelCla
           {customOpen && (
             <div className="menu__custom">
               <Slider label="Qualität" value={custom} min={MIN_PDF_COMPRESSION} max={MAX_PDF_COMPRESSION} step={1} defaultValue={DEFAULT_CUSTOM} onChange={setCustom} />
-              <span className="menu__hint">0: stärkste Kompression, kleinste Datei · 10: kaum Kompression</span>
+              <span className="menu__hint">je höher, desto besser die Qualität</span>
               <button type="button" className="btn btn--sm btn--primary" onClick={exportCustom}>
                 <Download size={16} />
                 Herunterladen
