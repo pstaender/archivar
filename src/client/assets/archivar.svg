@@ -1,14 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill-rule="evenodd" clip-rule="evenodd">
-  <style>
-    .ink { fill: rgb(22, 24, 29); }
-    .frame { stroke: rgb(22, 24, 29); }
-    @media (prefers-color-scheme: dark) {
-      .ink { fill: rgb(244, 244, 245); }
-      .frame { stroke: rgb(244, 244, 245); }
-    }
-  </style>
-  <path class="frame" d="M10,30L10,10L30,10M70,10L90,10L90,30M90,70L90,90L70,90M30,90L10,90L10,70" fill="none" stroke-width="6" />
-  <path class="ink" d="M32,24L56,24L68,36L68,76L32,76L32,24Z" />
-  <path d="M56,24L56,36L68,36L56,24Z" fill="rgb(229,45,148)" />
-  <path d="M30,55L70,55" stroke="rgb(22,184,224)" stroke-width="4" />
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 300 300" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;">
+    <g transform="matrix(3,0,0,3,0,0)">
+        <path d="M10,30L10,10L30,10M70,10L90,10L90,30M90,70L90,90L70,90M30,90L10,90L10,70" style="fill:none;fill-rule:nonzero;stroke:rgb(22,24,29);stroke-width:6px;"/>
+    </g>
+    <g transform="matrix(3,0,0,3,0,0)">
+        <path d="M32,24L56,24L68,36L68,76L32,76L32,24Z" style="fill:rgb(22,24,29);fill-rule:nonzero;"/>
+    </g>
+    <g transform="matrix(3,0,0,3,0,0)">
+        <path d="M56,24L56,36L68,36L56,24Z" style="fill:white;fill-rule:nonzero;"/>
+    </g>
+    <g transform="matrix(3,0,0,3,0,0)">
+        <path d="M30,55L70,55" style="fill-rule:nonzero;stroke:white;stroke-width:4px;"/>
+    </g>
 </svg>
