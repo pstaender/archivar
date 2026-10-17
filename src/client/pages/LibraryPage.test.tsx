@@ -63,7 +63,7 @@ describe("LibraryPage", () => {
   });
 
   test("smart stacks group series in the view, open on their own and can become real stacks", async () => {
-    const scans = [1, 2, 3].map((n) => makeDocument({ id: 20 + n, title: `Scan ${n}`, createdAt: `2026-10-0${n}T10:00:00.000Z` }));
+    const scans = [1, 2, 3].map((n) => makeDocument({ id: 20 + n, title: `Scan ${n}`, createdAt: `2026-10-01T10:0${n}:00.000Z` }));
     const other = makeDocument({ id: 30, title: "Rechnung", createdAt: "2026-09-01T10:00:00.000Z" });
     fetchMock = mockFetch({
       "GET /api/folders": () => [],

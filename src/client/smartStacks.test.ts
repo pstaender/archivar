@@ -22,44 +22,32 @@ describe("smart stacks", () => {
   test("a counter at the end makes a series even when the scan time in the name changes", () => {
     const items: LibraryItem[] = [
       doc(1, "scan_600dpi_20260823_143439_000261", 0),
-      doc(2, "scan_600dpi_20260823_143624_000266", 46),
-      doc(3, "scan_600dpi_20260823_143624_000265", 47),
-      doc(4, "scan_600dpi_20260823_143624_000264", 48),
-      doc(5, "scan_600dpi_20260823_143624_000263", 49),
-      doc(6, "scan_600dpi_20260823_143439_000262", 50),
+      doc(2, "scan_600dpi_20260823_143624_000266", 1.6),
+      doc(3, "scan_600dpi_20260823_143624_000265", 1.7),
+      doc(4, "scan_600dpi_20260823_143624_000264", 1.8),
+      doc(5, "scan_600dpi_20260823_143624_000263", 1.9),
+      doc(6, "scan_600dpi_20260823_143439_000262", 2),
     ];
     expect(shape(groupSmartStacks(items))).toEqual(["name:scan_600dpi_20260823_143439 …:1,6,5,4,3,2"]);
   });
 
-  test("uploads keep forming one group as long as each follows the previous within two minutes", () => {
-    const items: LibraryItem[] = [doc(1, "Brief", 0), doc(2, "Anlage", 1.9), doc(3, "Foto", 3.8), doc(4, "Notiz", 5.7), doc(5, "Später", 8)];
-    expect(shape(groupSmartStacks(items))).toEqual(["time:" + (groupSmartStacks(items)[0] as SmartStack).title + ":1,2,3,4", 5]);
+  test("a series has to be uploaded as a chain, each file at most two minutes after the previous one", () => {
+    const items: LibraryItem[] = [doc(1, "Scan 1", 0), doc(2, "Scan 2", 1.9), doc(3, "Scan 3", 3.8), doc(4, "Scan 4", 6), doc(5, "Scan 5", 7)];
+    expect(shape(groupSmartStacks(items))).toEqual(["name:Scan …:1,2,3", "name:Scan …:4,5"]);
   });
 
-  test("files uploaded within two minutes stay together even when some of them form a series", () => {
-    const items: LibraryItem[] = [doc(1, "IMG_0010", 0), doc(2, "Brief", 1), doc(3, "IMG_0011", 2), doc(4, "Später", 30), doc(5, "IMG_0012", 600)];
-    const [first, ...rest] = groupSmartStacks(items);
-    expect((first as SmartStack).reason).toBe("time");
-    expect((first as SmartStack).documents.map((d) => d.id)).toEqual([1, 2, 3, 5]);
-    expect(shape(rest)).toEqual([4]);
+  test("files uploaded together need matching names", () => {
+    const items: LibraryItem[] = [doc(1, "IMG_0010", 0), doc(2, "Brief", 0.5), doc(3, "IMG_0011", 1), doc(4, "Anlage", 1.5), doc(5, "IMG_0012", 600)];
+    expect(shape(groupSmartStacks(items))).toEqual(["name:IMG …:1,3", 2, 4, 5]);
   });
 
-  test("group numbered series by name, whenever they were uploaded, and split them at larger gaps", () => {
-    const items: LibraryItem[] = [doc(1, "Scan 1", 0), doc(2, "Rechnung", 600), doc(3, "Scan 2", 300), doc(4, "Scan 3", 900), doc(5, "Scan 40", 1200)];
-    expect(shape(groupSmartStacks(items))).toEqual(["name:Scan …:1,3,4", 2, 5]);
-  });
-
-  test("group files uploaded right after each other that are no series", () => {
-    const items: LibraryItem[] = [doc(1, "Brief", 0), doc(2, "Anlage", 1), doc(3, "Foto", 2.5), doc(4, "Später", 30)];
-    const [first, ...rest] = groupSmartStacks(items);
-    expect((first as SmartStack).reason).toBe("time");
-    expect((first as SmartStack).documents.map((d) => d.id)).toEqual([1, 2, 3]);
-    expect((first as SmartStack).title).toStartWith("Hochgeladen ");
-    expect(shape(rest)).toEqual([4]);
+  test("split a series at larger gaps in its numbers", () => {
+    const items: LibraryItem[] = [doc(1, "Scan 1", 0), doc(2, "Scan 2", 0.5), doc(3, "Scan 3", 1), doc(4, "Scan 40", 1.5)];
+    expect(shape(groupSmartStacks(items))).toEqual(["name:Scan …:1,2,3", 4]);
   });
 
   test("keep real stacks and the library order, and place a smart stack where its first document was", () => {
-    const items: LibraryItem[] = [doc(5, "Notiz", 100), stackItem(makeStack({ id: 9 })), doc(4, "IMG_0011", 50), doc(3, "IMG_0010", 0)];
+    const items: LibraryItem[] = [doc(5, "Notiz", 100), stackItem(makeStack({ id: 9 })), doc(4, "IMG_0011", 1), doc(3, "IMG_0010", 0)];
     expect(shape(groupSmartStacks(items))).toEqual([5, "stack", "name:IMG …:3,4"]);
   });
 
@@ -79,16 +67,21 @@ describe("smart stacks", () => {
   test("group similar names that are no numbered series, in name order", () => {
     const items: LibraryItem[] = [
       doc(1, "Rechnung Telekom März", 0),
-      doc(2, "Urlaubsfoto", 100),
-      doc(3, "Rechnung Telekom Januar", 200),
-      doc(4, "Rechnung Telekom Februar", 300),
-      doc(5, "Mietvertrag", 400),
+      doc(2, "Urlaubsfoto", 0.5),
+      doc(3, "Rechnung Telekom Januar", 1),
+      doc(4, "Rechnung Telekom Februar", 1.5),
+      doc(5, "Mietvertrag", 2),
     ];
     expect(shape(groupSmartStacks(items))).toEqual(["similar:Rechnung Telekom …:4,3,1", 2, 5]);
   });
 
+  test("similar names uploaded far apart stay apart", () => {
+    const items: LibraryItem[] = [doc(1, "Rechnung Telekom Januar", 0), doc(2, "Rechnung Telekom Februar", 60)];
+    expect(shape(groupSmartStacks(items))).toEqual([1, 2]);
+  });
+
   test("scanner files far apart in their counter stay apart", () => {
-    const items: LibraryItem[] = [doc(1, "scan_20260823_143439_000261", 0), doc(2, "scan_20260901_091500_000990", 9000)];
+    const items: LibraryItem[] = [doc(1, "scan_20260823_143439_000261", 0), doc(2, "scan_20260901_091500_000990", 1)];
     expect(shape(groupSmartStacks(items))).toEqual([1, 2]);
   });
 

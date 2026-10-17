@@ -6,12 +6,11 @@ export interface SmartStack {
   type: "smart";
   /**
    * "name": a numbered series like „Scan 1“, „Scan 2“; "similar": names that are mostly the same, like „Rechnung
-   * Telekom Januar“ and „Rechnung Telekom Februar“; "time": uploaded right after each other (also when some of them
-   * have matching names).
+   * Telekom Januar“ and „Rechnung Telekom Februar“.
    */
-  reason: "name" | "similar" | "time";
+  reason: "name" | "similar";
   title: string;
-  /** By number in a series, by name for similar names, by upload time otherwise. */
+  /** By number in a series, by name for similar names. */
   documents: ArchiveDocument[];
 }
 
@@ -127,50 +126,27 @@ function timeGroups(docs: ArchiveDocument[]): ArchiveDocument[][] {
   return groups;
 }
 
-const uploadTime = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" });
-
 /**
- * Puts documents that belong together into smart stacks at the place of their first document: numbered series by
- * name (they may have been uploaded at different times), similar names among the rest, and chains of uploads. Groups
- * that share documents are merged, so files of one upload stay together even when some of them form a series; such a
- * merged group is shown in upload order. Real stacks stay.
+ * Puts documents that belong together into smart stacks at the place of their first document: they have to be
+ * uploaded (or created, see the upload's `createdAt`) as a chain, each at most two minutes after the previous one, and
+ * have matching names – a numbered series first, then similar names among the rest. Real stacks stay.
  */
 export function groupSmartStacks(items: LibraryItem[]): DisplayItem[] {
   const docs = items.flatMap((item) => (item.type === "document" ? [item.document] : []));
-  const index = new Map(docs.map((doc, i) => [doc.id, i]));
-  const parent = docs.map((_, i) => i);
-  const root = (i: number): number => (parent[i] === i ? i : (parent[i] = root(parent[i]!)));
-  const join = (group: ArchiveDocument[]) => {
-    const first = root(index.get(group[0]!.id)!);
-    for (const doc of group) parent[root(index.get(doc.id)!)] = first;
-  };
-
-  const series = nameGroups(docs);
-  const inSeries = new Set(series.flat().map((doc) => doc.id));
-  const similar = similarGroups(docs.filter((doc) => !inSeries.has(doc.id)));
-  const groupKey = (group: ArchiveDocument[]) => group.map((doc) => doc.id).sort((a, b) => a - b).join(",");
-  const named = new Map<string, Omit<SmartStack, "type">>();
-  for (const group of series) {
-    const label = seriesName(baseName(group[0]!))!.label;
-    named.set(groupKey(group), { reason: "name", title: label ? `${label} …` : "Nummernfolge", documents: group });
-  }
-  for (const group of similar) named.set(groupKey(group), { reason: "similar", title: commonTitle(group), documents: group });
-  for (const group of [...series, ...similar, ...timeGroups(docs)]) join(group);
-
-  const components = new Map<number, ArchiveDocument[]>();
-  docs.forEach((doc, i) => components.set(root(i), [...(components.get(root(i)) ?? []), doc]));
   const stacks: SmartStack[] = [];
-  for (const component of components.values()) {
-    if (component.length < 2) continue;
-    const stack = named.get(groupKey(component));
-    if (stack) stacks.push({ type: "smart", ...stack });
-    else {
-      const documents = [...component].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-      stacks.push({ type: "smart", reason: "time", title: `Hochgeladen ${uploadTime.format(new Date(documents[0]!.createdAt))}`, documents });
+  for (const chain of timeGroups(docs)) {
+    const grouped = new Set<number>();
+    for (const group of nameGroups(chain)) {
+      const label = seriesName(baseName(group[0]!))!.label;
+      stacks.push({ type: "smart", reason: "name", title: label ? `${label} …` : "Nummernfolge", documents: group });
+      for (const doc of group) grouped.add(doc.id);
+    }
+    for (const group of similarGroups(chain.filter((doc) => !grouped.has(doc.id)))) {
+      stacks.push({ type: "smart", reason: "similar", title: commonTitle(group), documents: group });
     }
   }
 
-  // Inside a smart stack the documents are in series or upload order, as pages of a stack would be.
+  // Inside a smart stack the documents are in series or name order, as pages of a stack would be.
   const stackOf = new Map<number, SmartStack>();
   for (const stack of stacks) for (const doc of stack.documents) stackOf.set(doc.id, stack);
 

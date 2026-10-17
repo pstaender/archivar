@@ -104,7 +104,6 @@ export function ItemCard({ item, selected, selectionMode, onToggle }: ItemCardPr
 const SMART_REASONS: Record<SmartStack["reason"], string> = {
   name: "Namensfolge",
   similar: "Ähnliche Namen",
-  time: "Zusammen hochgeladen",
 };
 
 interface SmartStackCardProps {
