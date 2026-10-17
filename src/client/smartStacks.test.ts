@@ -36,6 +36,14 @@ describe("smart stacks", () => {
     expect(shape(groupSmartStacks(items))).toEqual(["time:" + (groupSmartStacks(items)[0] as SmartStack).title + ":1,2,3,4", 5]);
   });
 
+  test("files uploaded within two minutes stay together even when some of them form a series", () => {
+    const items: LibraryItem[] = [doc(1, "IMG_0010", 0), doc(2, "Brief", 1), doc(3, "IMG_0011", 2), doc(4, "Später", 30), doc(5, "IMG_0012", 600)];
+    const [first, ...rest] = groupSmartStacks(items);
+    expect((first as SmartStack).reason).toBe("time");
+    expect((first as SmartStack).documents.map((d) => d.id)).toEqual([1, 2, 3, 5]);
+    expect(shape(rest)).toEqual([4]);
+  });
+
   test("group numbered series by name, whenever they were uploaded, and split them at larger gaps", () => {
     const items: LibraryItem[] = [doc(1, "Scan 1", 0), doc(2, "Rechnung", 600), doc(3, "Scan 2", 300), doc(4, "Scan 3", 900), doc(5, "Scan 40", 1200)];
     expect(shape(groupSmartStacks(items))).toEqual(["name:Scan …:1,3,4", 2, 5]);
