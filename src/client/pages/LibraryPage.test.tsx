@@ -93,6 +93,40 @@ describe("LibraryPage", () => {
     expect(screen.getByRole("link", { name: "Zurück zu „Alle Dokumente“" }).getAttribute("href")).toBe("/");
   });
 
+  test("the overview hides what is filed in folders until the folder button shows everything", async () => {
+    const loose = makeDocument({ title: "Lose" });
+    const filed = makeDocument({ title: "Abgelegt", folders: ["wichtig"] });
+    const stack = makeStack({ title: "Steuer", folders: ["steuer"] });
+    fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [docItem(filed), stackItem(stack), docItem(loose)] });
+    const view = await renderApp(<LibraryPage />);
+    expect(screen.getByText("1 Eintrag · 2 in Ordnern ausgeblendet")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Lose/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Abgelegt/ }) === null).toBe(true);
+
+    const toggle = screen.getByRole("button", { name: "Dokumente in Ordnern zeigen" });
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("3 Einträge")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Abgelegt/ })).toBeTruthy();
+    expect(localStorage.getItem("archivar.showFiled")).toBe("true");
+    view.unmount();
+
+    await renderApp(<LibraryPage />, { path: "/folders/wichtig" });
+    expect(screen.queryByRole("button", { name: "Dokumente in Ordnern zeigen" }) === null).toBe(true);
+  });
+
+  test("searches and folders are not filtered, and an overview with everything filed says so", async () => {
+    const filed = makeDocument({ title: "Abgelegt", folders: ["wichtig"] });
+    fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [docItem(filed)] });
+    const view = await renderApp(<LibraryPage />);
+    expect(screen.getByText("Alle Dokumente sind in Ordnern einsortiert.")).toBeTruthy();
+    view.unmount();
+
+    await renderApp(<LibraryPage />, { path: "/?q=abgelegt" });
+    expect(screen.getByRole("link", { name: /Abgelegt/ })).toBeTruthy();
+  });
+
   test("smart stacks are off in the custom order", async () => {
     localStorage.setItem("archivar.smartStacks", "true");
     fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [] });
@@ -201,6 +235,7 @@ describe("LibraryPage", () => {
   const patches = () => fetchMock.calls.filter((c) => c.method === "PATCH").map((c) => [c.path, c.body]);
 
   test("adds the selection to existing folders, keeping its other folders", async () => {
+    localStorage.setItem("archivar.showFiled", "true");
     const a = makeDocument({ title: "Brief", folders: ["privat"] });
     fetchMock = mockFetch({
       "GET /api/folders": folders,
@@ -210,7 +245,7 @@ describe("LibraryPage", () => {
     await renderApp(<LibraryPage />);
 
     fireEvent.click(screen.getByLabelText("Brief auswählen"));
-    fireEvent.click(screen.getByRole("button", { name: /Ordner/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Ordner" }));
     expect(screen.getAllByRole("checkbox").map((c) => c.getAttribute("aria-label"))).toEqual(["privat", "wichtig", "wichtig/2026"]);
     fireEvent.click(screen.getByLabelText("wichtig/2026"));
     fireEvent.click(screen.getByRole("button", { name: "Hinzufügen" }));
@@ -232,7 +267,7 @@ describe("LibraryPage", () => {
 
     fireEvent.click(screen.getByLabelText("Brief auswählen"));
     fireEvent.click(screen.getByLabelText("Mappe auswählen"));
-    fireEvent.click(screen.getByRole("button", { name: /Ordner/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Ordner" }));
     expect(screen.getByText(/nimmt die Auswahl aus „privat“ heraus/)).toBeTruthy();
     fireEvent.click(screen.getByLabelText("wichtig"));
     fireEvent.click(screen.getByRole("button", { name: "Verschieben" }));
@@ -246,6 +281,7 @@ describe("LibraryPage", () => {
   });
 
   test("creates a new folder in the dialog and moves the selection there from the overview", async () => {
+    localStorage.setItem("archivar.showFiled", "true");
     const a = makeDocument({ title: "Brief", folders: ["privat", "wichtig"] });
     fetchMock = mockFetch({
       "GET /api/folders": folders,
@@ -255,7 +291,7 @@ describe("LibraryPage", () => {
     await renderApp(<LibraryPage />);
 
     fireEvent.click(screen.getByLabelText("Brief auswählen"));
-    fireEvent.click(screen.getByRole("button", { name: /Ordner/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Ordner" }));
     const verschieben = screen.getByRole("button", { name: "Verschieben" }) as HTMLButtonElement;
     expect(verschieben.disabled).toBe(true);
     fireEvent.change(screen.getByLabelText("Neuer Ordner"), { target: { value: " steuer / 2026 " } });
@@ -292,6 +328,7 @@ describe("LibraryPage", () => {
   });
 
   test("offers removing from a folder only inside a folder", async () => {
+    localStorage.setItem("archivar.showFiled", "true");
     const a = makeDocument({ title: "Brief", folders: ["privat"] });
     fetchMock = mockFetch({ "GET /api/folders": folders, "GET /api/library": () => [docItem(a)] });
     await renderApp(<LibraryPage />);

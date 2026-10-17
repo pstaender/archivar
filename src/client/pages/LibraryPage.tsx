@@ -1,4 +1,5 @@
 import {
+  Folder,
   FolderMinus,
   FolderPlus,
   Layers,
@@ -104,11 +105,12 @@ function useCardShape(): [CardShape, (shape: CardShape) => void] {
 }
 
 const SMART_STACKS_KEY = "archivar.smartStacks";
+const SHOW_FILED_KEY = "archivar.showFiled";
 
-function useSmartStacksSetting(): [boolean, (on: boolean) => void] {
+function useStoredFlag(key: string): [boolean, (on: boolean) => void] {
   const [on, setOn] = useState(() => {
     try {
-      return localStorage.getItem(SMART_STACKS_KEY) === "true";
+      return localStorage.getItem(key) === "true";
     } catch {
       return false;
     }
@@ -116,7 +118,7 @@ function useSmartStacksSetting(): [boolean, (on: boolean) => void] {
   const update = (next: boolean) => {
     setOn(next);
     try {
-      localStorage.setItem(SMART_STACKS_KEY, String(next));
+      localStorage.setItem(key, String(next));
     } catch {}
   };
   return [on, update];
@@ -127,6 +129,7 @@ const displayTitle = (item: DisplayItem) => (item.type === "smart" ? item.title 
 const sameIds = (stack: SmartStack, ids: number[]) => stack.documents.length === ids.length && stack.documents.every((doc) => ids.includes(doc.id));
 
 const itemRef = (item: LibraryItem) => ({ type: item.type, id: item.type === "stack" ? item.stack.id : item.document.id });
+const itemFolders = (item: LibraryItem) => (item.type === "stack" ? item.stack.folders : item.document.folders);
 const itemTitle = (item: LibraryItem) => (item.type === "stack" ? item.stack.title : documentLabel(item.document));
 
 export function LibraryPage() {
@@ -137,7 +140,8 @@ export function LibraryPage() {
   const toast = useToast();
   const [sort, setSort] = useStoredSort(folder ? "folder" : "overview");
   const [cardShape, setCardShape] = useCardShape();
-  const [smartStacks, setSmartStacks] = useSmartStacksSetting();
+  const [smartStacks, setSmartStacks] = useStoredFlag(SMART_STACKS_KEY);
+  const [showFiled, setShowFiled] = useStoredFlag(SHOW_FILED_KEY);
   const location = useLocation();
   // A smart stack opened from the library: only its documents, given in the URL as it is not stored anywhere.
   const smartParam = params.get("smart");
@@ -148,18 +152,22 @@ export function LibraryPage() {
   useRefreshOnJobProgress(library.refresh);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const allItems = library.data ?? [];
+  // The overview leaves out what is already filed in a folder, unless asked to show everything; searches find all.
+  const hidingFiled = !folder && !q && !showFiled;
+  const loaded = library.data ?? [];
+  const allItems = useMemo(() => (hidingFiled ? loaded.filter((item) => itemFolders(item).length === 0) : loaded), [hidingFiled, library.data]);
+  const hiddenCount = loaded.length - allItems.length;
   const items = smartIds
     ? smartIds.flatMap((id) => allItems.filter((item) => item.type === "document" && item.document.id === id))
     : allItems;
   const grouping = smartStacks && sort !== "custom" && !smartIds;
-  const displayItems: DisplayItem[] = useMemo(() => (grouping ? groupSmartStacks(items) : items), [grouping, library.data, smartIds]);
+  const displayItems: DisplayItem[] = useMemo(() => (grouping ? groupSmartStacks(items) : items), [grouping, allItems, smartIds]);
 
-  useEffect(() => setSelected(new Set()), [folder, q, grouping, smartParam]);
+  useEffect(() => setSelected(new Set()), [folder, q, grouping, smartParam, hidingFiled]);
 
   useEffect(() => {
     if (library.data) rememberDocumentOrder(items.flatMap((item) => (item.type === "document" ? [item.document.id] : [])));
-  }, [library.data, smartParam]);
+  }, [allItems, smartParam]);
   const busy = items.some((item) => item.type === "document" && isOcrBusy(item.document));
 
   usePolling(busy, library.refresh, POLL_INTERVAL);
@@ -223,11 +231,24 @@ export function LibraryPage() {
           {!library.loading && !smartIds && (
             <p className="muted small">
               {displayItems.length === 1 ? "1 Eintrag" : `${displayItems.length} Einträge`}
+              {hiddenCount > 0 && ` · ${hiddenCount} in Ordnern ausgeblendet`}
               {sort === "custom" && items.length > 1 && " · Karten ziehen, um sie anzuordnen"}
             </p>
           )}
         </div>
         <div className="library-controls">
+          {!smartIds && !folder && !q && (
+            <button
+              type="button"
+              className={`btn btn--sm btn--icon ${showFiled ? "is-active" : ""}`}
+              aria-pressed={showFiled}
+              aria-label="Dokumente in Ordnern zeigen"
+              onClick={() => setShowFiled(!showFiled)}
+              title={showFiled ? "Zeigt alle Dokumente, auch die in Ordnern" : "Zeigt nur Dokumente ohne Ordner – klicken, um auch die in Ordnern zu zeigen"}
+            >
+              <Folder size={18} />
+            </button>
+          )}
           {!smartIds && (
             <button
               type="button"
@@ -279,7 +300,7 @@ export function LibraryPage() {
 
       {library.error && <div className="alert alert--error">{library.error.message}</div>}
 
-      {!library.loading && items.length === 0 && !library.error && <EmptyLibrary filtered={Boolean(folder || q || smartIds)} />}
+      {!library.loading && items.length === 0 && !library.error && <EmptyLibrary filtered={Boolean(folder || q || smartIds)} allFiled={hiddenCount > 0} />}
 
       <div className="library" data-card-shape={cardShape}>
         <SortableGrid<DisplayItem>
@@ -325,8 +346,15 @@ export function LibraryPage() {
   );
 }
 
-function EmptyLibrary({ filtered }: { filtered: boolean }) {
+function EmptyLibrary({ filtered, allFiled }: { filtered: boolean; allFiled: boolean }) {
   const { uploadToCurrentTarget } = useUpload();
+  if (allFiled) {
+    return (
+      <div className="empty-state">
+        <p className="muted">Alle Dokumente sind in Ordnern einsortiert.</p>
+      </div>
+    );
+  }
   if (filtered) {
     return (
       <div className="empty-state">
