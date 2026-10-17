@@ -138,6 +138,17 @@ const migrations: string[] = [
   ALTER TABLE job_items ADD COLUMN ocr_finished_at TEXT;
   `,
   `ALTER TABLE documents ADD COLUMN shapes TEXT;`,
+  // Items keep the outcome of their own text recognition instead of following the document's later runs.
+  `
+  ALTER TABLE job_items ADD COLUMN ocr_settled INTEGER NOT NULL DEFAULT 0;
+  UPDATE job_items SET
+    ocr_settled = 1,
+    status = CASE WHEN (SELECT ocr_status FROM documents WHERE id = job_items.document_id) = 'failed' THEN 'failed' ELSE status END,
+    error = CASE WHEN (SELECT ocr_status FROM documents WHERE id = job_items.document_id) = 'failed'
+      THEN COALESCE((SELECT ocr_error FROM documents WHERE id = job_items.document_id), 'Texterkennung fehlgeschlagen') ELSE error END
+  WHERE ocr = 1 AND status = 'done'
+    AND (SELECT ocr_status FROM documents WHERE id = job_items.document_id) NOT IN ('pending', 'running');
+  `,
 ];
 
 export function migrate(db: Database): void {

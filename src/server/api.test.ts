@@ -828,14 +828,38 @@ describe("jobs", () => {
     expect(server.ctx.documents.getById(pdf!.id)?.editSettings.colorMode).toBe("color");
     expect(server.ocr.recognizedLanguages).toEqual([["fra"], ["fra"]]);
 
-    // Items wait for the text recognition they queued.
+    // Later recognition runs of the document do not change the finished job.
     server.ctx.documents.setOcrResult(photo.id, { status: "running" });
-    expect((await jobs())[0]).toMatchObject({ active: true, items: [{ state: "ocr" }, {}, {}] });
-    expect((await jobs())[0]!.finishedAt).toBeNull();
+    expect((await jobs())[0]).toMatchObject({ active: false, finishedAt, items: [{ state: "done" }, {}, {}] });
     server.ctx.documents.setOcrResult(photo.id, { status: "failed", error: "kaputt" });
-    expect(states((await jobs())[0])?.[0]).toEqual(["foto", "failed", "kaputt"]);
-    // A later recognition run does not extend the job.
-    expect((await jobs())[0]!.finishedAt).toBe(finishedAt);
+    expect(states((await jobs())[0])?.[0]).toEqual(["foto", "done", null]);
+  });
+
+  test("each job keeps the outcome of the text recognition it queued itself", async () => {
+    const photo = await uploadImage("foto.jpg");
+    const start = async () => {
+      const job = (await (await post("/api/jobs", { kind: "batch", documentIds: [photo.id], ocr: true })).json()) as Job;
+      await server.ctx.jobQueue.idle();
+      return job.id;
+    };
+    const first = await start();
+    await server.ctx.ocr.idle();
+
+    server.ocr.hang = true;
+    const second = await start();
+    const byId = async (id: number) => (await jobs()).find((job) => job.id === id)!;
+    // Waits for its own recognition, while the finished job stays finished.
+    expect(await byId(second)).toMatchObject({ active: true, finishedAt: null, items: [{ state: "ocr" }] });
+    expect(await byId(first)).toMatchObject({ active: false, items: [{ state: "done" }] });
+
+    server.ctx.documents.setOcrResult(photo.id, { status: "failed", error: "kaputt" });
+    expect(states(await byId(second))).toEqual([["foto", "failed", "kaputt"]]);
+    expect((await byId(second)).finishedAt).toEqual(expect.any(String));
+    expect(states(await byId(first))).toEqual([["foto", "done", null]]);
+    // The recognition finishing later does not undo that either.
+    server.ocr.release();
+    await server.ctx.ocr.idle();
+    expect(states(await byId(second))).toEqual([["foto", "failed", "kaputt"]]);
   });
 
   test("batch jobs need documents of the user and something to do", async () => {

@@ -29,6 +29,7 @@ interface ItemRow {
   ocr_error: string | null;
   finished_at: string | null;
   ocr_finished_at: string | null;
+  ocr_settled: number;
 }
 
 export interface QueuedBatchItem {
@@ -39,19 +40,22 @@ export interface QueuedBatchItem {
 }
 
 const ITEM_COLUMNS = `
-  i.id, i.job_id, i.name, i.status, i.error, i.note, i.ocr, i.document_id, i.finished_at, i.ocr_finished_at,
+  i.id, i.job_id, i.name, i.status, i.error, i.note, i.ocr, i.document_id, i.finished_at, i.ocr_finished_at, i.ocr_settled,
   d.title, d.original_name, d.kind, d.updated_at, d.ocr_status, d.ocr_error`;
+
+/** Still waiting for the text recognition it queued (and its document still exists). */
+const awaitsOcr = (row: ItemRow) => row.status === "done" && row.ocr === 1 && row.ocr_settled === 0 && row.ocr_status !== null;
 
 /** When the item was finished, including its text recognition; null while it runs (or for items stored before). */
 function finishedAt(row: ItemRow): string | null {
-  if (!FINISHED_STATES.includes(row.status)) return null;
-  return row.status === "done" && row.ocr && row.ocr_status ? row.ocr_finished_at : row.finished_at;
+  if (!FINISHED_STATES.includes(row.status) || awaitsOcr(row)) return null;
+  return row.ocr_settled ? row.ocr_finished_at : row.finished_at;
 }
 
 function toItem(row: ItemRow): JobItem {
   let state: JobItemState = row.status;
   let error = row.error;
-  if (row.status === "done" && row.ocr && row.ocr_status) {
+  if (awaitsOcr(row)) {
     if (row.ocr_status === "pending" || row.ocr_status === "running") state = "ocr";
     else if (row.ocr_status === "failed") {
       state = "failed";
@@ -140,8 +144,11 @@ export class JobRepository {
     // Text recognition may already have finished (e.g. a quick one) before the item was marked done.
     this.db
       .query(
-        `UPDATE job_items SET ocr_finished_at = finished_at
-         WHERE id = ? AND status = 'done' AND ocr = 1 AND ocr_finished_at IS NULL
+        `UPDATE job_items SET ocr_settled = 1, ocr_finished_at = finished_at,
+           status = CASE WHEN (SELECT ocr_status FROM documents WHERE id = job_items.document_id) = 'failed' THEN 'failed' ELSE status END,
+           error = CASE WHEN (SELECT ocr_status FROM documents WHERE id = job_items.document_id) = 'failed'
+             THEN COALESCE((SELECT ocr_error FROM documents WHERE id = job_items.document_id), 'Texterkennung fehlgeschlagen') ELSE error END
+         WHERE id = ? AND status = 'done' AND ocr = 1 AND ocr_settled = 0
            AND (SELECT ocr_status FROM documents WHERE id = job_items.document_id) IN ('done', 'failed')`,
       )
       .run(itemId);

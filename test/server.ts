@@ -23,8 +23,9 @@ export class FakeOcrEngine implements OcrEngine {
   error: Error | null = null;
   orientation: Orientation | null = { rotation: 0, confidence: 10 };
   orientationInputs = 0;
-  /** Simulates a stuck Tesseract worker. */
+  /** Simulates a stuck Tesseract worker; `release()` lets the stuck calls finish. */
   hang = false;
+  private stuck: (() => void)[] = [];
   terminations = 0;
 
   async detectOrientation(): Promise<Orientation | null> {
@@ -36,9 +37,14 @@ export class FakeOcrEngine implements OcrEngine {
     this.calls++;
     this.images.push(image);
     this.recognizedLanguages.push(languages);
-    if (this.hang) return new Promise(() => {});
+    if (this.hang) return new Promise((resolve) => this.stuck.push(() => resolve(this.result)));
     if (this.error) throw this.error;
     return (languages && this.resultsByLanguage[languages.join("+")]) || this.result;
+  }
+
+  release(): void {
+    this.hang = false;
+    for (const finish of this.stuck.splice(0)) finish();
   }
 
   async terminate(): Promise<void> {

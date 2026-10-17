@@ -250,14 +250,16 @@ export class DocumentRepository {
         language: result.language ?? null,
         allText: result.allText ? 1 : 0,
       });
-    // Job items wait for their document's text recognition; only the first run after the item counts.
+    // Job items waiting for this document's text recognition keep its outcome; later runs do not change them.
     if (result.status === "done" || result.status === "failed") {
       this.db
         .query(
-          `UPDATE job_items SET ocr_finished_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-           WHERE document_id = ? AND ocr = 1 AND status = 'done' AND ocr_finished_at IS NULL`,
+          `UPDATE job_items SET ocr_settled = 1, ocr_finished_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+             status = CASE WHEN $failed THEN 'failed' ELSE status END,
+             error = CASE WHEN $failed THEN $error ELSE error END
+           WHERE document_id = $id AND ocr = 1 AND status = 'done' AND ocr_settled = 0`,
         )
-        .run(id);
+        .run({ id, failed: result.status === "failed" ? 1 : 0, error: result.error ?? "Texterkennung fehlgeschlagen" });
     }
   }
 
