@@ -1,24 +1,20 @@
 import { extname } from "node:path";
-import { isBlackAndWhite, isDefaultEditSettings } from "../../shared/editSettings";
+import { isBlackAndWhite } from "../../shared/editSettings";
 import { isEditableImageType, Jimp, type JimpImage } from "../../shared/image/jimp";
-import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
-import { PREVIEW_SIZE } from "../../shared/preview";
-import { drawShapes } from "../../shared/shapes";
+import { scaleToFit } from "../../shared/image/pipeline";
+import type { RawImage } from "../../shared/image/raw";
 import type { VectorArea } from "../../vectorizer";
-import { blankVectorAreas, paintVectorAreas } from "../../vectorizer/server/paint";
+import { blankVectorAreas } from "../../vectorizer/server/paint";
 import type { PdfQuality } from "../../shared/settings";
-import type { DocumentKind, EditSettings } from "../../shared/types";
+import type { BwVariant, DocumentKind, EditSettings, Rotation } from "../../shared/types";
 import { convertibleTypeForExtension } from "../../shared/uploads";
 import type { StoredDocument } from "../db/documents";
 import { derivedKeys, type FileStorage } from "../storage";
 import type { ImageConverter } from "./magick";
 import { inspectPdf, renderPdfPage } from "./pdf";
+import { type ImageSource, imageWorker, THUMBNAIL_SIZE } from "./imageTasks";
 import { type PdfImage, preparePdfImage } from "./pdfImage";
 
-export const THUMBNAIL_SIZE = 480;
-const JPEG_QUALITY = 90;
-// Compression artifacts in the editor's base image would show up in its threshold and contrast preview.
-const PREVIEW_JPEG_QUALITY = 95;
 const OCR_PDF_SCALE = 2.5;
 const OCR_MAX_PDF_PAGES = 50;
 // Tesseract reads text best at about 300 DPI. In 600 DPI scans the letters are so large that it splits lines and
@@ -67,7 +63,7 @@ export function extensionFor(name: string, mimeType: string): string {
   return mimeType === "application/pdf" ? ".pdf" : mimeType.startsWith("image/") ? `.${mimeType.slice(6)}` : ".bin";
 }
 
-async function toJpeg(image: JimpImage, quality = JPEG_QUALITY): Promise<Uint8Array<ArrayBuffer>> {
+async function toJpeg(image: JimpImage, quality: number): Promise<Uint8Array<ArrayBuffer>> {
   return new Uint8Array(await image.getBuffer("image/jpeg", { quality }));
 }
 
@@ -88,9 +84,8 @@ export class ImagingService {
     return "file";
   }
 
-  private async decode(data: Uint8Array, mimeType: string): Promise<JimpImage> {
-    if (isEditableImageType(mimeType) || !this.converter) return (await Jimp.read(Buffer.from(data))) as JimpImage;
-    return (await Jimp.read(Buffer.from(await this.converter.toPng(data, mimeType)))) as JimpImage;
+  private async decodable(data: Uint8Array, mimeType: string): Promise<Uint8Array> {
+    return isEditableImageType(mimeType) || !this.converter ? data : this.converter.toPng(data, mimeType);
   }
 
   async inspect(data: Uint8Array, name: string, declaredType: string): Promise<UploadInspection> {
@@ -100,8 +95,7 @@ export class ImagingService {
 
     if (kind === "image") {
       try {
-        const image = await this.decode(data, mimeType);
-        const { width, height } = image.bitmap;
+        const { width, height } = await imageWorker.run("size", { data: await this.decodable(data, mimeType) });
         return { ...base, width, height, metadata: { originalWidth: width, originalHeight: height } };
       } catch (error) {
         return { ...base, kind: "file", metadata: { decodeError: String(error) } };
@@ -118,20 +112,21 @@ export class ImagingService {
     return base;
   }
 
-  async loadOriginal(doc: StoredDocument): Promise<JimpImage> {
-    if (isEditableImageType(doc.mimeType)) return (await Jimp.read(Buffer.from(await this.storage.read(doc.storageKey)))) as JimpImage;
-    // Converting with ImageMagick is slow, so the decoded original is kept next to the other derived files.
+  /** The image the edits start from: the original, or for converted formats the PNG made from it. */
+  private async source(doc: StoredDocument): Promise<ImageSource> {
+    if (isEditableImageType(doc.mimeType)) return { key: doc.storageKey, data: await this.storage.read(doc.storageKey) };
+    // Converting with ImageMagick is slow, so the converted original is kept next to the other derived files.
     const key = derivedKeys.source(doc.id);
-    if (await this.storage.exists(key)) return (await Jimp.read(Buffer.from(await this.storage.read(key)))) as JimpImage;
-    const image = await this.decode(await this.storage.read(doc.storageKey), doc.mimeType);
-    await this.storage.write(key, new Uint8Array(await image.getBuffer("image/png")));
-    return image;
+    if (await this.storage.exists(key)) return { key, data: await this.storage.read(key) };
+    const data = await this.decodable(await this.storage.read(doc.storageKey), doc.mimeType);
+    await this.storage.write(key, data);
+    return { key, data };
   }
 
   /** Storage key of the editor's base image; created on demand for documents uploaded with an older preview size. */
   async preview(doc: StoredDocument): Promise<string> {
     const key = derivedKeys.preview(doc.id);
-    if (doc.kind === "image" && !(await this.storage.exists(key))) await this.writePreview(doc.id, await this.loadOriginal(doc));
+    if (doc.kind === "image" && !(await this.storage.exists(key))) await this.storage.write(key, await imageWorker.run("preview", { source: await this.source(doc) }));
     return key;
   }
 
@@ -143,33 +138,41 @@ export class ImagingService {
     return stale.length;
   }
 
-  private async writePreview(id: number, original: JimpImage): Promise<void> {
-    await this.storage.write(derivedKeys.preview(id), await toJpeg(scaleToFit(original.clone() as JimpImage, PREVIEW_SIZE), PREVIEW_JPEG_QUALITY));
+  async renderJpeg(doc: StoredDocument, settings: EditSettings): Promise<Uint8Array<ArrayBuffer>> {
+    return imageWorker.run("renderJpeg", { source: await this.source(doc), settings });
   }
 
-  async renderJpeg(doc: StoredDocument, settings: EditSettings): Promise<Uint8Array<ArrayBuffer>> {
-    const original = await this.loadOriginal(doc);
-    return toJpeg(isDefaultEditSettings(settings) ? original : applyEdits(original, settings));
+  /** The original scaled down for Tesseract's orientation detection, as PNG. */
+  async orientationInput(doc: StoredDocument): Promise<Uint8Array> {
+    return imageWorker.run("orientationInput", { source: await this.source(doc) });
+  }
+
+  /** The original turned by the rotation, for the dewarping model. */
+  async uprightImage(doc: StoredDocument, rotation: Rotation): Promise<RawImage> {
+    return imageWorker.run("upright", { source: await this.source(doc), rotation });
+  }
+
+  /** A smaller copy of the original after rotation and dewarping, for the page segmentation model. */
+  async cropInput(doc: StoredDocument, settings: EditSettings): Promise<RawImage> {
+    return imageWorker.run("cropInput", { source: await this.source(doc), settings });
+  }
+
+  async autoBwVariants(doc: StoredDocument, settings: EditSettings): Promise<BwVariant[]> {
+    return imageWorker.run("autoBw", { source: await this.source(doc), settings });
   }
 
   async renderDerivatives(doc: StoredDocument): Promise<{ width: number; height: number } | null> {
     if (doc.kind === "image") {
-      const original = await this.loadOriginal(doc);
-      if (!(await this.storage.exists(derivedKeys.preview(doc.id)))) await this.writePreview(doc.id, original);
-      const edited = isDefaultEditSettings(doc.editSettings) ? original : applyEdits(original, doc.editSettings);
-      const { width, height } = edited.bitmap;
-      let processed = edited;
-      if (doc.shapes.length > 0 || doc.vectorCount > 0) {
-        await this.storage.write(derivedKeys.edited(doc.id), await toJpeg(edited));
-        processed = edited.clone() as JimpImage;
-        if (doc.vectorCount > 0) await paintVectorAreas(processed.bitmap, this.vectorAreas(doc));
-        drawShapes(processed.bitmap, doc.shapes);
-      } else if (await this.storage.exists(derivedKeys.edited(doc.id))) {
-        await this.storage.delete(derivedKeys.edited(doc.id));
-      }
-      await this.storage.write(derivedKeys.processed(doc.id), await toJpeg(processed));
-      await this.storage.write(derivedKeys.thumbnail(doc.id), await toJpeg(scaleToFit(processed, THUMBNAIL_SIZE), 80));
-      return { width, height };
+      const preview = !(await this.storage.exists(derivedKeys.preview(doc.id)));
+      const vectors = doc.vectorCount > 0 ? this.vectorAreas(doc) : [];
+      const layered = doc.shapes.length > 0 || doc.vectorCount > 0;
+      const images = await imageWorker.run("render", { source: await this.source(doc), settings: doc.editSettings, shapes: doc.shapes, vectors, layered, preview });
+      if (images.preview) await this.storage.write(derivedKeys.preview(doc.id), images.preview);
+      if (images.edited) await this.storage.write(derivedKeys.edited(doc.id), images.edited);
+      else if (await this.storage.exists(derivedKeys.edited(doc.id))) await this.storage.delete(derivedKeys.edited(doc.id));
+      await this.storage.write(derivedKeys.processed(doc.id), images.processed);
+      await this.storage.write(derivedKeys.thumbnail(doc.id), images.thumbnail);
+      return { width: images.width, height: images.height };
     }
     if (doc.kind === "pdf") {
       try {
@@ -210,8 +213,7 @@ export class ImagingService {
     let canvas;
     let painted = false;
     if (quality === "original") {
-      const original = await this.loadOriginal(doc);
-      const { data, width, height } = (isDefaultEditSettings(doc.editSettings) ? original : applyEdits(original, doc.editSettings)).bitmap;
+      const { data, width, height } = await imageWorker.run("edited", { source: await this.source(doc), settings: doc.editSettings });
       canvas = createCanvas(width, height);
       canvas.getContext("2d").putImageData(new ImageData(new Uint8ClampedArray(data.buffer, data.byteOffset, data.length), width, height), 0, 0);
     } else {

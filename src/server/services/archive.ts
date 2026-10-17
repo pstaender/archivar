@@ -1,9 +1,6 @@
 import { basename, extname } from "node:path";
-import { DEFAULT_EDIT_SETTINGS, isDefaultEditSettings, normalizeEditSettings } from "../../shared/editSettings";
-import { autoBwVariants } from "../../shared/image/autoBw";
+import { isDefaultEditSettings, normalizeEditSettings } from "../../shared/editSettings";
 import { quadFromMask } from "../../shared/image/autoCrop";
-import type { JimpImage } from "../../shared/image/jimp";
-import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
 import { normalizeFolderPath } from "../../shared/folders";
 import { isOcrLanguage } from "../../shared/languages";
 import { applyFixedSteps, type PresetSteps } from "../../shared/presets";
@@ -41,10 +38,8 @@ import { type DewarpEngine, toDewarpGrid } from "./dewarp";
 import type { DocumentSegmenter } from "./documentSegmentation";
 import type { OcrEngine, OcrOptions, OcrQueue } from "./ocr";
 
-const ORIENTATION_SIZE = 2000;
 // Tesseract's orientation confidence; pages without enough text stay below this.
 const MIN_ORIENTATION_CONFIDENCE = 2;
-const CROP_ANALYSIS_SIZE = 1024;
 
 export interface UploadOptions {
   folders?: string[];
@@ -301,9 +296,7 @@ export class ArchiveService {
     const doc = this.getDocument(userId, id);
     if (doc.kind !== "image") throw new HttpError(400, "Only images can be dewarped");
     if (!this.dewarp.available()) throw new HttpError(503, "Dewarping model is not installed");
-    let image = await this.imaging.loadOriginal(doc);
-    if (rotation !== 0) image = image.rotate(-rotation) as JimpImage;
-    return toDewarpGrid(await this.dewarp.predict(image.bitmap), rotation);
+    return toDewarpGrid(await this.dewarp.predict(await this.imaging.uprightImage(doc, rotation)), rotation);
   }
 
   /** The edited image as a PDF page with the text (default: the stored OCR text) as a searchable layer. */
@@ -342,14 +335,14 @@ export class ArchiveService {
   async autoBw(userId: number, id: number, settings: Partial<EditSettings> = {}): Promise<BwVariant[]> {
     const doc = this.getDocument(userId, id);
     if (doc.kind !== "image") throw new HttpError(400, "Only images can be edited");
-    return autoBwVariants(await this.imaging.loadOriginal(doc), normalizeEditSettings(settings, doc.editSettings));
+    return this.imaging.autoBwVariants(doc, normalizeEditSettings(settings, doc.editSettings));
   }
 
   /** Rotation of the original that turns its text upright, or null if there is not enough text to tell. */
   async detectOrientation(userId: number, id: number): Promise<Rotation | null> {
     const doc = this.getDocument(userId, id);
     if (doc.kind !== "image") throw new HttpError(400, "Only images can be rotated");
-    return this.orientationOf(await this.imaging.loadOriginal(doc));
+    return this.orientationOf(doc);
   }
 
   autoCropAvailable(): boolean {
@@ -361,12 +354,11 @@ export class ArchiveService {
     const doc = this.getDocument(userId, id);
     if (doc.kind !== "image") throw new HttpError(400, "Only images can be cropped");
     if (!this.segmenter.available()) throw new HttpError(503, "Document segmentation model is not installed");
-    return await this.cropOf(await this.imaging.loadOriginal(doc), normalizeEditSettings(settings, doc.editSettings));
+    return await this.cropOf(doc, normalizeEditSettings(settings, doc.editSettings));
   }
 
-  private async cropOf(original: JimpImage, { rotation, dewarp }: EditSettings): Promise<Quad | null> {
-    const image = applyEdits(scaleToFit(original.clone() as JimpImage, CROP_ANALYSIS_SIZE), { ...DEFAULT_EDIT_SETTINGS, rotation, dewarp }).bitmap;
-    const mask = await this.segmenter.segment(image);
+  private async cropOf(doc: StoredDocument, settings: EditSettings): Promise<Quad | null> {
+    const mask = await this.segmenter.segment(await this.imaging.cropInput(doc, settings));
     return quadFromMask(mask.data, mask.width, mask.height);
   }
 
@@ -378,24 +370,23 @@ export class ArchiveService {
   }
 
   private async presetSettings(doc: StoredDocument, steps: PresetSteps, base: EditSettings): Promise<EditSettings> {
-    const original = await this.imaging.loadOriginal(doc);
     let settings = base;
     const rotate = (rotation: Rotation) => {
       if (rotation !== settings.rotation) settings = { ...settings, rotation, dewarp: null, corners: null };
     };
     if (steps.autoRotate) {
-      const rotation = await this.orientationOf(original).catch((error) => {
+      const rotation = await this.orientationOf(doc).catch((error) => {
         console.warn(`Orientation detection failed for document ${doc.id}:`, error);
         return null;
       });
       if (rotation !== null) rotate(rotation);
     } else if (steps.rotation !== undefined) rotate(steps.rotation);
     if (steps.autoDewarp && this.dewarp.available()) {
-      const upright = settings.rotation === 0 ? original : (original.clone().rotate(-settings.rotation) as JimpImage);
-      settings = { ...settings, dewarp: toDewarpGrid(await this.dewarp.predict(upright.bitmap), settings.rotation), corners: null };
+      const upright = await this.imaging.uprightImage(doc, settings.rotation);
+      settings = { ...settings, dewarp: toDewarpGrid(await this.dewarp.predict(upright), settings.rotation), corners: null };
     }
     if (steps.autoCrop && this.segmenter.available()) {
-      const corners = await this.cropOf(original, settings).catch((error) => {
+      const corners = await this.cropOf(doc, settings).catch((error) => {
         console.warn(`Page detection failed for document ${doc.id}:`, error);
         return null;
       });
@@ -403,7 +394,7 @@ export class ArchiveService {
     }
     settings = applyFixedSteps(settings, steps);
     if (steps.autoBw) {
-      const [best] = autoBwVariants(original, settings);
+      const [best] = await this.imaging.autoBwVariants(doc, settings);
       if (best) settings = { ...settings, ...best, colorMode: "bw" };
     }
     return normalizeEditSettings(settings);
@@ -420,9 +411,8 @@ export class ArchiveService {
     }
   }
 
-  private async orientationOf(original: JimpImage): Promise<Rotation | null> {
-    const image = scaleToFit(original.clone() as JimpImage, ORIENTATION_SIZE);
-    const orientation = await this.ocrEngine.detectOrientation(new Uint8Array(await image.getBuffer("image/png")));
+  private async orientationOf(doc: StoredDocument): Promise<Rotation | null> {
+    const orientation = await this.ocrEngine.detectOrientation(await this.imaging.orientationInput(doc));
     return orientation && orientation.confidence >= MIN_ORIENTATION_CONFIDENCE ? orientation.rotation : null;
   }
 
