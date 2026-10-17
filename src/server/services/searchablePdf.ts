@@ -17,6 +17,9 @@ import {
   TextRenderingMode,
 } from "pdf-lib";
 import type { PdfImageQuality } from "../../shared/settings";
+import type { Shape } from "../../shared/shapes";
+import type { VectorArea } from "../../vectorizer";
+import { pdfColor, vectorAreasPdfOperators } from "../../vectorizer/server/pdf";
 import type { OcrLayout } from "../db/documents";
 import { HttpError } from "../http";
 import { type PdfImage, preparePdfImage } from "./pdfImage";
@@ -31,9 +34,17 @@ const FALLBACK_MAX_LINE = 0.04;
 
 type Box = OcrLayout["lines"][number]["box"];
 
+/** Vector areas drawn as vectors over the image (`width` × `height` pixels), with the shapes on top of them. */
+export interface PdfOverlay {
+  width: number;
+  height: number;
+  vectors: VectorArea[];
+  shapes: Shape[];
+}
+
 export type PdfPart =
   /** `bilevel` for black-and-white images, which are stored as lossless 1-bit images when downscaled. */
-  | { kind: "image"; jpeg: Uint8Array; bilevel: boolean; text: string; layout: OcrLayout | null }
+  | { kind: "image"; jpeg: Uint8Array; bilevel: boolean; text: string; layout: OcrLayout | null; overlay?: PdfOverlay | null }
   /** An uploaded PDF; all its pages are copied as they are. */
   | { kind: "pdf"; name: string; data: Uint8Array };
 
@@ -68,8 +79,9 @@ async function appendPdf(pdf: PDFDocument, { name, data }: Extract<PdfPart, { ki
   for (const page of await pdf.copyPages(source, source.getPageIndices())) pdf.addPage(page);
 }
 
-async function addImagePage(pdf: PDFDocument, font: PDFFont, { text, layout }: Extract<PdfPart, { kind: "image" }>, image: PdfImage) {
+async function addImagePage(pdf: PDFDocument, font: PDFFont, { text, layout, overlay }: Extract<PdfPart, { kind: "image" }>, image: PdfImage) {
   const page = image.kind === "jpeg" ? await addJpegPage(pdf, image.data) : addBilevelPage(pdf, image);
+  if (overlay) drawOverlay(pdf, page, overlay);
 
   const lines = text
     .split("\n")
@@ -107,6 +119,17 @@ function addBilevelPage(pdf: PDFDocument, { width, height, data }: Extract<PdfIm
   const name = page.node.newXObject("Image", pdf.context.register(stream));
   page.pushOperators(pushGraphicsState(), concatTransformationMatrix(page.getWidth(), 0, 0, page.getHeight(), 0, 0), drawObject(name), popGraphicsState());
   return page;
+}
+
+function drawOverlay(pdf: PDFDocument, page: PDFPage, { width, height, vectors, shapes }: PdfOverlay) {
+  const pageWidth = page.getWidth();
+  const pageHeight = page.getHeight();
+  // The image has the shapes painted in already, but the vectors would cover those that overlap them.
+  const rects = shapes.map(
+    (s) => `q ${pdfColor(s.color)} rg ${s.x * pageWidth} ${(1 - s.y - s.height) * pageHeight} ${s.width * pageWidth} ${s.height * pageHeight} re f Q`,
+  );
+  const content = [vectorAreasPdfOperators(vectors, width, height, pageWidth, pageHeight), ...rects].join("\n");
+  page.node.addContentStream(pdf.context.register(pdf.context.flateStream(content)));
 }
 
 function evenBoxes(count: number): Box[] {

@@ -5,7 +5,7 @@ import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
 import { PREVIEW_SIZE } from "../../shared/preview";
 import { drawShapes } from "../../shared/shapes";
 import type { VectorArea } from "../../vectorizer";
-import { paintVectorAreas } from "../../vectorizer/server/paint";
+import { blankVectorAreas, paintVectorAreas } from "../../vectorizer/server/paint";
 import type { DocumentKind, EditSettings } from "../../shared/types";
 import { convertibleTypeForExtension } from "../../shared/uploads";
 import type { StoredDocument } from "../db/documents";
@@ -194,6 +194,33 @@ export class ImagingService {
     const key = derivedKeys.processed(doc.id);
     if (!(await this.storage.exists(key))) await this.renderDerivatives(doc);
     return this.storage.read(key);
+  }
+
+  /**
+   * The image for the PDF export. Vectorized areas are left blank (their background color), as the PDF draws them as
+   * vectors on top, which also lets the image compress better; shapes are painted as usual.
+   */
+  async pdfImage(doc: StoredDocument): Promise<{ jpeg: Uint8Array; width: number; height: number; vectors: VectorArea[] }> {
+    const vectors = doc.vectorCount > 0 ? this.vectorAreas(doc) : [];
+    if (vectors.length === 0) {
+      const jpeg = await this.processedJpeg(doc);
+      return { jpeg, width: 0, height: 0, vectors };
+    }
+    // Canvas instead of Jimp: jpeg-js refuses to decode large scans with its default memory limit.
+    const { createCanvas, loadImage } = await import("@napi-rs/canvas");
+    const image = await loadImage(Buffer.from(await this.storage.read(await this.editedKey(doc))));
+    const { width, height } = image;
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(image, 0, 0);
+    blankVectorAreas(ctx, vectors, width, height);
+    for (const shape of doc.shapes) {
+      ctx.fillStyle = shape.color;
+      const x = Math.round(shape.x * width);
+      const y = Math.round(shape.y * height);
+      ctx.fillRect(x, y, Math.round((shape.x + shape.width) * width) - x, Math.round((shape.y + shape.height) * height) - y);
+    }
+    return { jpeg: await canvas.encode("jpeg", JPEG_QUALITY), width, height, vectors };
   }
 
   async ocrImages(doc: StoredDocument): Promise<OcrImage[]> {

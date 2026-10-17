@@ -301,10 +301,11 @@ export class ArchiveService {
 
   private async pdfPart(userId: number, doc: StoredDocument, text?: string): Promise<PdfPart> {
     if (doc.kind === "pdf") return { kind: "pdf", name: doc.originalName, data: await this.storage.read(doc.storageKey) };
-    const jpeg = await this.imaging.processedJpeg(doc);
+    const { jpeg, width, height, vectors } = await this.imaging.pdfImage(doc);
     const layout = this.documents.getOcrLayout(userId, doc.id);
     const current = layout && JSON.stringify(layout.editSettings) === JSON.stringify(doc.editSettings) ? layout : null;
-    return { kind: "image", jpeg, bilevel: doc.editSettings.colorMode === "bw", text: text ?? doc.ocrText, layout: current };
+    const overlay = vectors.length > 0 ? { width, height, vectors, shapes: doc.shapes } : null;
+    return { kind: "image", jpeg, bilevel: doc.editSettings.colorMode === "bw", text: text ?? doc.ocrText, layout: current, overlay };
   }
 
   async autoBw(userId: number, id: number, settings: Partial<EditSettings> = {}): Promise<BwVariant[]> {

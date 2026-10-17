@@ -7,6 +7,16 @@ interface Bitmap {
   height: number;
 }
 
+/** Fills each vectorized area with its background color, for images the graphics are drawn onto as vectors. */
+export function blankVectorAreas(ctx: { fillStyle: unknown; fillRect(x: number, y: number, w: number, h: number): void }, areas: VectorArea[], width: number, height: number): void {
+  for (const area of areas) {
+    if (!area.graphic) continue;
+    const rect = areaPixels(area, width, height);
+    ctx.fillStyle = area.graphic.background;
+    ctx.fillRect(rect.left, rect.top, rect.width, rect.height);
+  }
+}
+
 /** Replaces the pixels of each vectorized area with its graphic, rendered at the area's size in the bitmap. */
 export async function paintVectorAreas(bitmap: Bitmap, areas: VectorArea[]): Promise<void> {
   const { createCanvas, Path2D } = await import("@napi-rs/canvas");

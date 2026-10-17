@@ -8,6 +8,7 @@ import type { ArchiveDocument, EditSettings, Folder, LibraryItem, Quad, StackWit
 import { getDocumentProxy } from "unpdf";
 import { makePdf } from "../../test/pdf";
 import { OCR_TIMEOUT_MESSAGE } from "./services/ocr";
+import { renderPdfPage } from "./services/pdf";
 import { derivedKeys } from "./storage";
 import { makeJpeg, startTestServer, type TestServer, uploadForm } from "../../test/server";
 
@@ -1337,6 +1338,46 @@ describe("vectors", () => {
     await put(doc.id, { areas: [area] });
     await server.ctx.ocr.idle();
     expect(server.ocr.calls).toBe(2);
+  });
+
+  test("are exported to the PDF as vectors over an image whose areas are left blank", async () => {
+    const doc = await uploadImage();
+    await put(doc.id, { areas: [area] });
+    await patch(`/api/documents/${doc.id}`, { shapes: [{ id: "s", type: "rect", x: 0, y: 0, width: 1, height: 0.25, color: "#ffffff" }] });
+
+    const raster = await server.ctx.imaging.pdfImage(server.ctx.documents.getById(doc.id)!);
+    expect([raster.width, raster.height]).toEqual([64, 48]);
+    expect(isWhite(await pixelOf(raster.jpeg, 5, 30))).toBe(true);
+    expect(isWhite(await pixelOf(raster.jpeg, 50, 30))).toBe(false);
+
+    const res = await post(`/api/documents/${doc.id}/pdf`, {});
+    expect(res.status).toBe(200);
+    const page = await Jimp.read(Buffer.from(await renderPdfPage(new Uint8Array(await res.arrayBuffer()), 1, 1)));
+    const at = (x: number, y: number) => page.getPixelColor(Math.round(x * page.bitmap.width), Math.round(y * page.bitmap.height)) >>> 8;
+    expect(isDark(at(0.1, 0.6))).toBe(true);
+    expect(isWhite(at(0.4, 0.6))).toBe(true);
+    expect(isWhite(at(0.1, 0.1))).toBe(true);
+    expect(isWhite(at(0.8, 0.6))).toBe(false);
+  });
+
+  test("are exported to the PDF as vectors over an image whose areas are left blank", async () => {
+    const doc = await uploadImage();
+    await put(doc.id, { areas: [area] });
+    await patch(`/api/documents/${doc.id}`, { shapes: [{ id: "s", type: "rect", x: 0, y: 0, width: 1, height: 0.25, color: "#ffffff" }] });
+
+    const raster = await server.ctx.imaging.pdfImage(server.ctx.documents.getById(doc.id)!);
+    expect([raster.width, raster.height]).toEqual([64, 48]);
+    expect(isWhite(await pixelOf(raster.jpeg, 5, 30))).toBe(true);
+    expect(isWhite(await pixelOf(raster.jpeg, 50, 30))).toBe(false);
+
+    const res = await post(`/api/documents/${doc.id}/pdf`, {});
+    expect(res.status).toBe(200);
+    const page = await Jimp.read(Buffer.from(await renderPdfPage(new Uint8Array(await res.arrayBuffer()), 1, 1)));
+    const at = (x: number, y: number) => page.getPixelColor(Math.round(x * page.bitmap.width), Math.round(y * page.bitmap.height)) >>> 8;
+    expect(isDark(at(0.1, 0.6))).toBe(true);
+    expect(isWhite(at(0.4, 0.6))).toBe(true);
+    expect(isWhite(at(0.1, 0.1))).toBe(true);
+    expect(isWhite(at(0.8, 0.6))).toBe(false);
   });
 
   test("are marked as outdated when the geometry changes afterwards", async () => {
