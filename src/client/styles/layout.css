@@ -1063,6 +1063,56 @@ a.folder-tree__row .folder-tree__toggle {
   }
 }
 
+.shape-overlay {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.shape {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  outline: 1px dashed rgb(128 128 128 / 0.8);
+  cursor: move;
+  touch-action: none;
+
+  &.is-selected,
+  &:focus-visible {
+    outline: var(--border-size) solid var(--color-focus);
+    outline-offset: 1px;
+    box-shadow: 0 0 0 4px rgb(255 255 255 / 0.8);
+  }
+}
+
+.shape__handle {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  touch-action: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border: var(--border-size) solid #18181b;
+    border-radius: var(--radius-full);
+    background: #fff;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+  }
+}
+
+.shape__handle--nw { left: 0; top: 0; cursor: nwse-resize; }
+.shape__handle--n { left: 50%; top: 0; cursor: ns-resize; }
+.shape__handle--ne { left: 100%; top: 0; cursor: nesw-resize; }
+.shape__handle--e { left: 100%; top: 50%; cursor: ew-resize; }
+.shape__handle--se { left: 100%; top: 100%; cursor: nwse-resize; }
+.shape__handle--s { left: 50%; top: 100%; cursor: ns-resize; }
+.shape__handle--sw { left: 0; top: 100%; cursor: nesw-resize; }
+.shape__handle--w { left: 0; top: 50%; cursor: ew-resize; }
+
 @media (max-width: 1100px) {
   .document-layout {
     grid-template-columns: minmax(0, 1fr);

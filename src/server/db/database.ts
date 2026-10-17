@@ -137,6 +137,7 @@ const migrations: string[] = [
   ALTER TABLE job_items ADD COLUMN finished_at TEXT;
   ALTER TABLE job_items ADD COLUMN ocr_finished_at TEXT;
   `,
+  `ALTER TABLE documents ADD COLUMN shapes TEXT;`,
 ];
 
 export function migrate(db: Database): void {

@@ -174,7 +174,7 @@ export const api = {
   deleteFolder: (id: number) => request<void>(`/api/folders/${id}`, { method: "DELETE" }),
 };
 
-export type DocumentAsset = "file" | "preview" | "image" | "thumbnail";
+export type DocumentAsset = "file" | "preview" | "image" | "edited" | "thumbnail";
 
 export function assetUrl(doc: Pick<ArchiveDocument, "id" | "updatedAt">, asset: DocumentAsset): string {
   const version = encodeURIComponent(doc.updatedAt);

@@ -29,6 +29,7 @@ import type {
 import { type DocumentRepository, type StoredDocument, toPublicDocument } from "../db/documents";
 import type { FolderRepository } from "../db/folders";
 import type { StackRepository } from "../db/stacks";
+import { normalizeShapes, shapeGeometry } from "../../shared/shapes";
 import { HttpError } from "../http";
 import { derivedKeys, type FileStorage } from "../storage";
 import { extensionFor, type ImagingService } from "./imaging";
@@ -180,14 +181,26 @@ export class ArchiveService {
       if (doc.kind !== "image") throw new HttpError(400, "Only images can be edited");
       fields.editSettings = normalizeEditSettings(update.editSettings, doc.editSettings);
     }
+    if (update.shapes !== undefined) {
+      if (doc.kind !== "image") throw new HttpError(400, "Only images can have shapes");
+      if (!Array.isArray(update.shapes)) throw new HttpError(400, "shapes must be a list");
+      const shapes = normalizeShapes(update.shapes);
+      fields.shapes = shapes.length > 0 ? { shapes, geometry: shapeGeometry(fields.editSettings ?? doc.editSettings) } : null;
+    }
     if (Array.isArray(update.folders)) this.folders.setForDocument(userId, id, update.folders.map(String));
 
+    const shapesChanged = fields.shapes !== undefined && JSON.stringify(fields.shapes?.shapes ?? []) !== JSON.stringify(doc.shapes);
     let updated = this.documents.update(userId, id, fields)!;
-    if (fields.editSettings) {
+    if (fields.editSettings || shapesChanged) {
       const size = await this.imaging.renderDerivatives(updated);
       if (size) updated = this.documents.update(userId, id, size)!;
     }
     if (updated.stackId !== null) this.stacks.touch(updated.stackId);
+    // Text under the shapes (e.g. blacked out) must disappear from the recognized text, the search and PDF exports.
+    if (shapesChanged && updated.ocrStatus !== "none") {
+      this.ocr.enqueue(id, { allText: updated.ocrAllText });
+      updated = this.documents.get(userId, id)!;
+    }
     return toPublicDocument(updated);
   }
 

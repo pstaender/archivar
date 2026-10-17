@@ -4,6 +4,7 @@ Archive photos, scans, documents and PDFs in the browser – on desktop and on t
 
 - Upload one or many files via button or drag & drop, or take a photo with the phone camera
 - Edit images: crop, perspective correction, rotation, brightness, contrast, saturation, hue, grayscale (with Photoshop-like channel sliders per hue), black & white, noise removal, auto levels – with live preview
+- "Formen": draw filled rectangles on an image (e.g. to black out parts or paint over scan dirt with white); they can be moved, resized, recoloured and deleted, stay editable and are painted onto the edited image. Saving changed shapes recognizes the text again
 - "Entrauschen" with [OpenCV.js](https://docs.opencv.org/4.x/d5/d10/tutorial_js_root.html): edge-preserving smoothing (bilateral filter) and, in black & white, removal of isolated specks; clicking again increases the strength (Leicht, Mittel, Stark, Aus)
 - "Auto-Drehen" turns photos upright using Tesseract's orientation detection; "Auto-Zuschnitt" finds the page or photo outline with OpenCV and crops (or straightens) it. Uploads with OCR are turned upright automatically
 - Automatic dewarping of curved/bent pages with [UVDoc](https://github.com/tanguymagne/UVDoc), running server-side via ONNX Runtime
@@ -63,7 +64,7 @@ Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install i
 | GET    | `/api/documents?folder=&q=&stackId=`| Documents                                     |
 | POST   | `/api/documents`                    | Upload (`multipart`: `files[]`, `folders`, `stackId`, `ocr`, `ocrAllText`; left-out OCR fields follow the user's settings) |
 | GET    | `/api/documents/:id`                | Document                                      |
-| PATCH  | `/api/documents/:id`                | Update `title`, `editSettings`, `ocrText`, `folders` |
+| PATCH  | `/api/documents/:id`                | Update `title`, `editSettings`, `shapes` (rectangles `{ id, type: "rect", x, y, width, height, color }`, relative 0..1), `ocrText`, `folders` |
 | DELETE | `/api/documents/:id`                | Delete document and files                     |
 | POST   | `/api/documents/:id/ocr`            | Queue OCR; `{ allText: true }` keeps unsure text parts, `{ languages: ["fra"] }` sets the recognition languages (`null`: default) |
 | POST   | `/api/documents/:id/dewarp`         | Predict UVDoc grid for `{ rotation }` (store it via `editSettings.dewarp`) |
@@ -73,7 +74,7 @@ Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install i
 | POST   | `/api/documents/:id/render`         | Full-resolution JPEG of unsaved `{ editSettings }` (not stored) |
 | POST   | `/api/documents/:id/pdf`            | Searchable PDF of the edited image with `{ text }` (default: stored OCR text) |
 | POST   | `/api/export/pdf`                   | One PDF of `{ documentIds, title? }` in order (images as searchable pages, PDF pages copied, other files left out) |
-| GET    | `/api/documents/:id/{file,preview,image,thumbnail}` | Original, editor preview, edited image, thumbnail |
+| GET    | `/api/documents/:id/{file,preview,image,edited,thumbnail}` | Original, editor preview, edited image (with shapes), edited image without shapes, thumbnail |
 | GET    | `/api/stacks`                       | Stacks                                        |
 | POST   | `/api/stacks`                       | Create from `documentIds`                     |
 | GET    | `/api/stacks/:id`                   | Stack with documents                          |

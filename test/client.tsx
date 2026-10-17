@@ -73,6 +73,8 @@ export function makeDocument(overrides: Partial<ArchiveDocument> = {}): ArchiveD
     stackId: null,
     stackPosition: 0,
     editSettings: { ...DEFAULT_EDIT_SETTINGS },
+    shapes: [],
+    shapesOutdated: false,
     ocrText: "",
     ocrStatus: "none",
     ocrConfidence: null,

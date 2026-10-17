@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
 import { languageName, OCR_LANGUAGES } from "../../shared/languages";
 import { type PresetSteps, presetStepsFromSettings } from "../../shared/presets";
+import { SHAPE_COLORS, type Shape } from "../../shared/shapes";
 import type { ArchiveDocument, BwVariant, EditSettings, Quad, Rotation } from "../../shared/types";
 import { api, assetUrl, type OcrRequest } from "../api";
 import { saveBlob } from "../download";
@@ -17,6 +18,7 @@ import { ZoomableImage } from "../components/ZoomableImage";
 import { type AutoBwState, EditControls } from "../editor/EditControls";
 import { type GeometryMode, withRotation } from "../editor/geometry";
 import { ImageEditor } from "../editor/ImageEditor";
+import { ShapeCanvas, ShapeControls } from "../editor/ShapeEditor";
 import { useProcessedPreview } from "../editor/useProcessedPreview";
 import { isAxisAlignedRect } from "../../shared/image/perspective";
 import { useConfig } from "../hooks/config";
@@ -29,7 +31,9 @@ import { useToast } from "../hooks/toast";
 import { useResource } from "../hooks/useResource";
 import { documentLabel, formatBytes, formatDateTime, isOcrBusy, OCR_STATUS_LABEL } from "../format";
 
-type Tab = "edit" | "text" | "details";
+type Tab = "edit" | "text" | "shapes" | "details";
+
+const IMAGE_TABS: Tab[] = ["edit", "shapes"];
 
 const OCR_POLL_INTERVAL = 2000;
 
@@ -80,6 +84,10 @@ export function DocumentPage() {
   const [draft, setDraft] = useState<EditSettings>(DEFAULT_EDIT_SETTINGS);
   const [mode, setMode] = useState<GeometryMode>("none");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [shapes, setShapes] = useState<Shape[]>([]);
+  const [selectedShape, setSelectedShape] = useState<string | null>(null);
+  const [shapeColor, setShapeColor] = useState(SHAPE_COLORS[0]!.color);
+  const [savingShapes, setSavingShapes] = useState(false);
   const processed = useProcessedPreview(doc?.id, draft, toast.error);
   const saving = useEditSaving(doc?.id);
 
@@ -89,16 +97,19 @@ export function DocumentPage() {
     setMode("none");
     setBwCache(null);
     setAutoValues({});
+    setShapes(doc.shapes);
+    setSelectedShape(null);
   }, [doc?.id]);
 
   useEffect(() => {
-    if (doc) setTab((current) => (current === "edit" && doc.kind !== "image" ? "text" : current));
+    if (doc) setTab((current) => (IMAGE_TABS.includes(current) && doc.kind !== "image" ? "text" : current));
   }, [doc?.kind]);
 
   usePolling(Boolean(doc && isOcrBusy(doc)), resource.refresh, OCR_POLL_INTERVAL);
 
   const dirty = useMemo(() => doc !== undefined && JSON.stringify(draft) !== JSON.stringify(doc.editSettings), [draft, doc]);
-  const leave = useLeaveGuard(dirty);
+  const shapesDirty = useMemo(() => doc !== undefined && JSON.stringify(shapes) !== JSON.stringify(doc.shapes), [shapes, doc]);
+  const leave = useLeaveGuard(dirty || shapesDirty);
 
   if (resource.error) {
     return (
@@ -147,7 +158,28 @@ export function DocumentPage() {
     );
   };
 
-  const selectTab = (next: Tab) => (tab === "edit" && next !== tab ? leave.guard(() => setTab(next)) : setTab(next));
+  const saveShapes = async () => {
+    setSavingShapes(true);
+    try {
+      const updated = await api.updateDocument(doc.id, { shapes });
+      resource.setData(updated);
+      setShapes(updated.shapes);
+      setSelectedShape((current) => (updated.shapes.some((s) => s.id === current) ? current : null));
+      toast.success(updated.ocrStatus === "pending" ? "Formen gespeichert – Text wird neu erkannt" : "Formen gespeichert");
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setSavingShapes(false);
+    }
+  };
+
+  const discardShapes = () => {
+    setShapes(doc.shapes);
+    setSelectedShape(null);
+  };
+
+  const unsavedIn = (current: Tab) => (current === "edit" && dirty) || (current === "shapes" && shapesDirty);
+  const selectTab = (next: Tab) => (next !== tab && unsavedIn(tab) ? leave.guard(() => setTab(next)) : setTab(next));
 
   const autoDewarp = async () => {
     setDewarping(true);
@@ -342,14 +374,26 @@ export function DocumentPage() {
 
       <div className="document-layout">
         <div className="viewer">
-          <Viewer
-            doc={doc}
-            editing={tab === "edit"}
-            draft={draft}
-            mode={mode}
-            onCornersChange={(corners) => setDraft({ ...draft, corners })}
-            processed={processed}
-          />
+          {tab === "shapes" && doc.kind === "image" ? (
+            <ShapeCanvas
+              src={assetUrl(doc, "edited")}
+              alt={documentLabel(doc)}
+              shapes={shapes}
+              selected={selectedShape}
+              color={shapeColor}
+              onChange={setShapes}
+              onSelect={setSelectedShape}
+            />
+          ) : (
+            <Viewer
+              doc={doc}
+              editing={tab === "edit"}
+              draft={draft}
+              mode={mode}
+              onCornersChange={(corners) => setDraft({ ...draft, corners })}
+              processed={processed}
+            />
+          )}
         </div>
 
         <aside className="panel">
@@ -362,6 +406,11 @@ export function DocumentPage() {
             <TabButton tab="text" current={tab} onSelect={selectTab}>
               Text
             </TabButton>
+            {doc.kind === "image" && (
+              <TabButton tab="shapes" current={tab} onSelect={selectTab}>
+                Formen
+              </TabButton>
+            )}
             <TabButton tab="details" current={tab} onSelect={selectTab}>
               Details
             </TabButton>
@@ -434,6 +483,22 @@ export function DocumentPage() {
               </>
             )}
             {tab === "text" && <TextPanel doc={doc} onRunOcr={runOcr} onSave={(ocrText) => update({ ocrText })} />}
+            {tab === "shapes" && doc.kind === "image" && (
+              <ShapeControls
+                shapes={shapes}
+                selected={selectedShape}
+                color={shapeColor}
+                outdated={doc.shapesOutdated}
+                hasText={doc.ocrStatus !== "none"}
+                dirty={shapesDirty}
+                saving={savingShapes}
+                onColorChange={setShapeColor}
+                onChange={setShapes}
+                onSelect={setSelectedShape}
+                onSave={() => void saveShapes()}
+                onDiscard={discardShapes}
+              />
+            )}
             {tab === "details" && <DetailsPanel doc={doc} onFoldersChange={(folders) => update({ folders })} />}
           </div>
         </aside>
@@ -460,12 +525,14 @@ export function DocumentPage() {
       <UnsavedChangesDialog
         open={leave.asking}
         onSave={() => {
-          save();
+          if (dirty) save();
+          if (shapesDirty) void saveShapes();
           leave.proceed();
         }}
         onDiscard={() => {
           setDraft(doc.editSettings);
           setMode("none");
+          discardShapes();
           leave.proceed();
         }}
         onStay={leave.stay}

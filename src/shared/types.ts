@@ -1,3 +1,4 @@
+import type { Shape } from "./shapes";
 export interface Point {
   x: number;
   y: number;
@@ -76,6 +77,10 @@ export interface ArchiveDocument {
   stackId: number | null;
   stackPosition: number;
   editSettings: EditSettings;
+  /** Drawn onto the edited image (only images). */
+  shapes: Shape[];
+  /** Rotation, crop or dewarping changed after the shapes were drawn, so they may no longer cover the same content. */
+  shapesOutdated: boolean;
   ocrText: string;
   ocrStatus: OcrStatus;
   ocrConfidence: number | null;
@@ -120,6 +125,7 @@ export type LibraryItem =
 export interface DocumentUpdate {
   title?: string;
   editSettings?: Partial<EditSettings>;
+  shapes?: Shape[];
   ocrText?: string;
   folders?: string[];
 }

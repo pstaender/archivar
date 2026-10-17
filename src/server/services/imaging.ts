@@ -3,6 +3,7 @@ import { isDefaultEditSettings } from "../../shared/editSettings";
 import { isEditableImageType, Jimp, type JimpImage } from "../../shared/image/jimp";
 import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
 import { PREVIEW_SIZE } from "../../shared/preview";
+import { drawShapes } from "../../shared/shapes";
 import type { DocumentKind, EditSettings } from "../../shared/types";
 import { convertibleTypeForExtension } from "../../shared/uploads";
 import type { StoredDocument } from "../db/documents";
@@ -150,8 +151,16 @@ export class ImagingService {
     if (doc.kind === "image") {
       const original = await this.loadOriginal(doc);
       if (!(await this.storage.exists(derivedKeys.preview(doc.id)))) await this.writePreview(doc.id, original);
-      const processed = isDefaultEditSettings(doc.editSettings) ? original : applyEdits(original, doc.editSettings);
-      const { width, height } = processed.bitmap;
+      const edited = isDefaultEditSettings(doc.editSettings) ? original : applyEdits(original, doc.editSettings);
+      const { width, height } = edited.bitmap;
+      let processed = edited;
+      if (doc.shapes.length > 0) {
+        await this.storage.write(derivedKeys.edited(doc.id), await toJpeg(edited));
+        processed = edited.clone() as JimpImage;
+        drawShapes(processed.bitmap, doc.shapes);
+      } else if (await this.storage.exists(derivedKeys.edited(doc.id))) {
+        await this.storage.delete(derivedKeys.edited(doc.id));
+      }
       await this.storage.write(derivedKeys.processed(doc.id), await toJpeg(processed));
       await this.storage.write(derivedKeys.thumbnail(doc.id), await toJpeg(scaleToFit(processed, THUMBNAIL_SIZE), 80));
       return { width, height };
@@ -166,6 +175,14 @@ export class ImagingService {
       }
     }
     return null;
+  }
+
+  /** Storage key of the edited image without shapes, which the shapes are drawn on in the editor. */
+  async editedKey(doc: StoredDocument): Promise<string> {
+    if (doc.shapes.length === 0) return derivedKeys.processed(doc.id);
+    const key = derivedKeys.edited(doc.id);
+    if (!(await this.storage.exists(key))) await this.renderDerivatives(doc);
+    return key;
   }
 
   /** The edited image in full resolution. */

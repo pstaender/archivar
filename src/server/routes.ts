@@ -245,6 +245,13 @@ export function createApiRoutes(ctx: AppContext) {
       }),
     },
 
+    "/api/documents/:id/edited": {
+      GET: handle(async (req: Req) => {
+        const doc = archive.getDocument(userId(req), parseId(req.params.id));
+        return serveFile(ctx.storage.file(await ctx.imaging.editedKey(doc)), "image/jpeg");
+      }),
+    },
+
     "/api/documents/:id/thumbnail": {
       GET: handle((req: Req) => {
         const doc = archive.getDocument(userId(req), parseId(req.params.id));

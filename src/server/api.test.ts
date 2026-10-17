@@ -1156,3 +1156,71 @@ describe("API tokens", () => {
     expect(explicit!.ocrStatus).toBe("none");
   });
 });
+
+describe("shapes", () => {
+  const black = { id: "a", type: "rect" as const, x: 0, y: 0, width: 0.5, height: 1, color: "#000000" };
+  const pixel = async (id: number, asset: string, x: number, y: number) => {
+    const image = await Jimp.read(Buffer.from(await (await server.api(`/api/documents/${id}/${asset}`)).arrayBuffer()));
+    return image.getPixelColor(x, y) >>> 8;
+  };
+  const isDark = (rgb: number) => ((rgb >> 16) & 0xff) < 40 && ((rgb >> 8) & 0xff) < 40 && (rgb & 0xff) < 40;
+
+  test("are drawn onto the edited image and kept for editing", async () => {
+    const doc = await uploadImage();
+    const res = await patch(`/api/documents/${doc.id}`, { shapes: [black, { ...black, id: "b", color: "nope" }] });
+    expect(res.status).toBe(200);
+    const updated = (await res.json()) as ArchiveDocument;
+    expect(updated.shapes).toEqual([black]);
+    expect(updated.shapesOutdated).toBe(false);
+    expect(isDark(await pixel(doc.id, "image", 10, 20))).toBe(true);
+    expect(isDark(await pixel(doc.id, "image", 50, 20))).toBe(false);
+    expect(isDark(await pixel(doc.id, "thumbnail", 10, 20))).toBe(true);
+    // The editor draws on the image without them.
+    expect(isDark(await pixel(doc.id, "edited", 10, 20))).toBe(false);
+
+    const removed = (await (await patch(`/api/documents/${doc.id}`, { shapes: [] })).json()) as ArchiveDocument;
+    expect(removed.shapes).toEqual([]);
+    expect(isDark(await pixel(doc.id, "image", 10, 20))).toBe(false);
+    expect(await server.ctx.storage.exists(derivedKeys.edited(doc.id))).toBe(false);
+  });
+
+  test("recognize the text again when they change and the image had text", async () => {
+    const plain = await uploadImage("ohne.jpg");
+    await patch(`/api/documents/${plain.id}`, { shapes: [black] });
+    await server.ctx.ocr.idle();
+    expect(server.ocr.calls).toBe(0);
+
+    const doc = await uploadImage("mit.jpg", { ocr: "true", ocrAllText: "true" });
+    await server.ctx.ocr.idle();
+    const saved = (await (await patch(`/api/documents/${doc.id}`, { shapes: [black] })).json()) as ArchiveDocument;
+    expect(saved.ocrStatus).toBe("pending");
+    await server.ctx.ocr.idle();
+    expect(server.ocr.calls).toBe(2);
+    expect(server.ctx.documents.getById(doc.id)?.ocrAllText).toBe(true);
+    // The recognized image has the shapes on it.
+    const recognized = await Jimp.read(Buffer.from(server.ocr.images[1]!));
+    expect(isDark(recognized.getPixelColor(10, 20) >>> 8)).toBe(true);
+
+    await patch(`/api/documents/${doc.id}`, { shapes: [black], title: "gleich" });
+    await server.ctx.ocr.idle();
+    expect(server.ocr.calls).toBe(2);
+  });
+
+  test("are marked as outdated when the geometry changes afterwards", async () => {
+    const doc = await uploadImage();
+    await patch(`/api/documents/${doc.id}`, { shapes: [black] });
+    const toned = (await (await patch(`/api/documents/${doc.id}`, { editSettings: { brightness: 0.2 } })).json()) as ArchiveDocument;
+    expect(toned.shapesOutdated).toBe(false);
+    const rotated = (await (await patch(`/api/documents/${doc.id}`, { editSettings: { rotation: 90 } })).json()) as ArchiveDocument;
+    expect(rotated).toMatchObject({ shapes: [black], shapesOutdated: true });
+    const redrawn = (await (await patch(`/api/documents/${doc.id}`, { shapes: [{ ...black, width: 0.4 }] })).json()) as ArchiveDocument;
+    expect(redrawn.shapesOutdated).toBe(false);
+  });
+
+  test("only exist for images", async () => {
+    const [pdf] = await upload([{ name: "a.pdf", data: makePdf("Hallo"), type: "application/pdf" }]);
+    expect((await patch(`/api/documents/${pdf!.id}`, { shapes: [black] })).status).toBe(400);
+    const doc = await uploadImage();
+    expect((await patch(`/api/documents/${doc.id}`, { shapes: "x" })).status).toBe(400);
+  });
+});
