@@ -27,6 +27,11 @@ function createIcon(data: IconData, name: string) {
   return Icon;
 }
 
+/** Strokes are thickened by the inverse of the scale, so they match the other icons. */
+function scaled({ body }: IconData, x: number, y: number, scale: number): string {
+  return `<g transform="translate(${x} ${y}) scale(${scale})">${body.replaceAll('stroke-width="2"', `stroke-width="${(2 / scale).toFixed(2)}"`)}</g>`;
+}
+
 export const AutoCrop = createIcon(keyline("scan-search"), "AutoCrop");
 export const AutoRotate = createIcon(keyline("refresh-cw-sparkles"), "AutoRotate");
 export const ArrowLeft = createIcon(keyline("arrow-left"), "ArrowLeft");
@@ -66,6 +71,11 @@ export const RotateCw = createIcon(keyline("rotate-cw"), "RotateCw");
 export const Scan = createIcon(keyline("scan"), "Scan");
 export const ScanText = createIcon(keyline("scan-text"), "ScanText");
 export const SavePlus = createIcon(keyline("save-plus"), "SavePlus");
+// Keyline has no stacked layers with sparkles, so they are put together from two icons.
+export const SmartStackIcon = createIcon(
+  { viewBox: "0 0 24 24", body: scaled(keyline("layers"), 0, 5, 0.78) + scaled(keyline("sparkle"), 14.2, -0.6, 0.42) },
+  "SmartStackIcon",
+);
 export const SquareCheck = createIcon(keyline("square-check"), "SquareCheck");
 export const Search = createIcon(keyline("search"), "Search");
 export const Settings = createIcon(keyline("settings"), "Settings");

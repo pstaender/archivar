@@ -19,12 +19,16 @@ const MAX_UPLOAD_GAP_MS = 2 * 60_000;
 
 const baseName = (doc: ArchiveDocument) => (doc.title.trim() || doc.originalName.replace(/\.[^.]+$/, "")).trim();
 
-/** „Scan 003“ → { prefix: "scan", number: 3 }; also „IMG_9816“, „Brief (2)“, „Vertrag Seite 4“, „0001“. */
+/**
+ * „Scan 003“ → { prefix: "scan", number: 3 }; also „IMG_9816“, „Brief (2)“, „Vertrag Seite 4“, „0001“. Numbers inside
+ * the prefix do not count: scanners often put the scan time there (`scan_20260823_143439_000261`, then
+ * `scan_20260823_143624_000262`) while the counter at the end goes on.
+ */
 export function seriesName(name: string): { prefix: string; label: string; number: number } | null {
   const match = /^(.*?)[\s_.-]*[([]?(\d{1,6})[)\]]?$/.exec(name.trim());
   if (!match) return null;
   const label = match[1]!.replace(/[\s_.-]*(seite|page|teil|part|s\.|p\.)$/i, "").replace(/[\s_.-]+$/, "");
-  return { prefix: label.toLowerCase(), label, number: Number(match[2]) };
+  return { prefix: label.toLowerCase().replace(/\d+/g, "#"), label, number: Number(match[2]) };
 }
 
 function nameGroups(docs: ArchiveDocument[]): ArchiveDocument[][] {

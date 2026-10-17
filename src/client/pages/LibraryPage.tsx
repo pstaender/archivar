@@ -7,11 +7,11 @@ import {
   RatioLandscape,
   RatioPortrait,
   RatioSquare,
+  SmartStackIcon,
   SquareCheck,
   Trash,
   Upload,
   Wand,
-  WandSparkles,
   X,
 } from "../icons";
 import { useEffect, useMemo, useState } from "react";
@@ -231,18 +231,18 @@ export function LibraryPage() {
           {!smartIds && (
             <button
               type="button"
-              className={`btn btn--sm ${grouping ? "is-active" : ""}`}
+              className={`btn btn--sm btn--icon ${grouping ? "is-active" : ""}`}
               aria-pressed={grouping}
+              aria-label="Smarte Stapel"
               disabled={sort === "custom"}
               onClick={() => setSmartStacks(!smartStacks)}
               title={
                 sort === "custom"
                   ? "Nicht bei eigener Reihenfolge"
-                  : "Fasst Dateien zusammen, die nach Name oder Uploadzeit zusammengehören – nur in der Ansicht, nichts wird gespeichert"
+                  : "Smarte Stapel: fasst Dateien zusammen, die nach Name oder Uploadzeit zusammengehören – nur in der Ansicht, nichts wird gespeichert"
               }
             >
-              <WandSparkles size={16} />
-              Smarte Stapel
+              <SmartStackIcon size={18} />
             </button>
           )}
           <div className="segmented segmented--icons" role="radiogroup" aria-label="Kartenformat">

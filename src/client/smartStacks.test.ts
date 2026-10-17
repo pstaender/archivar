@@ -16,6 +16,24 @@ describe("smart stacks", () => {
     expect(seriesName("Vertrag Seite 4")).toMatchObject({ prefix: "vertrag", number: 4 });
     expect(seriesName("0001")).toMatchObject({ prefix: "", number: 1 });
     expect(seriesName("Rechnung")).toBeNull();
+    expect(seriesName("scan_600dpi_20260823_143439_000261")).toEqual({ prefix: "scan_#dpi_#_#", label: "scan_600dpi_20260823_143439", number: 261 });
+  });
+
+  test("a counter at the end makes a series even when the scan time in the name changes", () => {
+    const items: LibraryItem[] = [
+      doc(1, "scan_600dpi_20260823_143439_000261", 0),
+      doc(2, "scan_600dpi_20260823_143624_000266", 46),
+      doc(3, "scan_600dpi_20260823_143624_000265", 47),
+      doc(4, "scan_600dpi_20260823_143624_000264", 48),
+      doc(5, "scan_600dpi_20260823_143624_000263", 49),
+      doc(6, "scan_600dpi_20260823_143439_000262", 50),
+    ];
+    expect(shape(groupSmartStacks(items))).toEqual(["name:scan_600dpi_20260823_143439 …:1,6,5,4,3,2"]);
+  });
+
+  test("uploads keep forming one group as long as each follows the previous within two minutes", () => {
+    const items: LibraryItem[] = [doc(1, "Brief", 0), doc(2, "Anlage", 1.9), doc(3, "Foto", 3.8), doc(4, "Notiz", 5.7), doc(5, "Später", 8)];
+    expect(shape(groupSmartStacks(items))).toEqual(["time:" + (groupSmartStacks(items)[0] as SmartStack).title + ":1,2,3,4", 5]);
   });
 
   test("group numbered series by name, whenever they were uploaded, and split them at larger gaps", () => {

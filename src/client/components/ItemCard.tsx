@@ -1,4 +1,4 @@
-import { Check, FileText, Layers, Loader, ScanText, WandSparkles } from "../icons";
+import { Check, FileText, Layers, Loader, ScanText, SmartStackIcon } from "../icons";
 import { type MouseEvent, useState } from "react";
 import { Link } from "react-router";
 import type { ArchiveDocument, LibraryItem } from "../../shared/types";
@@ -126,7 +126,7 @@ export function SmartStackCard({ stack, href, selected, selectionMode, onToggle 
           <div className="card__layers" aria-hidden />
           {cover && <Thumbnail {...documentThumbnail(cover)} alt={stack.title} />}
           <span className="card__badge" title="Smarter Stapel">
-            <WandSparkles size={12} aria-hidden />
+            <SmartStackIcon size={12} aria-hidden />
             {stack.documents.length}
           </span>
         </div>
