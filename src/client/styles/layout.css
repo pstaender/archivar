@@ -910,8 +910,7 @@ a.folder-tree__row .folder-tree__toggle {
 }
 
 .text-panel__language-select {
-  width: auto;
-  max-width: 100%;
+  width: 100%;
   margin-left: auto;
 }
 
