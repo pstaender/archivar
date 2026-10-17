@@ -26,7 +26,7 @@ describe("import preset seeding", () => {
 
     const [fresh] = presets.list(1);
     expect(presets.list(1)).toHaveLength(1);
-    expect(fresh).toMatchObject({ name: "SW + Auto-Tonwerte + automatisch drehen", steps: { autoRotate: true, autoBw: true, autoLevels: true } });
+    expect(fresh).toMatchObject({ name: "OCR Optimiert", steps: { autoRotate: true, autoBw: true, autoLevels: true } });
     expect(stored(db, 1)).toEqual({ importPresetId: fresh!.id });
 
     const gray = presets.list(2).find((p) => p.id === stored(db, 2).importPresetId);

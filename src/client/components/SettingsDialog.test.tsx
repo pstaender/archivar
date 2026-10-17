@@ -74,7 +74,7 @@ describe("SettingsDialog", () => {
 
   test("chooses the image preset applied on import, or none, and folders to add uploads to", async () => {
     const presets = [
-      { id: 3, name: "SW + Auto-Tonwerte + automatisch drehen", steps: { autoRotate: true, autoBw: true, autoLevels: true }, createdAt: "" },
+      { id: 3, name: "OCR Optimiert", steps: { autoRotate: true, autoBw: true, autoLevels: true }, createdAt: "" },
       { id: 4, name: "Beleg", steps: { autoDewarp: true, autoBw: true }, createdAt: "" },
     ];
     fetchMock = mockSettings({ importPresetId: 3 }, presets);

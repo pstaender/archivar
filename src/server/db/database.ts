@@ -92,6 +92,7 @@ const migrations: string[] = [
   CREATE INDEX image_presets_user ON image_presets(user_id);
   `,
   `ALTER TABLE users ADD COLUMN import_preset_seeded INTEGER NOT NULL DEFAULT 0;`,
+  `UPDATE image_presets SET name = 'OCR Optimiert' WHERE name = 'SW + Auto-Tonwerte + automatisch drehen';`,
 ];
 
 export function migrate(db: Database): void {

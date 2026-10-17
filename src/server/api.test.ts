@@ -490,7 +490,7 @@ describe("settings", () => {
     server = await startTestServer({ importPreset: true });
     server.ocr.orientation = { rotation: 90, confidence: 8 };
     const [preset] = (await (await server.api("/api/presets")).json()) as ImagePreset[];
-    expect(preset).toMatchObject({ name: "SW + Auto-Tonwerte + automatisch drehen", steps: { autoRotate: true, autoBw: true, autoLevels: true } });
+    expect(preset).toMatchObject({ name: "OCR Optimiert", steps: { autoRotate: true, autoBw: true, autoLevels: true } });
     expect(await (await server.api("/api/settings")).json()).toMatchObject({ importPresetId: preset!.id });
 
     const doc = await uploadImage();
@@ -668,7 +668,7 @@ describe("image presets", () => {
     expect(preset).toMatchObject({ name: "Beleg", steps: { autoBw: true, denoise: 3 } });
     await createPreset({ name: "Aquarell", steps: { saturation: 20 } });
     const list = (await (await server.api("/api/presets")).json()) as ImagePreset[];
-    expect(list.map((p) => p.name)).toEqual(["Aquarell", "Beleg", "SW + Auto-Tonwerte + automatisch drehen"]);
+    expect(list.map((p) => p.name)).toEqual(["Aquarell", "Beleg", "OCR Optimiert"]);
 
     const res = await patch(`/api/presets/${preset.id}`, { name: "Kassenbon", steps: { brightness: 0.2 } });
     expect(await res.json()).toMatchObject({ name: "Kassenbon", steps: { brightness: 0.2 } });
