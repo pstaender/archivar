@@ -1,12 +1,12 @@
 import { CircleAlert, CircleCheck, Loader, Trash } from "../icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { FINISHED_STATES, type Job, type JobItem, type JobItemState } from "../../shared/jobs";
 import { languageName } from "../../shared/languages";
 import { api, assetUrl } from "../api";
 import { useJobs } from "../hooks/jobs";
 import { useToast } from "../hooks/toast";
-import { formatDateTime } from "../format";
+import { formatDateTime, formatRelativeTime } from "../format";
 
 const STATE_LABELS: Record<JobItemState, string> = {
   pending: "Wartet",
@@ -35,8 +35,20 @@ export function jobDescription(job: Job): string {
   return parts.join(" · ");
 }
 
+/** The current time, updated every second while something is less than a minute old, otherwise every 30 seconds. */
+function useNow(newest: string | undefined): Date {
+  const [now, setNow] = useState(() => new Date());
+  const fresh = newest !== undefined && now.getTime() - new Date(newest).getTime() < 60_000;
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), fresh ? 1000 : 30_000);
+    return () => clearInterval(timer);
+  }, [fresh]);
+  return now;
+}
+
 export function JobsPage() {
   const { jobs, reload } = useJobs();
+  const now = useNow(jobs[0]?.createdAt);
   const toast = useToast();
   const [removing, setRemoving] = useState(false);
   const finished = jobs.filter((job) => !job.active);
@@ -78,14 +90,14 @@ export function JobsPage() {
 
       <div className="jobs">
         {jobs.map((job) => (
-          <JobCard key={job.id} job={job} removing={removing} onRemove={() => remove([job])} />
+          <JobCard key={job.id} job={job} now={now} removing={removing} onRemove={() => remove([job])} />
         ))}
       </div>
     </div>
   );
 }
 
-function JobCard({ job, removing, onRemove }: { job: Job; removing: boolean; onRemove: () => void }) {
+function JobCard({ job, now, removing, onRemove }: { job: Job; now: Date; removing: boolean; onRemove: () => void }) {
   const total = job.items.length;
   const done = job.items.filter((item) => FINISHED_STATES.includes(item.state)).length;
   const failed = job.items.filter((item) => item.state === "failed").length;
@@ -100,7 +112,9 @@ function JobCard({ job, removing, onRemove }: { job: Job; removing: boolean; onR
             {title}
           </h2>
           <p className="muted small">
-            {formatDateTime(job.createdAt)}
+            <time dateTime={job.createdAt} title={formatDateTime(job.createdAt)}>
+              {formatRelativeTime(job.createdAt, now)}
+            </time>
             {jobDescription(job) && ` · ${jobDescription(job)}`}
           </p>
         </div>
@@ -143,6 +157,7 @@ function JobItemRow({ item, kind }: { item: JobItem; kind: Job["kind"] }) {
         {label}
       </span>
       {item.error && <span className="job-item__error small">{item.error}</span>}
+      {item.note && <span className="job-item__note small">{item.note}</span>}
     </li>
   );
 }

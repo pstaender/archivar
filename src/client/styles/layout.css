@@ -1404,3 +1404,8 @@ a.folder-tree__row .folder-tree__toggle {
 .job-item__error {
   grid-column: 2 / -1;
 }
+
+.job-item__note {
+  grid-column: 2 / -1;
+  color: var(--color-warning);
+}

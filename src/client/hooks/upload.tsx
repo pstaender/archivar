@@ -78,6 +78,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
 
       const run = async () => {
         const docs: ArchiveDocument[] = [];
+        const duplicates: { file: File; titles: string[] }[] = [];
         const failures: { file: File; error: unknown }[] = [];
         // The import job shows the files on the jobs page; uploads still work without it.
         const job = await api.createJob({ kind: "import", files: supported.map((file) => file.name) }).catch((error) => {
@@ -96,6 +97,8 @@ export function UploadProvider({ children }: { children: ReactNode }) {
               publish();
             });
             docs.push(...uploaded);
+            const known = uploaded.flatMap((doc) => doc.duplicates.map((other) => other.title));
+            if (known.length) duplicates.push({ file, titles: known });
             setVersion((v) => v + 1);
           } catch (error) {
             failures.push({ file, error });
@@ -114,6 +117,12 @@ export function UploadProvider({ children }: { children: ReactNode }) {
         if (docs.length > 0) {
           toast.success(docs.length === 1 ? "1 Datei hochgeladen" : `${docs.length} Dateien hochgeladen`);
           if (options.folders?.length) void reloadFolders();
+        }
+        const [duplicate] = duplicates;
+        if (duplicates.length === 1 && duplicate) {
+          toast.show(`„${duplicate.file.name}“ ist bereits vorhanden (${duplicate.titles.map((t) => `„${t}“`).join(", ")}) und wurde trotzdem hochgeladen`, "warning");
+        } else if (duplicates.length > 1) {
+          toast.show(`${duplicates.length} Dateien waren bereits vorhanden und wurden trotzdem hochgeladen`, "warning");
         }
         const [first] = failures;
         if (failures.length === 1 && first) {

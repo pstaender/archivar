@@ -308,14 +308,14 @@ describe("LibraryPage", () => {
       });
       const eins = makeDocument({ title: "eins" });
       listed.unshift(docItem(eins));
-      await act(async () => xhr.uploads[0]!.respond(201, [eins]));
+      await act(async () => xhr.uploads[0]!.respond(201, [{ ...eins, duplicates: [] }]));
       await waitFor(() => expect(screen.getByRole("link", { name: /eins/ })).toBeTruthy());
       expect(xhr.uploads).toHaveLength(2);
       expect(screen.getByText("2 Einträge")).toBeTruthy();
 
       const zwei = makeDocument({ title: "zwei" });
       listed.unshift(docItem(zwei));
-      await act(async () => xhr.uploads[1]!.respond(201, [zwei]));
+      await act(async () => xhr.uploads[1]!.respond(201, [{ ...zwei, duplicates: [] }]));
       await waitFor(() => expect(screen.getByText("3 Einträge")).toBeTruthy());
       expect(busyStates).not.toContain("true");
     } finally {

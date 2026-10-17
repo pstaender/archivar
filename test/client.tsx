@@ -2,7 +2,7 @@ import { mock } from "bun:test";
 import { act, render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import type { ArchiveDocument, Folder, LibraryItem, Stack } from "../src/shared/types";
+import type { ArchiveDocument, Folder, LibraryItem, Stack, UploadedDocument } from "../src/shared/types";
 import { DEFAULT_EDIT_SETTINGS } from "../src/shared/editSettings";
 import { AppProviders } from "../src/client/App";
 
@@ -87,6 +87,11 @@ export function makeDocument(overrides: Partial<ArchiveDocument> = {}): ArchiveD
     updatedAt: "2026-03-01T10:00:00.000Z",
     ...overrides,
   };
+}
+
+/** A document as the upload response returns it. */
+export function makeUpload(overrides: Partial<ArchiveDocument> = {}): UploadedDocument {
+  return { ...makeDocument(overrides), duplicates: [] };
 }
 
 export function makeStack(overrides: Partial<Stack> = {}): Stack {

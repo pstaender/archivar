@@ -18,6 +18,7 @@ interface ItemRow {
   name: string;
   status: JobItemStatus;
   error: string | null;
+  note: string | null;
   ocr: number;
   document_id: number | null;
   title: string | null;
@@ -36,7 +37,7 @@ export interface QueuedBatchItem {
 }
 
 const ITEM_COLUMNS = `
-  i.id, i.job_id, i.name, i.status, i.error, i.ocr, i.document_id,
+  i.id, i.job_id, i.name, i.status, i.error, i.note, i.ocr, i.document_id,
   d.title, d.original_name, d.kind, d.updated_at, d.ocr_status, d.ocr_error`;
 
 function toItem(row: ItemRow): JobItem {
@@ -54,6 +55,7 @@ function toItem(row: ItemRow): JobItem {
     name: row.name,
     state,
     error,
+    note: row.note,
     document:
       row.document_id === null
         ? null
@@ -107,10 +109,10 @@ export class JobRepository {
     return row ?? null;
   }
 
-  updateItem(itemId: number, fields: { status: JobItemStatus; error?: string | null; documentId?: number; ocr?: boolean }): void {
+  updateItem(itemId: number, fields: { status: JobItemStatus; error?: string | null; documentId?: number; ocr?: boolean; note?: string }): void {
     this.db
-      .query("UPDATE job_items SET status = ?, error = ?, document_id = COALESCE(?, document_id), ocr = COALESCE(?, ocr) WHERE id = ?")
-      .run(fields.status, fields.error ?? null, fields.documentId ?? null, fields.ocr === undefined ? null : Number(fields.ocr), itemId);
+      .query("UPDATE job_items SET status = ?, error = ?, document_id = COALESCE(?, document_id), ocr = COALESCE(?, ocr), note = COALESCE(?, note) WHERE id = ?")
+      .run(fields.status, fields.error ?? null, fields.documentId ?? null, fields.ocr === undefined ? null : Number(fields.ocr), fields.note ?? null, itemId);
   }
 
   /** The oldest batch item still waiting. */

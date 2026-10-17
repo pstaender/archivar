@@ -24,6 +24,7 @@ import type {
   StackCreate,
   StackUpdate,
   StackWithDocuments,
+  UploadedDocument,
 } from "../../shared/types";
 import { type DocumentRepository, type StoredDocument, toPublicDocument } from "../db/documents";
 import type { FolderRepository } from "../db/folders";
@@ -89,12 +90,14 @@ export class ArchiveService {
     return doc;
   }
 
-  async upload(userId: number, files: UploadFile[], options: UploadOptions = {}): Promise<ArchiveDocument[]> {
+  async upload(userId: number, files: UploadFile[], options: UploadOptions = {}): Promise<UploadedDocument[]> {
     if (files.length === 0) throw new HttpError(400, "No files uploaded");
     if (options.stackId !== undefined) this.getStack(userId, options.stackId);
 
     const created: StoredDocument[] = [];
+    const duplicates = new Map<number, UploadedDocument["duplicates"]>();
     for (const file of files) {
+      const sha256 = sha256Hex(file.data);
       const name = basename(file.name || "upload");
       const inspection = await this.imaging.inspect(file.data, name, file.type);
       const storageKey = `originals/${userId}/${crypto.randomUUID()}${extensionFor(name, inspection.mimeType)}`;
@@ -109,6 +112,7 @@ export class ArchiveService {
         kind: inspection.kind,
         size: file.data.byteLength,
         storageKey,
+        sha256,
         width: inspection.width,
         height: inspection.height,
         pageCount: inspection.pageCount,
@@ -117,6 +121,10 @@ export class ArchiveService {
         ocrLanguage: hasEmbeddedText ? detectLanguage(inspection.text) : null,
         metadata: hasEmbeddedText ? { ...inspection.metadata, textSource: "pdf" } : inspection.metadata,
       });
+      duplicates.set(
+        doc.id,
+        this.documents.findBySha256(userId, sha256, doc.id).map((other) => ({ id: other.id, title: other.title.trim() || other.originalName })),
+      );
       if (options.folders?.length) this.folders.setForDocument(userId, doc.id, options.folders);
       if (doc.kind === "image" && options.preset) doc = await this.applyPresetOnUpload(doc, options.preset);
       const size = await this.imaging.renderDerivatives(doc);
@@ -137,7 +145,21 @@ export class ArchiveService {
       }
     }
 
-    return created.map((doc) => toPublicDocument(this.documents.get(userId, doc.id)!));
+    return created.map((doc) => ({ ...toPublicDocument(this.documents.get(userId, doc.id)!), duplicates: duplicates.get(doc.id) ?? [] }));
+  }
+
+  /** Records the SHA-256 of files stored before hashes were kept; returns how many were hashed. */
+  async hashMissingFiles(): Promise<number> {
+    let hashed = 0;
+    for (const { id, storageKey } of this.documents.withoutSha256()) {
+      try {
+        this.documents.setSha256(id, sha256Hex(await this.storage.read(storageKey)));
+        hashed++;
+      } catch (error) {
+        console.warn(`Could not hash the file of document ${id}:`, error);
+      }
+    }
+    return hashed;
   }
 
   async updateDocument(userId: number, id: number, update: DocumentUpdate): Promise<ArchiveDocument> {
@@ -388,6 +410,10 @@ export class ArchiveService {
     }
     return unique;
   }
+}
+
+function sha256Hex(data: Uint8Array): string {
+  return new Bun.CryptoHasher("sha256").update(data).digest("hex");
 }
 
 const titleCollator = new Intl.Collator("de", { numeric: true, sensitivity: "base" });

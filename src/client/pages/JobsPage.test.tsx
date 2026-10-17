@@ -17,11 +17,11 @@ const batch: Job = {
   createdAt: "2026-10-17T10:00:00.000Z",
   active: true,
   items: [
-    { id: 1, name: "Rechnung", state: "done", error: null, document: doc(10, "Rechnung") },
-    { id: 2, name: "Brief", state: "ocr", error: null, document: doc(11, "Brief") },
-    { id: 3, name: "Foto", state: "running", error: null, document: doc(12, "Foto") },
-    { id: 4, name: "Notiz", state: "pending", error: null, document: doc(13, "Notiz") },
-    { id: 5, name: "Weg", state: "failed", error: "Das Dokument wurde gelöscht.", document: null },
+    { id: 1, name: "Rechnung", state: "done", error: null, note: null, document: doc(10, "Rechnung") },
+    { id: 2, name: "Brief", state: "ocr", error: null, note: null, document: doc(11, "Brief") },
+    { id: 3, name: "Foto", state: "running", error: null, note: null, document: doc(12, "Foto") },
+    { id: 4, name: "Notiz", state: "pending", error: null, note: null, document: doc(13, "Notiz") },
+    { id: 5, name: "Weg", state: "failed", error: "Das Dokument wurde gelöscht.", note: null, document: null },
   ],
 };
 
@@ -31,7 +31,7 @@ const upload: Job = {
   options: null,
   createdAt: "2026-10-16T09:00:00.000Z",
   active: false,
-  items: [{ id: 6, name: "scan.jpg", state: "done", error: null, document: doc(14, "scan") }],
+  items: [{ id: 6, name: "scan.jpg", state: "done", error: null, note: "Bereits vorhanden als „Rechnung“", document: doc(14, "scan") }],
 };
 
 describe("JobsPage", () => {
@@ -51,7 +51,10 @@ describe("JobsPage", () => {
     ]);
     expect(screen.getByRole("link", { name: "Rechnung" }).getAttribute("href")).toBe("/documents/10");
     expect(screen.queryByRole("button", { name: "Auftrag entfernen" })).toBeTruthy();
-    expect(screen.getByRole("region", { name: /^Import vom/ }).textContent).toContain("1 Datei");
+    const imported = screen.getByRole("region", { name: /^Import vom/ });
+    expect(imported.textContent).toContain("1 Datei");
+    expect(imported.textContent).toContain("Bereits vorhanden als „Rechnung“");
+    expect(imported.querySelector("time")?.getAttribute("dateTime")).toBe(upload.createdAt);
   });
 
   test("removes finished jobs", async () => {

@@ -29,6 +29,10 @@ const resumed = ctx.ocr.resume();
 if (resumed > 0) console.log(`Resumed text recognition for ${resumed} documents.`);
 const resumedJobs = ctx.jobQueue.resume();
 if (resumedJobs > 0) console.log(`Resumed batch processing for ${resumedJobs} documents.`);
+ctx.archive
+  .hashMissingFiles()
+  .then((count) => count > 0 && console.log(`Recorded the SHA-256 of ${count} files.`))
+  .catch((error) => console.warn("Could not hash the stored files:", error));
 ctx.imaging
   .removeStalePreviews()
   .then((count) => count > 0 && console.log(`Removed ${count} outdated preview files.`))

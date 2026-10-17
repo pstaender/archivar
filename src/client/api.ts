@@ -18,6 +18,7 @@ import type {
   StackCreate,
   StackUpdate,
   StackWithDocuments,
+  UploadedDocument,
   User,
 } from "../shared/types";
 
@@ -137,7 +138,7 @@ export const api = {
     if (options.ocr) form.append("ocr", "true");
     if (options.ocrAllText) form.append("ocrAllText", "true");
     if (options.jobItemId !== undefined) form.append("jobItemId", String(options.jobItemId));
-    return sendWithProgress<ArchiveDocument[]>("/api/documents", form, onProgress);
+    return sendWithProgress<UploadedDocument[]>("/api/documents", form, onProgress);
   },
 
   stack: (id: number) => request<StackWithDocuments>(`/api/stacks/${id}`),

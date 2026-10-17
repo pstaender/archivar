@@ -41,6 +41,8 @@ export interface JobItem {
   name: string;
   state: JobItemState;
   error: string | null;
+  /** E.g. that the uploaded file was already in the archive. */
+  note: string | null;
   /** Null until an import uploaded the file, or after the document was deleted. */
   document: { id: number; title: string; originalName: string; kind: DocumentKind; updatedAt: string } | null;
 }
@@ -54,6 +56,10 @@ export interface Job {
   /** Some items are not finished yet (including their text recognition). */
   active: boolean;
   items: JobItem[];
+}
+
+export function duplicateNote(duplicates: { title: string }[]): string {
+  return `Bereits vorhanden als ${duplicates.map((doc) => `„${doc.title}“`).join(", ")}`;
 }
 
 export const FINISHED_STATES: JobItemState[] = ["done", "skipped", "failed"];

@@ -83,6 +83,11 @@ export interface ArchiveDocument {
   updatedAt: string;
 }
 
+/** Upload response: also names the documents that already had the same file content (SHA-256). */
+export interface UploadedDocument extends ArchiveDocument {
+  duplicates: { id: number; title: string }[];
+}
+
 export interface Stack {
   id: number;
   title: string;

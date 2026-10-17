@@ -116,6 +116,11 @@ const migrations: string[] = [
   CREATE INDEX job_items_job ON job_items(job_id, position);
   CREATE INDEX job_items_status ON job_items(status);
   `,
+  `
+  ALTER TABLE documents ADD COLUMN sha256 TEXT;
+  CREATE INDEX documents_sha256 ON documents(user_id, sha256);
+  `,
+  `ALTER TABLE job_items ADD COLUMN note TEXT;`,
 ];
 
 export function migrate(db: Database): void {

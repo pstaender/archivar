@@ -3,7 +3,7 @@ import { createImage, Jimp } from "../shared/image/jimp";
 import { PREVIEW_SIZE } from "../shared/preview";
 import type { Job } from "../shared/jobs";
 import type { ImagePreset } from "../shared/presets";
-import type { ArchiveDocument, EditSettings, Folder, LibraryItem, StackWithDocuments } from "../shared/types";
+import type { ArchiveDocument, EditSettings, Folder, LibraryItem, StackWithDocuments, UploadedDocument } from "../shared/types";
 import { getDocumentProxy } from "unpdf";
 import { makePdf } from "../../test/pdf";
 import { OCR_TIMEOUT_MESSAGE } from "./services/ocr";
@@ -23,7 +23,7 @@ afterEach(async () => {
 async function upload(files: { name: string; data: Uint8Array; type?: string }[], fields: Record<string, string> = {}) {
   const res = await server.api("/api/documents", { method: "POST", body: uploadForm(files, fields) });
   expect(res.status).toBe(201);
-  return (await res.json()) as ArchiveDocument[];
+  return (await res.json()) as UploadedDocument[];
 }
 
 async function uploadImage(name = "scan.jpg", fields: Record<string, string> = {}) {
@@ -56,6 +56,31 @@ describe("documents", () => {
     expect(docs.map((d) => d.kind)).toEqual(["image", "pdf", "file"]);
     expect(docs[0]).toMatchObject({ title: "photo", width: 80, height: 60, ocrStatus: "none" });
     expect(docs[1]).toMatchObject({ pageCount: 1, ocrStatus: "done", ocrText: "Rechnung 2026" });
+  });
+
+  test("stores the SHA-256 of uploads and names earlier documents with the same content", async () => {
+    const data = await makeJpeg();
+    const [first] = await upload([{ name: "scan.jpg", data, type: "image/jpeg" }]);
+    expect(first!.duplicates).toEqual([]);
+    await patch(`/api/documents/${first!.id}`, { title: "Rechnung" });
+    const [second, other] = await upload([
+      { name: "scan-kopie.jpg", data, type: "image/jpeg" },
+      { name: "anders.jpg", data: await makeJpeg(10, 10), type: "image/jpeg" },
+    ]);
+    expect(second!.duplicates).toEqual([{ id: first!.id, title: "Rechnung" }]);
+    expect(other!.duplicates).toEqual([]);
+    expect(second!.id).not.toBe(first!.id);
+    const row = server.ctx.db.query("SELECT sha256 FROM documents WHERE id = ?").get(first!.id) as { sha256: string };
+    expect(row.sha256).toBe(new Bun.CryptoHasher("sha256").update(data).digest("hex"));
+  });
+
+  test("records the SHA-256 of files stored before hashes were kept", async () => {
+    const doc = await uploadImage();
+    server.ctx.db.query("UPDATE documents SET sha256 = NULL").run();
+    expect(await server.ctx.archive.hashMissingFiles()).toBe(1);
+    expect(await server.ctx.archive.hashMissingFiles()).toBe(0);
+    const [copy] = await upload([{ name: "x.jpg", data: await makeJpeg(), type: "image/jpeg" }]);
+    expect(copy!.duplicates.map((d) => d.id)).toEqual([doc.id]);
   });
 
   test("detects the mime type from the extension when none is sent", async () => {
@@ -773,11 +798,12 @@ describe("jobs", () => {
       ["c.jpg", "pending", null],
     ]);
     const [a, b] = job.items;
+    await uploadImage("vorher.jpg");
     const doc = await uploadImage("a.jpg", { jobItemId: String(a!.id), ocr: "true" });
     await patch(`/api/jobs/${job.id}/items/${b!.id}`, { error: "Netzwerkfehler" });
 
     const listed = (await jobs())[0]!;
-    expect(listed.items[0]).toMatchObject({ state: expect.stringMatching(/ocr|done/), document: { id: doc.id, title: "a" } });
+    expect(listed.items[0]).toMatchObject({ state: expect.stringMatching(/ocr|done/), note: "Bereits vorhanden als „vorher“", document: { id: doc.id, title: "a" } });
     expect(states(listed)?.slice(1)).toEqual([
       ["b.jpg", "failed", "Netzwerkfehler"],
       ["c.jpg", "pending", null],

@@ -1,6 +1,6 @@
 import type { BunRequest } from "bun";
 import { type AppConfig, type DocumentUpdate, type EditSettings, LIBRARY_SORTS, type LibraryItemRef, type LibrarySort, type Rotation, type StackCreate, type StackUpdate } from "../shared/types";
-import type { BatchOptions, JobCreate } from "../shared/jobs";
+import { type BatchOptions, duplicateNote, type JobCreate } from "../shared/jobs";
 import { isOcrLanguage } from "../shared/languages";
 import { type ImagePresetInput, normalizePresetName, normalizePresetSteps } from "../shared/presets";
 import type { AppContext } from "./context";
@@ -125,7 +125,14 @@ export function createApiRoutes(ctx: AppContext) {
           throw error;
         });
         const [uploaded] = docs;
-        if (tracked && uploaded) ctx.jobs.updateItem(tracked.id, { status: "done", documentId: uploaded.id, ocr: uploaded.ocrStatus === "pending" });
+        if (tracked && uploaded) {
+          ctx.jobs.updateItem(tracked.id, {
+            status: "done",
+            documentId: uploaded.id,
+            ocr: uploaded.ocrStatus === "pending",
+            note: uploaded.duplicates.length ? duplicateNote(uploaded.duplicates) : undefined,
+          });
+        }
         return json(docs, 201);
       }),
     },

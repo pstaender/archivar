@@ -11,6 +11,30 @@ export function formatDateTime(iso: string): string {
   return dateTimeFormat.format(new Date(iso));
 }
 
+const relativeFormat = new Intl.RelativeTimeFormat("de", { numeric: "auto" });
+const weekdayFormat = new Intl.DateTimeFormat("de", { weekday: "long" });
+const timeFormat = new Intl.DateTimeFormat("de", { hour: "2-digit", minute: "2-digit" });
+const RECENT_DAYS = 6;
+
+/**
+ * Today relative ("vor 5 Minuten"), the days before with the weekday ("Gestern, 14:30", "Montag, 09:12"),
+ * from the seventh day on as date and time.
+ */
+export function formatRelativeTime(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  const seconds = Math.max(0, Math.round((now.getTime() - date.getTime()) / 1000));
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOfDay(now) - startOfDay(date)) / 86_400_000);
+  if (days <= 0) {
+    if (seconds < 60) return relativeFormat.format(-seconds, "second");
+    if (seconds < 3600) return relativeFormat.format(-Math.floor(seconds / 60), "minute");
+    return relativeFormat.format(-Math.floor(seconds / 3600), "hour");
+  }
+  if (days === 1) return `Gestern, ${timeFormat.format(date)}`;
+  if (days <= RECENT_DAYS) return `${weekdayFormat.format(date)}, ${timeFormat.format(date)}`;
+  return formatDateTime(iso);
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   const units = ["KB", "MB", "GB"];

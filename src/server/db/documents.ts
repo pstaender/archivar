@@ -44,6 +44,8 @@ export interface DocumentCreate {
   kind: DocumentKind;
   size: number;
   storageKey: string;
+  /** Hex SHA-256 of the uploaded file. */
+  sha256?: string | null;
   width?: number | null;
   height?: number | null;
   pageCount?: number | null;
@@ -86,8 +88,8 @@ export class DocumentRepository {
   create(input: DocumentCreate): StoredDocument {
     const row = this.db
       .query(
-        `INSERT INTO documents (user_id, title, original_name, mime_type, kind, size, storage_key, width, height, page_count, ocr_text, ocr_status, ocr_language, metadata)
-         VALUES ($userId, $title, $originalName, $mimeType, $kind, $size, $storageKey, $width, $height, $pageCount, $ocrText, $ocrStatus, $ocrLanguage, $metadata)
+        `INSERT INTO documents (user_id, title, original_name, mime_type, kind, size, storage_key, sha256, width, height, page_count, ocr_text, ocr_status, ocr_language, metadata)
+         VALUES ($userId, $title, $originalName, $mimeType, $kind, $size, $storageKey, $sha256, $width, $height, $pageCount, $ocrText, $ocrStatus, $ocrLanguage, $metadata)
          RETURNING id`,
       )
       .get({
@@ -98,6 +100,7 @@ export class DocumentRepository {
         kind: input.kind,
         size: input.size,
         storageKey: input.storageKey,
+        sha256: input.sha256 ?? null,
         width: input.width ?? null,
         height: input.height ?? null,
         pageCount: input.pageCount ?? null,
@@ -112,6 +115,22 @@ export class DocumentRepository {
   get(userId: number, id: number): StoredDocument | null {
     const row = this.db.query("SELECT * FROM documents WHERE user_id = ? AND id = ?").get(userId, id) as DocumentRow | null;
     return row ? this.hydrate([row])[0]! : null;
+  }
+
+  /** The user's other documents with the same file content. */
+  findBySha256(userId: number, sha256: string, exceptId: number): { id: number; title: string; originalName: string }[] {
+    return this.db
+      .query("SELECT id, title, original_name AS originalName FROM documents WHERE user_id = ? AND sha256 = ? AND id != ? ORDER BY id")
+      .all(userId, sha256, exceptId) as { id: number; title: string; originalName: string }[];
+  }
+
+  /** Documents stored before file hashes were recorded, across all users. */
+  withoutSha256(): { id: number; storageKey: string }[] {
+    return this.db.query("SELECT id, storage_key AS storageKey FROM documents WHERE sha256 IS NULL ORDER BY id").all() as { id: number; storageKey: string }[];
+  }
+
+  setSha256(id: number, sha256: string): void {
+    this.db.query("UPDATE documents SET sha256 = ? WHERE id = ?").run(sha256, id);
   }
 
   /** Documents whose OCR was queued or running, across all users. */
