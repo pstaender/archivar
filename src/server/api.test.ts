@@ -208,6 +208,12 @@ describe("documents", () => {
     expect(res.status).toBe(400);
   });
 
+  test("never gives the id of a deleted document out again", async () => {
+    const doc = await uploadImage();
+    await server.api(`/api/documents/${doc.id}`, { method: "DELETE" });
+    expect((await uploadImage()).id).toBe(doc.id + 1);
+  });
+
   test("deletes a document with its files", async () => {
     const doc = await uploadImage();
     expect((await server.api(`/api/documents/${doc.id}`, { method: "DELETE" })).status).toBe(204);

@@ -163,15 +163,71 @@ const migrations: string[] = [
   ALTER TABLE documents ADD COLUMN copy_of INTEGER REFERENCES documents(id) ON DELETE SET NULL;
   CREATE INDEX documents_copy_of ON documents(copy_of);
   `,
+  // AUTOINCREMENT: ids of deleted documents are never given out again (their files are cached by id in browsers).
+  `
+  CREATE TABLE documents_new (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL DEFAULT '',
+    original_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    storage_key TEXT NOT NULL,
+    width INTEGER,
+    height INTEGER,
+    page_count INTEGER,
+    stack_id INTEGER REFERENCES stacks(id) ON DELETE SET NULL,
+    stack_position INTEGER NOT NULL DEFAULT 0,
+    edit_settings TEXT NOT NULL DEFAULT '{}',
+    ocr_text TEXT NOT NULL DEFAULT '',
+    ocr_status TEXT NOT NULL DEFAULT 'none',
+    ocr_confidence REAL,
+    ocr_error TEXT,
+    metadata TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    ocr_removed INTEGER NOT NULL DEFAULT 0,
+    ocr_layout TEXT,
+    ocr_language TEXT,
+    ocr_languages TEXT,
+    ocr_all_text INTEGER NOT NULL DEFAULT 0,
+    sha256 TEXT,
+    shapes TEXT,
+    copy_of INTEGER REFERENCES documents(id) ON DELETE SET NULL
+  );
+  INSERT INTO documents_new (id, user_id, title, original_name, mime_type, kind, size, storage_key, width, height, page_count, stack_id,
+    stack_position, edit_settings, ocr_text, ocr_status, ocr_confidence, ocr_error, metadata, created_at, updated_at, ocr_removed,
+    ocr_layout, ocr_language, ocr_languages, ocr_all_text, sha256, shapes, copy_of)
+  SELECT id, user_id, title, original_name, mime_type, kind, size, storage_key, width, height, page_count, stack_id,
+    stack_position, edit_settings, ocr_text, ocr_status, ocr_confidence, ocr_error, metadata, created_at, updated_at, ocr_removed,
+    ocr_layout, ocr_language, ocr_languages, ocr_all_text, sha256, shapes, copy_of
+  FROM documents;
+  DROP TABLE documents;
+  ALTER TABLE documents_new RENAME TO documents;
+  CREATE INDEX documents_user ON documents(user_id, updated_at);
+  CREATE INDEX documents_stack ON documents(stack_id, stack_position);
+  CREATE INDEX documents_sha256 ON documents(user_id, sha256);
+  CREATE INDEX documents_copy_of ON documents(copy_of);
+  `,
 ];
 
 export function migrate(db: Database): void {
   const { user_version: current } = db.query("PRAGMA user_version").get() as { user_version: number };
-  for (let version = current; version < migrations.length; version++) {
-    db.transaction(() => {
-      db.exec(migrations[version]!);
-      db.exec(`PRAGMA user_version = ${version + 1}`);
-    })();
+  if (current >= migrations.length) return;
+  // Rebuilding a table drops the old one, which would run the ON DELETE actions of the tables referencing it.
+  const { foreign_keys: foreignKeys } = db.query("PRAGMA foreign_keys").get() as { foreign_keys: number };
+  db.exec("PRAGMA foreign_keys = OFF");
+  try {
+    for (let version = current; version < migrations.length; version++) {
+      db.transaction(() => {
+        db.exec(migrations[version]!);
+        if (db.query("PRAGMA foreign_key_check").all().length > 0) throw new Error(`Migration ${version + 1} breaks foreign keys`);
+        db.exec(`PRAGMA user_version = ${version + 1}`);
+      })();
+    }
+  } finally {
+    db.exec(`PRAGMA foreign_keys = ${foreignKeys ? "ON" : "OFF"}`);
   }
 }
 

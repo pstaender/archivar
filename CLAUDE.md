@@ -36,7 +36,7 @@ Do not run a bare `bun test`: client tests need the happy-dom preload, server te
 ## Layout
 
 - `src/shared/` – code used by client and server: types (API DTOs), edit settings normalization, folder path helpers, image pipeline (perspective warp, OpenCV denoise).
-- `src/server/` – `index.ts` (entry), `routes.ts` (REST API), `context.ts` (wiring + current user), `db/` (migrations + repositories), `services/` (archive logic, imaging, OCR queue, PDF), `storage.ts` (files under `data/files`).
+- `src/server/` – `index.ts` (entry), `routes.ts` (REST API), `context.ts` (wiring + current user), `db/` (migrations + repositories; migrations run with foreign keys off so tables can be rebuilt, `documents` uses `AUTOINCREMENT` so ids of deleted documents are never reused – their images are cached by id), `services/` (archive logic, imaging, OCR queue, PDF), `storage.ts` (files under `data/files`).
 - `src/vectorizer/` – self-contained sub-application (imports nothing from the app): types, settings and their automatic defaults, area normalization, the `VectorizerBackend` interface with the VTracer backend (`backend.ts`, swap `vectorizer` there for another backend), the Web Worker (`worker.ts`) with its client (`client.ts`), and `server/paint.ts` (rasterizes areas with `@napi-rs/canvas`). Its tests run with `test:server`.
 - `src/client/` – `pages/`, `components/`, `editor/` (canvas preview, corner overlay, controls), `hooks/` (contexts for toasts, folders, uploads).
 - `test/` – test helpers (`server.ts` starts an API server on a random port with in-memory SQLite and a fake OCR engine; `client.tsx` has fetch mocks and render helpers).
