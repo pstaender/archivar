@@ -49,6 +49,17 @@ describe("api client", () => {
     xhr.restore();
   });
 
+  test("rejects aborted and timed out uploads instead of leaving them pending", async () => {
+    const xhr = mockXhr();
+    const aborted = api.upload([new File(["a"], "a.jpg")]).catch((e) => e);
+    const timedOut = api.upload([new File(["b"], "b.jpg")]).catch((e) => e);
+    xhr.uploads[0]!.abort();
+    xhr.uploads[1]!.timeout();
+    expect(await aborted).toMatchObject({ status: 0, message: "Upload abgebrochen" });
+    expect(await timedOut).toMatchObject({ status: 0, message: "Zeitüberschreitung beim Upload" });
+    xhr.restore();
+  });
+
   test("requests a dewarp grid for the current rotation", async () => {
     fetchMock = mockFetch({ "POST /api/documents/2/dewarp": () => ({ rotation: 90 }) });
     await api.detectDewarp(2, 90);

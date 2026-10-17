@@ -64,6 +64,9 @@ function sendWithProgress<T>(path: string, body: FormData, onProgress?: (loaded:
       else reject(new ApiRequestError(xhr.status, response?.error ?? (xhr.statusText || "Upload fehlgeschlagen")));
     };
     xhr.onerror = () => reject(new ApiRequestError(0, "Upload fehlgeschlagen"));
+    // Without these the promise would never settle and block the upload queue until the page is reloaded.
+    xhr.onabort = () => reject(new ApiRequestError(0, "Upload abgebrochen"));
+    xhr.ontimeout = () => reject(new ApiRequestError(0, "Zeitüberschreitung beim Upload"));
     xhr.send(body);
   });
 }

@@ -118,6 +118,8 @@ export interface XhrUpload {
   body: FormData;
   progress(loaded: number, total: number): void;
   respond(status: number, body: unknown): void;
+  abort(): void;
+  timeout(): void;
 }
 
 // fetch() mocks do not cover uploads: they go through XMLHttpRequest for progress events.
@@ -132,6 +134,8 @@ export function mockXhr(): { uploads: XhrUpload[]; restore(): void } {
     upload: { onprogress: ((e: { lengthComputable: boolean; loaded: number; total: number }) => void) | null } = { onprogress: null };
     onload: (() => void) | null = null;
     onerror: (() => void) | null = null;
+    onabort: (() => void) | null = null;
+    ontimeout: (() => void) | null = null;
     private path = "";
     open(_method: string, path: string) {
       this.path = path;
@@ -146,6 +150,8 @@ export function mockXhr(): { uploads: XhrUpload[]; restore(): void } {
           this.response = response;
           this.onload?.();
         },
+        abort: () => this.onabort?.(),
+        timeout: () => this.ontimeout?.(),
       });
     }
   }
