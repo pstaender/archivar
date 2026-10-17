@@ -14,6 +14,11 @@ The following features are available:
 
 [More details in the software documentation.](documentation.md)
 
+## Requirements
+
+- bun
+- [ImageMagick](https://imagemagick.org/) (optional)
+
 ## Uploading via the API
 
 Create a token under „Einstellungen" → „API", then:
@@ -28,6 +33,11 @@ curl -H "Authorization: Bearer $ARCHIVAR_TOKEN" -F "files=@scan.jpg" http://loca
 ## About this project
 
 This tool is vibe coded: most of the code was written by an AI coding assistant. It is nevertheless tested – by an automated test suite and by humans who actually use it.
+
+## Upcoming features
+
+- multi language support (i18n), currently german only
+- user management / login / logout
 
 ## License
 
