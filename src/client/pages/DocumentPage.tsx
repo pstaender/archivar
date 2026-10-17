@@ -1,15 +1,17 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FileText, Loader, ScanText, Trash } from "../icons";
+import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FileText, Loader, SavePlus, ScanText, Trash } from "../icons";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
 import { languageName, OCR_LANGUAGES } from "../../shared/languages";
-import type { ArchiveDocument, BwVariant, EditSettings } from "../../shared/types";
+import { type PresetSteps, presetStepsFromSettings } from "../../shared/presets";
+import type { ArchiveDocument, BwVariant, EditSettings, Quad, Rotation } from "../../shared/types";
 import { api, assetUrl, type OcrRequest } from "../api";
 import { saveBlob } from "../download";
 import { saveEditSettings, useEditSaving, whenEditsSaved } from "../editSaves";
 import { ConfirmDialog } from "../components/Dialog";
 import { EditableTitle } from "../components/EditableTitle";
 import { FolderPicker } from "../components/FolderPicker";
+import { PresetDialog } from "../components/PresetDialog";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { ZoomableImage } from "../components/ZoomableImage";
 import { type AutoBwState, EditControls } from "../editor/EditControls";
@@ -19,6 +21,7 @@ import { useProcessedPreview } from "../editor/useProcessedPreview";
 import { isAxisAlignedRect } from "../../shared/image/perspective";
 import { useConfig } from "../hooks/config";
 import { useFolders } from "../hooks/folders";
+import { usePresets } from "../hooks/presets";
 import { useSettings } from "../hooks/settings";
 import { useLeaveGuard } from "../hooks/leaveGuard";
 import { usePolling } from "../hooks/usePolling";
@@ -44,6 +47,13 @@ export function autoBwState(draft: EditSettings, cache: { key: string; variants:
   return { index, count: cache.variants.length, shade: index === 0 ? "best" : threshold > best ? "darker" : "lighter" };
 }
 
+/** Values the automatic tools produced, to tell them apart from values set by hand when saving a preset. */
+interface AutoValues {
+  rotation?: Rotation;
+  corners?: Quad;
+  bw?: BwVariant;
+}
+
 export function DocumentPage() {
   const id = Number(useParams().id);
   const [params] = useSearchParams();
@@ -59,6 +69,10 @@ export function DocumentPage() {
   const [bwLoading, setBwLoading] = useState(false);
   const [rotating, setRotating] = useState(false);
   const [cropping, setCropping] = useState(false);
+  const [autoValues, setAutoValues] = useState<AutoValues>({});
+  const [applyingPreset, setApplyingPreset] = useState(false);
+  const [savingPreset, setSavingPreset] = useState(false);
+  const { presets, reload: reloadPresets } = usePresets();
   const stack = useResource(() => (stackId ? api.stack(stackId) : Promise.resolve(null)), [stackId]);
   const doc = resource.data;
 
@@ -74,6 +88,7 @@ export function DocumentPage() {
     setDraft(doc.editSettings);
     setMode("none");
     setBwCache(null);
+    setAutoValues({});
   }, [doc?.id]);
 
   useEffect(() => {
@@ -151,6 +166,7 @@ export function DocumentPage() {
     setRotating(true);
     try {
       const { rotation } = await api.detectOrientation(doc.id);
+      if (rotation !== null) setAutoValues((current) => ({ ...current, rotation }));
       if (rotation === null) toast.show("Ausrichtung nicht erkannt – zu wenig Text im Bild.", "warning");
       else if (rotation === draft.rotation) toast.show("Das Bild ist bereits richtig ausgerichtet.");
       else {
@@ -171,6 +187,7 @@ export function DocumentPage() {
       const { corners } = await api.autoCrop(doc.id, requested);
       if (!corners) toast.show("Kein Seitenrand gefunden.", "warning");
       else {
+        setAutoValues((current) => ({ ...current, corners }));
         // Corners are relative to the rotated and dewarped image they were detected in.
         setDraft((current) =>
           current.rotation === requested.rotation && current.dewarp === requested.dewarp ? { ...current, corners } : current,
@@ -185,7 +202,48 @@ export function DocumentPage() {
   };
 
   const bwState = autoBwState(draft, bwCache);
-  const applyBw = (variant: BwVariant) => setDraft((current) => ({ ...current, ...variant, colorMode: "bw", autoLevels: false }));
+  const applyBw = (variant: BwVariant) => {
+    setAutoValues((current) => ({ ...current, bw: variant }));
+    setDraft((current) => ({ ...current, ...variant, colorMode: "bw", autoLevels: false }));
+  };
+
+  const presetCandidates = presetStepsFromSettings(draft, {
+    rotation: autoValues.rotation !== undefined && autoValues.rotation === draft.rotation,
+    crop: draft.corners !== null && draft.corners === autoValues.corners,
+    bw: bwState !== null || (autoValues.bw !== undefined && isBwVariant(draft, autoValues.bw)),
+  });
+
+  const applyPreset = async (presetId: number) => {
+    const preset = presets.find((p) => p.id === presetId);
+    if (!preset) return;
+    setApplyingPreset(true);
+    try {
+      const { editSettings } = await api.applyPreset(doc.id, preset.id, draft);
+      const { steps } = preset;
+      setAutoValues((current) => ({
+        rotation: steps.autoRotate ? editSettings.rotation : current.rotation,
+        corners: steps.autoCrop && editSettings.corners ? editSettings.corners : current.corners,
+        bw: steps.autoBw ? { brightness: editSettings.brightness, contrast: editSettings.contrast, bwThreshold: editSettings.bwThreshold } : current.bw,
+      }));
+      setDraft(editSettings);
+      setMode("none");
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setApplyingPreset(false);
+    }
+  };
+
+  const createPreset = async (name: string, steps: PresetSteps) => {
+    try {
+      await api.createPreset({ name, steps });
+      await reloadPresets();
+      toast.success(`Bildeinstellung „${name}“ gespeichert`);
+    } catch (error) {
+      toast.error(error);
+      throw error;
+    }
+  };
 
   const autoBw = async () => {
     const key = bwKey(draft);
@@ -312,6 +370,33 @@ export function DocumentPage() {
           <div className="panel__body" role="tabpanel">
             {tab === "edit" && doc.kind === "image" && (
               <>
+                <div className="preset-bar">
+                  <select
+                    className="input input--sm"
+                    aria-label="Bildeinstellung anwenden"
+                    value=""
+                    disabled={applyingPreset || presets.length === 0}
+                    onChange={(e) => applyPreset(Number(e.target.value))}
+                  >
+                    <option value="">{presets.length ? "Bildeinstellung anwenden …" : "Keine Bildeinstellungen gespeichert"}</option>
+                    {presets.map((preset) => (
+                      <option key={preset.id} value={preset.id}>
+                        {preset.name}
+                      </option>
+                    ))}
+                  </select>
+                  {applyingPreset && <Loader size={16} className="spin" aria-label="Wird angewendet" />}
+                  <button
+                    type="button"
+                    className="btn btn--sm btn--icon"
+                    onClick={() => setSavingPreset(true)}
+                    disabled={Object.keys(presetCandidates).length === 0}
+                    aria-label="Als Bildeinstellung speichern"
+                    title="Als Bildeinstellung speichern, um die Bearbeitung auf andere Bilder anzuwenden"
+                  >
+                    <SavePlus size={16} />
+                  </button>
+                </div>
                 <EditControls
                   settings={draft}
                   onChange={setDraft}
@@ -362,6 +447,15 @@ export function DocumentPage() {
         danger
         onConfirm={remove}
         onClose={() => setConfirmDelete(false)}
+      />
+      <PresetDialog
+        open={savingPreset}
+        title="Bildeinstellung speichern"
+        initialName={documentLabel(doc)}
+        steps={presetCandidates}
+        submitLabel="Speichern"
+        onSubmit={createPreset}
+        onClose={() => setSavingPreset(false)}
       />
       <UnsavedChangesDialog
         open={leave.asking}

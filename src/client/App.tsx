@@ -3,6 +3,7 @@ import type { RouteObject } from "react-router";
 import { AppShell } from "./components/AppShell";
 import { ConfigProvider } from "./hooks/config";
 import { FoldersProvider } from "./hooks/folders";
+import { PresetsProvider } from "./hooks/presets";
 import { SettingsProvider } from "./hooks/settings";
 import { ToastProvider } from "./hooks/toast";
 import { UploadProvider } from "./hooks/upload";
@@ -17,7 +18,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <ToastProvider>
         <SettingsProvider>
           <FoldersProvider>
-            <UploadProvider>{children}</UploadProvider>
+            <PresetsProvider>
+              <UploadProvider>{children}</UploadProvider>
+            </PresetsProvider>
           </FoldersProvider>
         </SettingsProvider>
       </ToastProvider>

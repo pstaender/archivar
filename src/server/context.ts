@@ -3,6 +3,7 @@ import type { User } from "../shared/types";
 import { DEFAULT_USER_NAME } from "./db/database";
 import { DocumentRepository } from "./db/documents";
 import { FolderRepository } from "./db/folders";
+import { PresetRepository } from "./db/presets";
 import { StackRepository } from "./db/stacks";
 import { UserRepository } from "./db/users";
 import { HttpError } from "./http";
@@ -20,6 +21,7 @@ export interface AppContext {
   folders: FolderRepository;
   documents: DocumentRepository;
   stacks: StackRepository;
+  presets: PresetRepository;
   ocr: OcrQueue;
   dewarp: DewarpEngine;
   imaging: ImagingService;
@@ -44,6 +46,7 @@ export function createContext(options: ContextOptions): AppContext {
   const folders = new FolderRepository(db);
   const documents = new DocumentRepository(db, folders);
   const stacks = new StackRepository(db, folders);
+  const presets = new PresetRepository(db);
   const imaging = new ImagingService(storage, options.imageConverter ?? null);
   const ocr = new OcrQueue(documents, imaging, options.ocrEngine, options.ocrPageTimeoutMs);
   const dewarp = options.dewarpEngine;
@@ -56,5 +59,5 @@ export function createContext(options: ContextOptions): AppContext {
     return user;
   };
 
-  return { db, storage, users, folders, documents, stacks, ocr, ocrEngine: options.ocrEngine, dewarp, imaging, archive, currentUser };
+  return { db, storage, users, folders, documents, stacks, presets, ocr, ocrEngine: options.ocrEngine, dewarp, imaging, archive, currentUser };
 }

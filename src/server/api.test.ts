@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createImage, Jimp } from "../shared/image/jimp";
 import { PREVIEW_SIZE } from "../shared/preview";
-import type { ArchiveDocument, Folder, LibraryItem, StackWithDocuments } from "../shared/types";
+import type { ImagePreset } from "../shared/presets";
+import type { ArchiveDocument, EditSettings, Folder, LibraryItem, StackWithDocuments } from "../shared/types";
 import { getDocumentProxy } from "unpdf";
 import { makePdf } from "../../test/pdf";
 import { OCR_TIMEOUT_MESSAGE } from "./services/ocr";
@@ -476,7 +477,7 @@ describe("settings", () => {
   const patchSettings = async (body: unknown) => (await patch("/api/settings", body)).json();
 
   test("stores the user's settings and ignores unknown values", async () => {
-    const defaults = { autoOcr: true, autoDewarp: false, ocrAllText: false, uploadEnhancement: "bw", pdfImageQuality: "300" };
+    const defaults = { autoOcr: true, autoDewarp: false, ocrAllText: false, uploadEnhancement: "bw", pdfImageQuality: "300", importPresetId: null, importFolders: [] };
     expect(await (await server.api("/api/settings")).json()).toEqual(defaults);
     expect(await patchSettings({ uploadEnhancement: "grayscale", autoOcr: false })).toEqual({ ...defaults, uploadEnhancement: "grayscale", autoOcr: false });
     expect(await patchSettings({ pdfImageQuality: "72", uploadEnhancement: "sepia", ocrAllText: "ja" })).toEqual({
@@ -702,6 +703,71 @@ describe("automatic black and white", () => {
     const doc = await uploadImage();
     expect(doc.editSettings.colorMode).toBe("color");
     expect(server.dewarp.inputs).toHaveLength(0);
+  });
+});
+
+describe("image presets", () => {
+  const createPreset = async (body: unknown) => {
+    const res = await post("/api/presets", body);
+    expect(res.status).toBe(201);
+    return (await res.json()) as ImagePreset;
+  };
+
+  test("stores only valid steps, lists them by name, renames, edits and deletes them", async () => {
+    const preset = await createPreset({
+      name: "  Beleg ",
+      steps: { autoBw: true, brightness: -0.09, colorMode: "bw", denoise: 9, saturation: "viel", corners: [] },
+    });
+    expect(preset).toMatchObject({ name: "Beleg", steps: { autoBw: true, denoise: 3 } });
+    await createPreset({ name: "Aquarell", steps: { saturation: 20 } });
+    const list = (await (await server.api("/api/presets")).json()) as ImagePreset[];
+    expect(list.map((p) => p.name)).toEqual(["Aquarell", "Beleg"]);
+
+    const res = await patch(`/api/presets/${preset.id}`, { name: "Kassenbon", steps: { brightness: 0.2 } });
+    expect(await res.json()).toMatchObject({ name: "Kassenbon", steps: { brightness: 0.2 } });
+    expect((await patch(`/api/presets/${preset.id}`, { name: " " })).status).toBe(400);
+    expect((await patch(`/api/presets/${preset.id}`, { steps: {} })).status).toBe(400);
+
+    expect((await server.api(`/api/presets/${preset.id}`, { method: "DELETE" })).status).toBe(204);
+    expect((await server.api(`/api/presets/${preset.id}`, { method: "DELETE" })).status).toBe(404);
+  });
+
+  test("rejects presets without a name or steps", async () => {
+    expect((await post("/api/presets", { name: "", steps: { autoBw: true } })).status).toBe(400);
+    expect((await post("/api/presets", { name: "Leer", steps: { foo: 1 } })).status).toBe(400);
+  });
+
+  test("applies a preset on top of unsaved settings without saving it", async () => {
+    server.ocr.orientation = { rotation: 90, confidence: 8 };
+    const doc = await uploadImage();
+    const preset = await createPreset({ name: "Scan", steps: { autoRotate: true, autoDewarp: true, brightness: 0.25 } });
+    const res = await post(`/api/documents/${doc.id}/apply-preset`, { presetId: preset.id, editSettings: { contrast: 0.5 } });
+    const { editSettings } = (await res.json()) as { editSettings: EditSettings };
+    expect(editSettings).toMatchObject({ rotation: 90, brightness: 0.25, contrast: 0.5, colorMode: "color" });
+    expect(editSettings.dewarp?.rotation).toBe(90);
+    expect(server.ctx.documents.getById(doc.id)?.editSettings.rotation).toBe(0);
+    expect((await post(`/api/documents/${doc.id}/apply-preset`, { presetId: 999 })).status).toBe(404);
+  });
+
+  test("uploads get the import preset instead of the OCR preparation, and the import folders", async () => {
+    const preset = await createPreset({ name: "Grau", steps: { colorMode: "grayscale", contrast: 0.3 } });
+    await patch("/api/settings", { importPresetId: preset.id, importFolders: ["eingang/ ", "", "eingang"] });
+    expect(await (await server.api("/api/settings")).json()).toMatchObject({ importPresetId: preset.id, importFolders: ["eingang"] });
+
+    const doc = await uploadImage("x.jpg", { ocr: "true", folders: JSON.stringify(["wichtig"]) });
+    expect(doc.editSettings).toMatchObject({ colorMode: "grayscale", contrast: 0.3, brightness: 0 });
+    expect(doc.folders.sort()).toEqual(["eingang", "wichtig"]);
+    const [pdf] = await upload([{ name: "a.pdf", data: makePdf("x"), type: "application/pdf" }]);
+    expect(pdf!.folders).toEqual(["eingang"]);
+  });
+
+  test("deleting the import preset turns it off in the settings", async () => {
+    const preset = await createPreset({ name: "SW", steps: { autoBw: true } });
+    await patch("/api/settings", { importPresetId: preset.id });
+    await server.api(`/api/presets/${preset.id}`, { method: "DELETE" });
+    expect(await (await server.api("/api/settings")).json()).toMatchObject({ importPresetId: null });
+    const doc = await uploadImage();
+    expect(doc.editSettings.colorMode).toBe("color");
   });
 });
 

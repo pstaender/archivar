@@ -80,6 +80,16 @@ const migrations: string[] = [
     PRIMARY KEY (folder_id, item_type, item_id)
   );
   `,
+  `
+  CREATE TABLE image_presets (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    steps TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX image_presets_user ON image_presets(user_id);
+  `,
 ];
 
 export function migrate(db: Database): void {

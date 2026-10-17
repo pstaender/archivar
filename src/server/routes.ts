@@ -1,5 +1,6 @@
 import type { BunRequest } from "bun";
 import { type AppConfig, type DocumentUpdate, type EditSettings, LIBRARY_SORTS, type LibraryItemRef, type LibrarySort, type Rotation, type StackCreate, type StackUpdate } from "../shared/types";
+import { type ImagePresetInput, normalizePresetName, normalizePresetSteps } from "../shared/presets";
 import type { AppContext } from "./context";
 import { toPublicDocument } from "./db/documents";
 import { handle, HttpError, json, noContent, parseId, readJson } from "./http";
@@ -105,13 +106,16 @@ export function createApiRoutes(ctx: AppContext) {
             .map(async (file) => ({ name: file.name, type: file.type, data: new Uint8Array(await file.arrayBuffer()) })),
         );
         const stackId = form.get("stackId");
+        const settings = ctx.users.settings(userId(req));
+        const preset = settings.importPresetId === null ? null : ctx.presets.get(userId(req), settings.importPresetId);
         const docs = await archive.upload(userId(req), files, {
-          folders: parseFolderList(form.get("folders")),
+          folders: [...new Set([...parseFolderList(form.get("folders")), ...settings.importFolders])],
           stackId: typeof stackId === "string" && stackId ? parseId(stackId) : undefined,
           runOcr: form.get("ocr") === "true",
           ocrAllText: form.get("ocrAllText") === "true",
           autoDewarp: form.get("dewarp") === "true",
-          enhancement: ctx.users.settings(userId(req)).uploadEnhancement,
+          enhancement: settings.uploadEnhancement,
+          preset: preset?.steps,
         });
         return json(docs, 201);
       }),
@@ -160,6 +164,15 @@ export function createApiRoutes(ctx: AppContext) {
       POST: handle(async (req: Req) => {
         const body = await readJson<{ editSettings?: Partial<EditSettings> }>(req).catch(() => ({ editSettings: undefined }));
         return json(await archive.autoBw(userId(req), parseId(req.params.id), body.editSettings));
+      }),
+    },
+
+    "/api/documents/:id/apply-preset": {
+      POST: handle(async (req: Req) => {
+        const body = await readJson<{ presetId?: unknown; editSettings?: Partial<EditSettings> }>(req);
+        const preset = ctx.presets.get(userId(req), parseId(String(body.presetId)));
+        if (!preset) throw new HttpError(404, "Preset not found");
+        return json({ editSettings: await archive.applyPreset(userId(req), parseId(req.params.id), preset.steps, body.editSettings) });
       }),
     },
 
@@ -238,6 +251,37 @@ export function createApiRoutes(ctx: AppContext) {
       POST: handle(async (req: Req) => {
         const body = await readJson<{ documentIds: number[] }>(req);
         return json(archive.addToStack(userId(req), parseId(req.params.id), body.documentIds));
+      }),
+    },
+
+    "/api/presets": {
+      GET: handle((req: Req) => json(ctx.presets.list(userId(req)))),
+      POST: handle(async (req: Req) => {
+        const body = await readJson<ImagePresetInput>(req);
+        const name = normalizePresetName(body.name);
+        const steps = normalizePresetSteps(body.steps);
+        if (!name) throw new HttpError(400, "Name required");
+        if (Object.keys(steps).length === 0) throw new HttpError(400, "Keine Einstellungen gewählt");
+        return json(ctx.presets.create(userId(req), name, steps), 201);
+      }),
+    },
+
+    "/api/presets/:id": {
+      PATCH: handle(async (req: Req) => {
+        const body = await readJson<ImagePresetInput>(req);
+        const name = body.name === undefined ? undefined : normalizePresetName(body.name);
+        const steps = body.steps === undefined ? undefined : normalizePresetSteps(body.steps);
+        if (name === "") throw new HttpError(400, "Name required");
+        if (steps && Object.keys(steps).length === 0) throw new HttpError(400, "Keine Einstellungen gewählt");
+        const preset = ctx.presets.update(userId(req), parseId(req.params.id), { name, steps });
+        if (!preset) throw new HttpError(404, "Preset not found");
+        return json(preset);
+      }),
+      DELETE: handle((req: Req) => {
+        const id = parseId(req.params.id);
+        if (!ctx.presets.delete(userId(req), id)) throw new HttpError(404, "Preset not found");
+        if (ctx.users.settings(userId(req)).importPresetId === id) ctx.users.updateSettings(userId(req), { importPresetId: null });
+        return noContent();
       }),
     },
 

@@ -13,6 +13,11 @@ export interface FetchMock {
   restore(): void;
 }
 
+// Loaded by every page through the providers; tests that care mock them themselves.
+const defaultRoutes: Record<string, Handler> = {
+  "GET /api/presets": () => [],
+};
+
 export function mockFetch(routes: Record<string, Handler>): FetchMock {
   const original = globalThis.fetch;
   const calls: FetchMock["calls"] = [];
@@ -22,7 +27,7 @@ export function mockFetch(routes: Record<string, Handler>): FetchMock {
     const body = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
     calls.push({ method, path: url.pathname + url.search, body });
     const key = `${method} ${url.pathname}`;
-    const handler = routes[key];
+    const handler = routes[key] ?? defaultRoutes[key];
     if (!handler) return Response.json({ error: `No mock for ${key}` }, { status: 404 });
     const result = await handler(url, init);
     if (result instanceof Response) return result;

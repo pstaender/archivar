@@ -6,6 +6,7 @@ import type { JimpImage } from "../../shared/image/jimp";
 import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
 import { normalizeFolderPath } from "../../shared/folders";
 import { isOcrLanguage } from "../../shared/languages";
+import { applyFixedSteps, type PresetSteps } from "../../shared/presets";
 import type { PdfImageQuality, UploadEnhancement } from "../../shared/settings";
 import type {
   ArchiveDocument,
@@ -46,8 +47,10 @@ export interface UploadOptions {
   runOcr?: boolean;
   ocrAllText?: boolean;
   autoDewarp?: boolean;
-  /** How images are prepared before OCR (only with `runOcr`). */
+  /** How images are prepared before OCR (only with `runOcr` and without `preset`). */
   enhancement?: UploadEnhancement;
+  /** Image preset applied to every uploaded image. */
+  preset?: PresetSteps;
 }
 
 export interface UploadFile {
@@ -118,7 +121,8 @@ export class ArchiveService {
         metadata: hasEmbeddedText ? { ...inspection.metadata, textSource: "pdf" } : inspection.metadata,
       });
       if (options.folders?.length) this.folders.setForDocument(userId, doc.id, options.folders);
-      if (options.runOcr && doc.kind === "image") doc = await this.autoEnhance(doc, options.autoDewarp === true, options.enhancement ?? "bw");
+      if (doc.kind === "image" && options.preset) doc = await this.applyPresetOnUpload(doc, options.preset);
+      else if (options.runOcr && doc.kind === "image") doc = await this.autoEnhance(doc, options.autoDewarp === true, options.enhancement ?? "bw");
       const size = await this.imaging.renderDerivatives(doc);
       if (size && !isDefaultEditSettings(doc.editSettings)) this.documents.update(userId, doc.id, size);
       doc = this.documents.get(userId, doc.id)!;
@@ -253,9 +257,58 @@ export class ArchiveService {
   async detectCrop(userId: number, id: number, settings: Partial<EditSettings> = {}): Promise<Quad | null> {
     const doc = this.getDocument(userId, id);
     if (doc.kind !== "image") throw new HttpError(400, "Only images can be cropped");
-    const { rotation, dewarp } = normalizeEditSettings(settings, doc.editSettings);
-    const original = scaleToFit((await this.imaging.loadOriginal(doc)).clone() as JimpImage, CROP_ANALYSIS_SIZE);
-    return detectDocument(applyEdits(original, { ...DEFAULT_EDIT_SETTINGS, rotation, dewarp }).bitmap);
+    return this.cropOf(await this.imaging.loadOriginal(doc), normalizeEditSettings(settings, doc.editSettings));
+  }
+
+  private cropOf(original: JimpImage, { rotation, dewarp }: EditSettings): Quad | null {
+    const image = scaleToFit(original.clone() as JimpImage, CROP_ANALYSIS_SIZE);
+    return detectDocument(applyEdits(image, { ...DEFAULT_EDIT_SETTINGS, rotation, dewarp }).bitmap);
+  }
+
+  /** The edit settings after applying a preset's steps on top of `settings` (default: the stored ones); nothing is saved. */
+  async applyPreset(userId: number, id: number, steps: PresetSteps, settings?: Partial<EditSettings>): Promise<EditSettings> {
+    const doc = this.getDocument(userId, id);
+    if (doc.kind !== "image") throw new HttpError(400, "Only images can be edited");
+    return this.presetSettings(doc, steps, normalizeEditSettings(settings ?? {}, doc.editSettings));
+  }
+
+  private async presetSettings(doc: StoredDocument, steps: PresetSteps, base: EditSettings): Promise<EditSettings> {
+    const original = await this.imaging.loadOriginal(doc);
+    let settings = base;
+    const rotate = (rotation: Rotation) => {
+      if (rotation !== settings.rotation) settings = { ...settings, rotation, dewarp: null, corners: null };
+    };
+    if (steps.autoRotate) {
+      const rotation = await this.orientationOf(original).catch((error) => {
+        console.warn(`Orientation detection failed for document ${doc.id}:`, error);
+        return null;
+      });
+      if (rotation !== null) rotate(rotation);
+    } else if (steps.rotation !== undefined) rotate(steps.rotation);
+    if (steps.autoDewarp && this.dewarp.available()) {
+      const upright = settings.rotation === 0 ? original : (original.clone().rotate(-settings.rotation) as JimpImage);
+      settings = { ...settings, dewarp: toDewarpGrid(await this.dewarp.predict(upright.bitmap), settings.rotation), corners: null };
+    }
+    if (steps.autoCrop) {
+      const corners = this.cropOf(original, settings);
+      if (corners) settings = { ...settings, corners };
+    }
+    settings = applyFixedSteps(settings, steps);
+    if (steps.autoBw) {
+      const [best] = autoBwVariants(original, settings);
+      if (best) settings = { ...settings, ...best, colorMode: "bw", autoLevels: false };
+    }
+    return normalizeEditSettings(settings);
+  }
+
+  private async applyPresetOnUpload(doc: StoredDocument, steps: PresetSteps): Promise<StoredDocument> {
+    try {
+      const editSettings = await this.presetSettings(doc, steps, doc.editSettings);
+      return this.documents.update(doc.userId, doc.id, { editSettings }) ?? doc;
+    } catch (error) {
+      console.warn(`Image preset failed for document ${doc.id}:`, error);
+      return doc;
+    }
   }
 
   private async orientationOf(original: JimpImage): Promise<Rotation | null> {

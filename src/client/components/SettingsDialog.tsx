@@ -1,17 +1,20 @@
 import { Loader } from "../icons";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
+import { describePreset } from "../../shared/presets";
 import { DEFAULT_USER_SETTINGS, type PdfImageQuality, type UploadEnhancement, type UserSettings } from "../../shared/settings";
 import { useConfig } from "../hooks/config";
+import { usePresets } from "../hooks/presets";
 import { useSettings } from "../hooks/settings";
 import { useToast } from "../hooks/toast";
 import { Dialog } from "./Dialog";
+import { FolderPicker } from "./FolderPicker";
 
-type Tab = "sizes" | "editing" | "ocr";
+type Tab = "sizes" | "editing" | "import";
 
 const TABS: { tab: Tab; label: string }[] = [
   { tab: "sizes", label: "Bildgrößen" },
   { tab: "editing", label: "Bildbearbeitung" },
-  { tab: "ocr", label: "OCR" },
+  { tab: "import", label: "Import" },
 ];
 
 interface Choice<T extends string> {
@@ -90,6 +93,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const toast = useToast();
   const config = useConfig();
   const { settings: stored, loaded, save } = useSettings();
+  const { presets } = usePresets();
+  const presetSelectId = useId();
   const [tab, setTab] = useState<Tab>("sizes");
   const [draft, setDraft] = useState<UserSettings>(stored);
   const [saving, setSaving] = useState(false);
@@ -113,7 +118,13 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     }
   };
 
-  const ocrOffHint = draft.autoOcr ? null : <p className="muted small">Gilt nur, wenn unter „OCR“ „Nach dem Upload erkennen“ eingeschaltet ist.</p>;
+  const importPreset = presets.find((preset) => preset.id === draft.importPresetId);
+  const editingHint = importPreset ? (
+    <p className="muted small">Bei Imports wird stattdessen die Bildeinstellung „{importPreset.name}“ angewendet (siehe „Import“).</p>
+  ) : draft.autoOcr ? null : (
+    <p className="muted small">Gilt nur, wenn unter „Import“ „Text nach dem Upload erkennen“ eingeschaltet ist.</p>
+  );
+  const editingDisabled = !draft.autoOcr || importPreset !== undefined;
 
   return (
     <Dialog
@@ -161,30 +172,59 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 name="uploadEnhancement"
                 choices={ENHANCEMENTS}
                 value={draft.uploadEnhancement}
-                disabled={!draft.autoOcr}
+                disabled={editingDisabled}
                 onChange={(value) => set("uploadEnhancement", value)}
               />
               {config.dewarpAvailable && (
                 <Switch
                   checked={draft.autoDewarp}
-                  disabled={!draft.autoOcr}
+                  disabled={editingDisabled}
                   onChange={(value) => set("autoDewarp", value)}
                   hint="Glättet gewölbte Seiten in Fotos vor der Texterkennung."
                 >
                   Automatisch entzerren
                 </Switch>
               )}
-              {ocrOffHint}
+              {editingHint}
             </>
           )}
-          {tab === "ocr" && (
+          {tab === "import" && (
             <>
               <Switch checked={draft.autoOcr} onChange={(value) => set("autoOcr", value)} hint="Erkennt den Text von Bildern und PDFs direkt beim Hochladen.">
-                Nach dem Upload erkennen
+                Text nach dem Upload erkennen
               </Switch>
               <Switch checked={draft.ocrAllText} onChange={(value) => set("ocrAllText", value)} hint="Übernimmt auch unsichere, vermutlich fehlerhafte Textteile.">
                 Alle Textteile erkennen
               </Switch>
+              <div className="settings__field">
+                <label htmlFor={presetSelectId} className="field__label">
+                  Bildeinstellung anwenden
+                </label>
+                <select
+                  id={presetSelectId}
+                  className="input"
+                  value={draft.importPresetId ?? ""}
+                  onChange={(e) => set("importPresetId", e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">Keine – Bildbearbeitung wie unter „Bildbearbeitung“</option>
+                  {presets.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="muted small">
+                  {importPreset
+                    ? describePreset(importPreset.steps)
+                    : presets.length
+                      ? "Wird auf jedes hochgeladene Bild angewendet, auch ohne Texterkennung."
+                      : "Bildeinstellungen werden im Tab „Bearbeiten“ eines Bildes gespeichert."}
+                </p>
+              </div>
+              <div className="settings__field">
+                <FolderPicker label="Zu Ordnern hinzufügen" value={draft.importFolders} onChange={(folders) => set("importFolders", folders)} />
+                <p className="muted small">Jeder Upload kommt zusätzlich in diese Ordner.</p>
+              </div>
             </>
           )}
         </div>

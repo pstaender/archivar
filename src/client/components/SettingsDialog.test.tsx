@@ -10,8 +10,9 @@ afterEach(() => {
   localStorage.clear();
 });
 
-function mockSettings(stored = {}) {
+function mockSettings(stored = {}, presets: unknown[] = []) {
   return mockFetch({
+    "GET /api/presets": () => presets,
     "GET /api/folders": () => [],
     "GET /api/config": () => ({ dewarpAvailable: true, convertibleImageTypes: [] }),
     "GET /api/settings": () => ({ ...DEFAULT_USER_SETTINGS, ...stored }),
@@ -24,12 +25,12 @@ const radio = (name: RegExp) => screen.getByRole("radio", { name }) as HTMLInput
 const checkbox = (name: RegExp) => screen.getByRole("checkbox", { name }) as HTMLInputElement;
 
 describe("SettingsDialog", () => {
-  test("shows image sizes, image editing and OCR on separate tabs and saves all of them", async () => {
+  test("shows image sizes, image editing and import on separate tabs and saves all of them", async () => {
     fetchMock = mockSettings({ pdfImageQuality: "original" });
     const onClose = mock();
     await renderApp(<SettingsDialog open onClose={onClose} />);
 
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Bildbearbeitung", "OCR"]);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Bildbearbeitung", "Import"]);
     expect(radio(/^Original.*voller Auflösung/).checked).toBe(true);
     expect(screen.getByText("Standard")).toBeTruthy();
     fireEvent.click(radio(/^150 DPI/));
@@ -39,8 +40,8 @@ describe("SettingsDialog", () => {
     fireEvent.click(radio(/^Graustufen/));
     fireEvent.click(checkbox(/Automatisch entzerren/));
 
-    tab("OCR");
-    expect(checkbox(/Nach dem Upload erkennen/).checked).toBe(true);
+    tab("Import");
+    expect(checkbox(/Text nach dem Upload erkennen/).checked).toBe(true);
     fireEvent.click(checkbox(/Alle Textteile erkennen/));
 
     fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
@@ -61,10 +62,10 @@ describe("SettingsDialog", () => {
     tab("Bildbearbeitung");
     expect(radio(/^Auto-Rotation/).disabled).toBe(true);
     expect(checkbox(/Automatisch entzerren/).disabled).toBe(true);
-    expect(screen.getByText(/Gilt nur, wenn unter „OCR“/)).toBeTruthy();
+    expect(screen.getByText(/Gilt nur, wenn unter „Import“/)).toBeTruthy();
 
-    tab("OCR");
-    fireEvent.click(checkbox(/Nach dem Upload erkennen/));
+    tab("Import");
+    fireEvent.click(checkbox(/Text nach dem Upload erkennen/));
     tab("Bildbearbeitung");
     expect(radio(/^Auto-Rotation/).disabled).toBe(false);
   });
@@ -87,8 +88,29 @@ describe("SettingsDialog", () => {
     await renderApp(<SettingsDialog open onClose={mock()} />);
     expect(fetchMock.calls.find((c) => c.method === "PATCH")?.body).toEqual({ autoOcr: false, ocrAllText: true });
     expect(localStorage.getItem("archivar.autoOcr")).toBeNull();
-    tab("OCR");
-    expect(checkbox(/Nach dem Upload erkennen/).checked).toBe(false);
+    tab("Import");
+    expect(checkbox(/Text nach dem Upload erkennen/).checked).toBe(false);
     expect(checkbox(/Alle Textteile erkennen/).checked).toBe(true);
+  });
+
+  test("applies an image preset and adds folders on import", async () => {
+    const presets = [{ id: 4, name: "Beleg", steps: { autoDewarp: true, autoBw: true }, createdAt: "" }];
+    fetchMock = mockSettings({}, presets);
+    const onClose = mock();
+    await renderApp(<SettingsDialog open onClose={onClose} />);
+    tab("Import");
+    fireEvent.change(screen.getByLabelText("Bildeinstellung anwenden"), { target: { value: "4" } });
+    expect(screen.getByText("Automatisch entzerren, Automatisch SW")).toBeTruthy();
+    const folderInput = screen.getByLabelText("Zu Ordnern hinzufügen");
+    fireEvent.change(folderInput, { target: { value: "eingang/ 2026 " } });
+    fireEvent.keyDown(folderInput, { key: "Enter" });
+
+    tab("Bildbearbeitung");
+    expect(radio(/^Graustufen/).disabled).toBe(true);
+    expect(screen.getByText(/stattdessen die Bildeinstellung „Beleg“/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Speichern" }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(fetchMock.calls.find((c) => c.method === "PATCH")?.body).toMatchObject({ importPresetId: 4, importFolders: ["eingang/2026"] });
   });
 });

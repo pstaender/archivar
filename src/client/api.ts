@@ -1,4 +1,5 @@
 import { PREVIEW_SIZE } from "../shared/preview";
+import type { ImagePreset, ImagePresetInput } from "../shared/presets";
 import type { UserSettings } from "../shared/settings";
 import type {
   AppConfig,
@@ -112,6 +113,9 @@ export const api = {
     request<{ corners: Quad | null }>(`/api/documents/${id}/auto-crop`, jsonBody("POST", { editSettings })),
   autoBw: (id: number, editSettings: EditSettings) =>
     request<BwVariant[]>(`/api/documents/${id}/auto-bw`, jsonBody("POST", { editSettings })),
+  /** The settings after applying a preset on top of `editSettings`; nothing is saved. */
+  applyPreset: (id: number, presetId: number, editSettings: EditSettings) =>
+    request<{ editSettings: EditSettings }>(`/api/documents/${id}/apply-preset`, jsonBody("POST", { presetId, editSettings })),
   /** Searchable PDF of the edited image with `text` (default: the stored text) as its text layer. */
   exportPdf: async (id: number, text?: string) => download(await send(`/api/documents/${id}/pdf`, jsonBody("POST", { text })), `dokument-${id}.pdf`),
   /** One PDF of the documents in order: images as searchable pages, PDFs with all pages; other files are left out. */
@@ -141,6 +145,11 @@ export const api = {
   addToStack: (id: number, documentIds: number[]) =>
     request<StackWithDocuments>(`/api/stacks/${id}/documents`, jsonBody("POST", { documentIds })),
   deleteStack: (id: number) => request<void>(`/api/stacks/${id}`, { method: "DELETE" }),
+
+  presets: () => request<ImagePreset[]>("/api/presets"),
+  createPreset: (input: ImagePresetInput) => request<ImagePreset>("/api/presets", jsonBody("POST", input)),
+  updatePreset: (id: number, input: ImagePresetInput) => request<ImagePreset>(`/api/presets/${id}`, jsonBody("PATCH", input)),
+  deletePreset: (id: number) => request<void>(`/api/presets/${id}`, { method: "DELETE" }),
 
   folders: () => request<Folder[]>("/api/folders"),
   createFolder: (path: string) => request<Folder>("/api/folders", jsonBody("POST", { path })),

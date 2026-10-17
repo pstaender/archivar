@@ -1,5 +1,6 @@
 import { AutoCrop, AutoRotate, Contrast, Crop, Eraser, Loader, RotateCcw, RotateCw, Scan, WandSparkles } from "../icons";
 import { type CSSProperties, useEffect, useId } from "react";
+import { DENOISE_LABELS, formatPercent as percent, formatSigned as signed } from "../../shared/presets";
 import type { ColorMode, EditSettings } from "../../shared/types";
 import { boundingRect, type GeometryMode, rotateSettings } from "./geometry";
 
@@ -37,8 +38,6 @@ const COLOR_MODES: { value: ColorMode; label: string }[] = [
   { value: "grayscale", label: "Graustufen" },
   { value: "bw", label: "S/W" },
 ];
-
-const DENOISE_LABELS = ["Aus", "Leicht", "Mittel", "Stark"];
 
 export function EditControls({
   settings,
@@ -241,9 +240,6 @@ export function EditControls({
     </div>
   );
 }
-
-const percent = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v * 100)} %`;
-const signed = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v)}`;
 
 interface SliderProps {
   label: string;
