@@ -1,4 +1,18 @@
-import { Download, FolderMinus, FolderPlus, Layers, Loader, SquareCheck, Trash, Upload, Wand, X } from "../icons";
+import {
+  Download,
+  FolderMinus,
+  FolderPlus,
+  Layers,
+  Loader,
+  RatioLandscape,
+  RatioPortrait,
+  RatioSquare,
+  SquareCheck,
+  Trash,
+  Upload,
+  Wand,
+  X,
+} from "../icons";
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { moveToFolders } from "../../shared/folders";
@@ -58,6 +72,35 @@ function useStoredSort(scope: keyof typeof SORT_KEYS): [LibrarySort, (sort: Libr
   return [sorts[scope], update];
 }
 
+export type CardShape = "portrait" | "landscape" | "square";
+
+const CARD_SHAPE_KEY = "archivar.cardShape";
+
+const CARD_SHAPES: { value: CardShape; label: string; Icon: typeof RatioPortrait }[] = [
+  { value: "portrait", label: "Hochformat", Icon: RatioPortrait },
+  { value: "landscape", label: "Querformat", Icon: RatioLandscape },
+  { value: "square", label: "Quadratisch", Icon: RatioSquare },
+];
+
+/** The shape of the cards' thumbnails, the same for the overview and all folders. */
+function useCardShape(): [CardShape, (shape: CardShape) => void] {
+  const [shape, setShape] = useState<CardShape>(() => {
+    try {
+      const stored = localStorage.getItem(CARD_SHAPE_KEY);
+      return CARD_SHAPES.some((s) => s.value === stored) ? (stored as CardShape) : "portrait";
+    } catch {
+      return "portrait";
+    }
+  });
+  const update = (next: CardShape) => {
+    setShape(next);
+    try {
+      localStorage.setItem(CARD_SHAPE_KEY, next);
+    } catch {}
+  };
+  return [shape, update];
+}
+
 const itemRef = (item: LibraryItem) => ({ type: item.type, id: item.type === "stack" ? item.stack.id : item.document.id });
 const itemTitle = (item: LibraryItem) => (item.type === "stack" ? item.stack.title : documentLabel(item.document));
 
@@ -68,6 +111,7 @@ export function LibraryPage() {
   const legacyFolder = params.get("folder");
   const toast = useToast();
   const [sort, setSort] = useStoredSort(folder ? "folder" : "overview");
+  const [cardShape, setCardShape] = useCardShape();
   const library = useResource(() => api.library({ folder, q, sort }), [folder, q, sort]);
   useRefreshOnUpload(library.refresh);
   useRefreshOnEditSave(library.refresh);
@@ -123,40 +167,60 @@ export function LibraryPage() {
             </p>
           )}
         </div>
-        <select
-          className="input input--sm library-sort"
-          value={sort}
-          onChange={(e) => setSort(e.target.value as LibrarySort)}
-          aria-label="Sortierung"
-          title="Sortierung"
-        >
-          {(folder ? FOLDER_SORTS : OVERVIEW_SORTS).map((value) => (
-            <option key={value} value={value}>
-              {SORT_LABELS[value]}
-            </option>
-          ))}
-        </select>
+        <div className="library-controls">
+          <div className="segmented segmented--icons" role="radiogroup" aria-label="Kartenformat">
+            {CARD_SHAPES.map(({ value, label, Icon }) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={cardShape === value}
+                aria-label={label}
+                title={label}
+                className={cardShape === value ? "is-active" : ""}
+                onClick={() => setCardShape(value)}
+              >
+                <Icon size={16} />
+              </button>
+            ))}
+          </div>
+          <select
+            className="input input--sm library-sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as LibrarySort)}
+            aria-label="Sortierung"
+            title="Sortierung"
+          >
+            {(folder ? FOLDER_SORTS : OVERVIEW_SORTS).map((value) => (
+              <option key={value} value={value}>
+                {SORT_LABELS[value]}
+              </option>
+            ))}
+          </select>
+        </div>
       </header>
 
       {library.error && <div className="alert alert--error">{library.error.message}</div>}
 
       {!library.loading && items.length === 0 && !library.error && <EmptyLibrary filtered={Boolean(folder || q)} />}
 
-      <SortableGrid
-        items={items}
-        itemKey={itemKey}
-        itemLabel={itemTitle}
-        busy={library.loading}
-        onReorder={sort === "custom" ? reorder : undefined}
-        renderItem={(item) => (
-          <ItemCard
-            item={item}
-            selected={selected.has(itemKey(item))}
-            selectionMode={selected.size > 0}
-            onToggle={() => toggle(itemKey(item))}
-          />
-        )}
-      />
+      <div className="library" data-card-shape={cardShape}>
+        <SortableGrid
+          items={items}
+          itemKey={itemKey}
+          itemLabel={itemTitle}
+          busy={library.loading}
+          onReorder={sort === "custom" ? reorder : undefined}
+          renderItem={(item) => (
+            <ItemCard
+              item={item}
+              selected={selected.has(itemKey(item))}
+              selectionMode={selected.size > 0}
+              onToggle={() => toggle(itemKey(item))}
+            />
+          )}
+        />
+      </div>
 
       {selectedItems.length > 0 && (
         <SelectionBar

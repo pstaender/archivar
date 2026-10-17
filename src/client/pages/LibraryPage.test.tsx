@@ -24,6 +24,23 @@ describe("LibraryPage", () => {
     expect(screen.getByRole("link", { name: /Steuer 2026/ }).getAttribute("href")).toBe(`/stacks/${stack.id}`);
   });
 
+  test("shows the cards in portrait, landscape or square and keeps the choice for all folders", async () => {
+    fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [docItem(makeDocument())] });
+    const view = await renderApp(<LibraryPage />);
+    const shape = () => view.container.querySelector(".library")?.getAttribute("data-card-shape");
+    expect(shape()).toBe("portrait");
+    expect(screen.getByRole("radio", { name: "Hochformat" }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("radio", { name: "Querformat" }));
+    expect(shape()).toBe("landscape");
+    expect(localStorage.getItem("archivar.cardShape")).toBe("landscape");
+    view.unmount();
+
+    const folder = await renderApp(<LibraryPage />, { path: "/folders/wichtig" });
+    expect(folder.container.querySelector(".library")?.getAttribute("data-card-shape")).toBe("landscape");
+    fireEvent.click(screen.getByRole("radio", { name: "Quadratisch" }));
+    expect(folder.container.querySelector(".library")?.getAttribute("data-card-shape")).toBe("square");
+  });
+
   test("passes folder and search filters to the API", async () => {
     fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [] });
     await renderApp(<LibraryPage />, { path: "/folders/wichtig/2026?q=miete" });
