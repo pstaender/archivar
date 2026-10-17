@@ -81,6 +81,10 @@ export interface ArchiveDocument {
   shapes: Shape[];
   /** Rotation, crop or dewarping changed after the shapes were drawn, so they may no longer cover the same content. */
   shapesOutdated: boolean;
+  /** Areas replaced by vector graphics (only images; the areas themselves come from `/api/documents/:id/vectors`). */
+  vectorCount: number;
+  /** Rotation, crop or dewarping changed after the areas were vectorized. */
+  vectorsOutdated: boolean;
   ocrText: string;
   ocrStatus: OcrStatus;
   ocrConfidence: number | null;

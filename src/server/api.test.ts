@@ -1270,3 +1270,93 @@ describe("shapes", () => {
     expect((await patch(`/api/documents/${doc.id}`, { shapes: "x" })).status).toBe(400);
   });
 });
+
+describe("vectors", () => {
+  // The left half of the area black, the right half white.
+  const area = {
+    id: "v1",
+    x: 0,
+    y: 0,
+    width: 0.5,
+    height: 1,
+    settings: { mode: "bw", detail: 3, curves: "smooth", threshold: 128 },
+    graphic: { width: 10, height: 10, background: "#ffffff", paths: [{ d: "M0 0L5 0L5 10L0 10Z", fill: "#000000" }] },
+  };
+  const put = (id: number, body: unknown) =>
+    server.api(`/api/documents/${id}/vectors`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const pixelOf = async (data: Uint8Array | ArrayBuffer, x: number, y: number) => (await Jimp.read(Buffer.from(data as ArrayBuffer))).getPixelColor(x, y) >>> 8;
+  const pixel = async (id: number, asset: string, x: number, y: number) => pixelOf(await (await server.api(`/api/documents/${id}/${asset}`)).arrayBuffer(), x, y);
+  const channels = (rgb: number) => [(rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff];
+  const isDark = (rgb: number) => channels(rgb).every((c) => c < 40);
+  const isWhite = (rgb: number) => channels(rgb).every((c) => c > 215);
+
+  test("replace the pixels of their areas and are kept apart from the documents", async () => {
+    const doc = await uploadImage();
+    expect(doc).toMatchObject({ vectorCount: 0, vectorsOutdated: false });
+    const res = await put(doc.id, { areas: [area, { ...area, id: "pending", x: 0.6, width: 0.3, graphic: null }] });
+    expect(res.status).toBe(200);
+    const saved = (await res.json()) as { document: ArchiveDocument; areas: unknown[] };
+    // Areas that were not vectorized are dropped.
+    expect(saved.areas).toEqual([area]);
+    expect(saved.document.vectorCount).toBe(1);
+
+    expect(isDark(await pixel(doc.id, "image", 5, 20))).toBe(true);
+    expect(isWhite(await pixel(doc.id, "image", 25, 20))).toBe(true);
+    expect(isWhite(await pixel(doc.id, "image", 50, 20))).toBe(false);
+    expect(isDark(await pixel(doc.id, "thumbnail", 5, 20))).toBe(true);
+    // The editor vectorizes the image without them.
+    expect(isDark(await pixel(doc.id, "edited", 5, 20))).toBe(false);
+
+    expect(await (await server.api(`/api/documents/${doc.id}/vectors`)).json()).toEqual({ areas: [area], outdated: false });
+    const listed = (await (await server.api("/api/library")).json()) as LibraryItem[];
+    expect(listed.find((item) => item.type === "document" && item.document.id === doc.id)).toMatchObject({ document: { vectorCount: 1 } });
+
+    const removed = (await (await put(doc.id, { areas: [] })).json()) as { document: ArchiveDocument };
+    expect(removed.document.vectorCount).toBe(0);
+    expect(isDark(await pixel(doc.id, "image", 5, 20))).toBe(false);
+    expect(await server.ctx.storage.exists(derivedKeys.edited(doc.id))).toBe(false);
+  });
+
+  test("shapes are drawn on top of them", async () => {
+    const doc = await uploadImage();
+    await put(doc.id, { areas: [area] });
+    await patch(`/api/documents/${doc.id}`, { shapes: [{ id: "s", type: "rect", x: 0, y: 0, width: 1, height: 0.25, color: "#ffffff" }] });
+    expect(isWhite(await pixel(doc.id, "image", 5, 5))).toBe(true);
+    expect(isDark(await pixel(doc.id, "image", 5, 30))).toBe(true);
+  });
+
+  test("recognize the text again when they change and the image had text", async () => {
+    const doc = await uploadImage("mit.jpg", { ocr: "true" });
+    await server.ctx.ocr.idle();
+    const saved = (await (await put(doc.id, { areas: [area] })).json()) as { document: ArchiveDocument };
+    expect(saved.document.ocrStatus).toBe("pending");
+    await server.ctx.ocr.idle();
+    expect(server.ocr.calls).toBe(2);
+    expect(isDark(await pixelOf(server.ocr.images[1]!, 5, 20))).toBe(true);
+
+    await put(doc.id, { areas: [area] });
+    await server.ctx.ocr.idle();
+    expect(server.ocr.calls).toBe(2);
+  });
+
+  test("are marked as outdated when the geometry changes afterwards", async () => {
+    const doc = await uploadImage();
+    await put(doc.id, { areas: [area] });
+    const rotated = (await (await patch(`/api/documents/${doc.id}`, { editSettings: { rotation: 90 } })).json()) as ArchiveDocument;
+    expect(rotated).toMatchObject({ vectorCount: 1, vectorsOutdated: true });
+    expect(((await (await server.api(`/api/documents/${doc.id}/vectors`)).json()) as { outdated: boolean }).outdated).toBe(true);
+    const again = (await (await put(doc.id, { areas: [area] })).json()) as { document: ArchiveDocument };
+    expect(again.document.vectorsOutdated).toBe(false);
+  });
+
+  test("only images can be vectorized, invalid bodies are rejected and deleting the document removes them", async () => {
+    const [pdf] = await upload([{ name: "a.pdf", data: makePdf("Hallo"), type: "application/pdf" }]);
+    expect((await put(pdf!.id, { areas: [area] })).status).toBe(400);
+    const doc = await uploadImage();
+    expect((await put(doc.id, { areas: "nope" })).status).toBe(400);
+    expect((await put(999, { areas: [] })).status).toBe(404);
+    await put(doc.id, { areas: [area] });
+    await server.api(`/api/documents/${doc.id}`, { method: "DELETE" });
+    expect(server.ctx.db.query("SELECT COUNT(*) AS n FROM document_vectors").get()).toEqual({ n: 0 });
+  });
+});

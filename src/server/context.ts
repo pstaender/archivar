@@ -8,6 +8,7 @@ import { PresetRepository } from "./db/presets";
 import { StackRepository } from "./db/stacks";
 import { TokenRepository } from "./db/tokens";
 import { UserRepository } from "./db/users";
+import { VectorRepository } from "./db/vectors";
 import { HttpError } from "./http";
 import { ArchiveService } from "./services/archive";
 import type { DewarpEngine } from "./services/dewarp";
@@ -27,6 +28,7 @@ export interface AppContext {
   presets: PresetRepository;
   jobs: JobRepository;
   tokens: TokenRepository;
+  vectors: VectorRepository;
   jobQueue: JobQueue;
   ocr: OcrQueue;
   dewarp: DewarpEngine;
@@ -55,10 +57,11 @@ export function createContext(options: ContextOptions): AppContext {
   const presets = new PresetRepository(db);
   const jobs = new JobRepository(db);
   const tokens = new TokenRepository(db);
-  const imaging = new ImagingService(storage, options.imageConverter ?? null);
+  const vectors = new VectorRepository(db);
+  const imaging = new ImagingService(storage, options.imageConverter ?? null, (doc) => vectors.get(doc.userId, doc.id)?.areas ?? []);
   const ocr = new OcrQueue(documents, imaging, options.ocrEngine, options.ocrPageTimeoutMs);
   const dewarp = options.dewarpEngine;
-  const archive = new ArchiveService(documents, stacks, folders, storage, imaging, ocr, dewarp, options.ocrEngine);
+  const archive = new ArchiveService(documents, stacks, folders, storage, imaging, ocr, dewarp, options.ocrEngine, vectors);
   const jobQueue = new JobQueue(jobs, archive);
 
   // There is no login yet: requests without a bearer token act as the default user.
@@ -75,5 +78,5 @@ export function createContext(options: ContextOptions): AppContext {
     return user;
   };
 
-  return { db, storage, users, folders, documents, stacks, presets, jobs, tokens, jobQueue, ocr, ocrEngine: options.ocrEngine, dewarp, imaging, archive, currentUser };
+  return { db, storage, users, folders, documents, stacks, presets, jobs, tokens, vectors, jobQueue, ocr, ocrEngine: options.ocrEngine, dewarp, imaging, archive, currentUser };
 }

@@ -1132,6 +1132,31 @@ a.folder-tree__row .folder-tree__toggle {
   }
 }
 
+.vector-area {
+  background: transparent;
+}
+
+.vector-area__graphic {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.vector-area__busy {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  display: grid;
+  place-items: center;
+  padding: var(--space-1);
+  border-radius: var(--radius-full);
+  background: rgb(255 255 255 / 0.85);
+  color: #18181b;
+  pointer-events: none;
+}
+
 .shape__handle--nw { left: 0; top: 0; cursor: nwse-resize; }
 .shape__handle--n { left: 50%; top: 0; cursor: ns-resize; }
 .shape__handle--ne { left: 100%; top: 0; cursor: nesw-resize; }

@@ -19,6 +19,8 @@ import { type AutoBwState, EditControls } from "../editor/EditControls";
 import { type GeometryMode, withRotation } from "../editor/geometry";
 import { ImageEditor } from "../editor/ImageEditor";
 import { ShapeCanvas, ShapeControls } from "../editor/ShapeEditor";
+import { useVectorAreas } from "../editor/useVectorAreas";
+import { VectorCanvas, VectorControls } from "../editor/VectorEditor";
 import { useProcessedPreview } from "../editor/useProcessedPreview";
 import { isAxisAlignedRect } from "../../shared/image/perspective";
 import { useConfig } from "../hooks/config";
@@ -33,10 +35,10 @@ import { useToast } from "../hooks/toast";
 import { useResource } from "../hooks/useResource";
 import { documentLabel, formatBytes, formatDateTime, isOcrBusy, OCR_STATUS_LABEL } from "../format";
 
-type Tab = "edit" | "text" | "shapes" | "details";
+type Tab = "edit" | "text" | "vectors" | "shapes" | "details";
 
-const IMAGE_TABS: Tab[] = ["edit", "shapes"];
-const TABS: Tab[] = ["edit", "text", "shapes", "details"];
+const IMAGE_TABS: Tab[] = ["edit", "vectors", "shapes"];
+const TABS: Tab[] = ["edit", "text", "vectors", "shapes", "details"];
 const TAB_KEY = "archivar.documentTab";
 
 /** The tab chosen last, for all documents. */
@@ -111,6 +113,8 @@ export function DocumentPage() {
   const [selectedShape, setSelectedShape] = useState<string | null>(null);
   const [shapeColor, setShapeColor] = useState(SHAPE_COLORS[0]!.color);
   const [savingShapes, setSavingShapes] = useState(false);
+  const vectors = useVectorAreas(doc, toast.error);
+  const [showOriginal, setShowOriginal] = useState(false);
   const processed = useProcessedPreview(doc?.id, draft, toast.error);
   const saving = useEditSaving(doc?.id);
 
@@ -132,7 +136,8 @@ export function DocumentPage() {
 
   const dirty = useMemo(() => doc !== undefined && JSON.stringify(draft) !== JSON.stringify(doc.editSettings), [draft, doc]);
   const shapesDirty = useMemo(() => doc !== undefined && JSON.stringify(shapes) !== JSON.stringify(doc.shapes), [shapes, doc]);
-  const leave = useLeaveGuard(dirty || shapesDirty);
+  const vectorsDirty = vectors.dirty || vectors.pending;
+  const leave = useLeaveGuard(dirty || shapesDirty || vectorsDirty);
 
   // Inside a stack its pages, otherwise the documents of the library page it was opened from.
   const libraryOrder = useMemo(() => documentOrder(), [id]);
@@ -210,7 +215,15 @@ export function DocumentPage() {
     setSelectedShape(null);
   };
 
-  const unsavedIn = (current: Tab) => (current === "edit" && dirty) || (current === "shapes" && shapesDirty);
+  const saveVectors = async () => {
+    const updated = await vectors.save();
+    if (!updated) return;
+    resource.setData(updated);
+    toast.success(updated.ocrStatus === "pending" ? "Vektoren gespeichert – Text wird neu erkannt" : "Vektoren gespeichert");
+  };
+
+  const unsavedIn = (current: Tab) =>
+    (current === "edit" && dirty) || (current === "shapes" && shapesDirty) || (current === "vectors" && vectorsDirty);
   const chooseTab = (next: Tab) => {
     storeTab(next);
     setTab(next);
@@ -421,7 +434,9 @@ export function DocumentPage() {
 
       <div className="document-layout">
         <div className="viewer">
-          {tab === "shapes" && doc.kind === "image" ? (
+          {tab === "vectors" && doc.kind === "image" ? (
+            <VectorCanvas src={assetUrl(doc, "edited")} alt={documentLabel(doc)} state={vectors} showOriginal={showOriginal} />
+          ) : tab === "shapes" && doc.kind === "image" ? (
             <ShapeCanvas
               src={assetUrl(doc, "edited")}
               alt={documentLabel(doc)}
@@ -453,6 +468,11 @@ export function DocumentPage() {
             <TabButton tab="text" current={tab} onSelect={selectTab}>
               Text
             </TabButton>
+            {doc.kind === "image" && (
+              <TabButton tab="vectors" current={tab} onSelect={selectTab}>
+                Vektor
+              </TabButton>
+            )}
             {doc.kind === "image" && (
               <TabButton tab="shapes" current={tab} onSelect={selectTab}>
                 Formen
@@ -530,6 +550,15 @@ export function DocumentPage() {
               </>
             )}
             {tab === "text" && <TextPanel doc={doc} onRunOcr={runOcr} onSave={(ocrText) => update({ ocrText })} />}
+            {tab === "vectors" && doc.kind === "image" && (
+              <VectorControls
+                state={vectors}
+                showOriginal={showOriginal}
+                onShowOriginal={setShowOriginal}
+                hasText={doc.ocrStatus !== "none"}
+                onSave={() => void saveVectors()}
+              />
+            )}
             {tab === "shapes" && doc.kind === "image" && (
               <ShapeControls
                 shapes={shapes}
@@ -575,12 +604,14 @@ export function DocumentPage() {
         onSave={() => {
           if (dirty) save();
           if (shapesDirty) void saveShapes();
+          if (vectors.dirty && !vectors.pending) void saveVectors();
           leave.proceed();
         }}
         onDiscard={() => {
           setDraft(doc.editSettings);
           setMode("none");
           discardShapes();
+          vectors.discard();
           leave.proceed();
         }}
         onStay={leave.stay}

@@ -1,38 +1,15 @@
 import { Loader, Plus, SavePlus, Trash } from "../icons";
 import { type KeyboardEvent, type PointerEvent, useRef } from "react";
 import { MIN_SHAPE_SIZE, SHAPE_COLORS, type Shape } from "../../shared/shapes";
+import { fromEdges, HANDLES, type Handle, moveBy, nudge, type Point, pointIn, resize } from "./rects";
 
-type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
-const HANDLES: Handle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
-
-type Point = { x: number; y: number };
 type Drag =
   | { kind: "create"; id: string; anchor: Point }
   | { kind: "move"; id: string; start: Point; origin: Shape }
   | { kind: "resize"; id: string; handle: Handle; origin: Shape };
 
-const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
-
 let created = 0;
 const newId = () => `r${Date.now().toString(36)}${(created++).toString(36)}`;
-
-/** The rectangle spanned by two edges on each axis, whichever way round they are. */
-function fromEdges(shape: Shape, left: number, top: number, right: number, bottom: number): Shape {
-  return { ...shape, x: Math.min(left, right), y: Math.min(top, bottom), width: Math.abs(right - left), height: Math.abs(bottom - top) };
-}
-
-function resize(origin: Shape, handle: Handle, p: Point): Shape {
-  let [left, top, right, bottom] = [origin.x, origin.y, origin.x + origin.width, origin.y + origin.height];
-  if (handle.includes("w")) left = p.x;
-  if (handle.includes("e")) right = p.x;
-  if (handle.includes("n")) top = p.y;
-  if (handle.includes("s")) bottom = p.y;
-  return fromEdges(origin, left, top, right, bottom);
-}
-
-function moveBy(origin: Shape, dx: number, dy: number): Shape {
-  return { ...origin, x: clamp01(Math.min(1 - origin.width, origin.x + dx)), y: clamp01(Math.min(1 - origin.height, origin.y + dy)) };
-}
 
 const tooSmall = (shape: Shape) => shape.width < MIN_SHAPE_SIZE || shape.height < MIN_SHAPE_SIZE;
 
@@ -52,10 +29,7 @@ export function ShapeCanvas({ src, alt, shapes, selected, color, onChange, onSel
   const overlay = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
 
-  const toPoint = (e: PointerEvent): Point => {
-    const rect = overlay.current!.getBoundingClientRect();
-    return { x: clamp01((e.clientX - rect.left) / rect.width), y: clamp01((e.clientY - rect.top) / rect.height) };
-  };
+  const toPoint = (e: PointerEvent): Point => pointIn(overlay.current!, e);
 
   const replace = (shape: Shape) => onChange(shapes.map((s) => (s.id === shape.id ? shape : s)));
 
@@ -116,15 +90,10 @@ export function ShapeCanvas({ src, alt, shapes, selected, color, onChange, onSel
       (e.target as HTMLElement).blur();
       return;
     }
-    const step = e.shiftKey ? 0.05 : 0.005;
-    const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
-    if (!delta) return;
+    const next = nudge(shape, e);
+    if (!next) return;
     e.preventDefault();
-    const [dx, dy] = delta as [number, number];
-    if (e.altKey) {
-      const next = fromEdges(shape, shape.x, shape.y, clamp01(shape.x + shape.width + dx), clamp01(shape.y + shape.height + dy));
-      if (!tooSmall(next)) replace(next);
-    } else replace(moveBy(shape, dx, dy));
+    if (!tooSmall(next)) replace(next);
   };
 
   return (

@@ -3,6 +3,7 @@ import type { Job, JobCreate } from "../shared/jobs";
 import type { ImagePreset, ImagePresetInput } from "../shared/presets";
 import type { UserSettings } from "../shared/settings";
 import type { Shape } from "../shared/shapes";
+import type { VectorArea } from "../vectorizer";
 import type { ApiToken, CreatedApiToken } from "../shared/tokens";
 import type {
   AppConfig,
@@ -113,6 +114,9 @@ export const api = {
 
   document: (id: number) => request<ArchiveDocument>(`/api/documents/${id}`),
   updateDocument: (id: number, update: DocumentUpdate) => request<ArchiveDocument>(`/api/documents/${id}`, jsonBody("PATCH", update)),
+  vectors: (id: number) => request<{ areas: VectorArea[]; outdated: boolean }>(`/api/documents/${id}/vectors`),
+  saveVectors: (id: number, areas: VectorArea[]) =>
+    request<{ document: ArchiveDocument; areas: VectorArea[] }>(`/api/documents/${id}/vectors`, jsonBody("PUT", { areas })),
   deleteDocument: (id: number) => request<void>(`/api/documents/${id}`, { method: "DELETE" }),
   detectDewarp: (id: number, rotation: Rotation) =>
     request<DewarpGrid>(`/api/documents/${id}/dewarp`, jsonBody("POST", { rotation })),

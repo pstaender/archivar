@@ -48,7 +48,7 @@
     "dev": "bun --hot src/server/index.ts",
     "start": "NODE_ENV=production bun src/server/index.ts",
     "test": "bun run test:server && bun run test:client",
-    "test:server": "bun test --preload ./test/opencv.ts src/server src/shared",
+    "test:server": "bun test --preload ./test/opencv.ts src/server src/shared src/vectorizer",
     "test:client": "bun test --preload ./test/happydom.ts src/client",
     "typecheck": "tsc --noEmit",
     "setup:uvdoc": "bash scripts/setup-uvdoc.sh"

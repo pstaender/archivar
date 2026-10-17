@@ -253,6 +253,14 @@ export function createApiRoutes(ctx: AppContext) {
       }),
     },
 
+    "/api/documents/:id/vectors": {
+      GET: handle((req: Req) => json(archive.getVectors(userId(req), parseId(req.params.id)))),
+      PUT: handle(async (req: Req) => {
+        const body = await readJson<{ areas?: unknown }>(req);
+        return json(await archive.setVectors(userId(req), parseId(req.params.id), body.areas));
+      }),
+    },
+
     "/api/documents/:id/thumbnail": {
       GET: handle((req: Req) => {
         const doc = archive.getDocument(userId(req), parseId(req.params.id));

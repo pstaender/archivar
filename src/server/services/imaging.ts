@@ -4,6 +4,8 @@ import { isEditableImageType, Jimp, type JimpImage } from "../../shared/image/ji
 import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
 import { PREVIEW_SIZE } from "../../shared/preview";
 import { drawShapes } from "../../shared/shapes";
+import type { VectorArea } from "../../vectorizer";
+import { paintVectorAreas } from "../../vectorizer/server/paint";
 import type { DocumentKind, EditSettings } from "../../shared/types";
 import { convertibleTypeForExtension } from "../../shared/uploads";
 import type { StoredDocument } from "../db/documents";
@@ -71,6 +73,7 @@ export class ImagingService {
   constructor(
     private storage: FileStorage,
     private converter: ImageConverter | null = null,
+    private vectorAreas: (doc: StoredDocument) => VectorArea[] = () => [],
   ) {}
 
   convertibleTypes(): string[] {
@@ -154,9 +157,10 @@ export class ImagingService {
       const edited = isDefaultEditSettings(doc.editSettings) ? original : applyEdits(original, doc.editSettings);
       const { width, height } = edited.bitmap;
       let processed = edited;
-      if (doc.shapes.length > 0) {
+      if (doc.shapes.length > 0 || doc.vectorCount > 0) {
         await this.storage.write(derivedKeys.edited(doc.id), await toJpeg(edited));
         processed = edited.clone() as JimpImage;
+        if (doc.vectorCount > 0) await paintVectorAreas(processed.bitmap, this.vectorAreas(doc));
         drawShapes(processed.bitmap, doc.shapes);
       } else if (await this.storage.exists(derivedKeys.edited(doc.id))) {
         await this.storage.delete(derivedKeys.edited(doc.id));
@@ -177,9 +181,9 @@ export class ImagingService {
     return null;
   }
 
-  /** Storage key of the edited image without shapes, which the shapes are drawn on in the editor. */
+  /** Storage key of the edited image without shapes and vector areas, which they are drawn on in the editor. */
   async editedKey(doc: StoredDocument): Promise<string> {
-    if (doc.shapes.length === 0) return derivedKeys.processed(doc.id);
+    if (doc.shapes.length === 0 && doc.vectorCount === 0) return derivedKeys.processed(doc.id);
     const key = derivedKeys.edited(doc.id);
     if (!(await this.storage.exists(key))) await this.renderDerivatives(doc);
     return key;

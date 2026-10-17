@@ -1,6 +1,7 @@
 import { afterAll, expect, test } from "bun:test";
 import { OPENCV_URL } from "../shared/opencvAsset";
 import { PREVIEW_WORKER_URL } from "../shared/preview";
+import { VECTORIZER_WORKER_URL } from "../vectorizer";
 import { vendorRoutes } from "./vendor";
 
 const server = Bun.serve({ port: 0, routes: vendorRoutes() });
@@ -26,4 +27,12 @@ test("bundles the preview worker as a classic script and revalidates it by ETag"
   const etag = res.headers.get("etag")!;
   const cached = await fetch(url, { headers: { "If-None-Match": etag } });
   expect(cached.status).toBe(304);
+});
+
+test("bundles the vectorizer worker as a classic script", async () => {
+  const res = await fetch(new URL(VECTORIZER_WORKER_URL, server.url));
+  expect(res.status).toBe(200);
+  const js = await res.text();
+  expect(js).not.toMatch(/^\s*(import|export)\b/m);
+  expect(js).toContain("createImageBitmap");
 });

@@ -35,7 +35,7 @@ async function open(overrides: Parameters<typeof makeDocument>[0] = {}, routes: 
 describe("Formen tab", () => {
   test("sits between Text and Details and shows the image without its shapes", async () => {
     const view = await open({ shapes: [shape], shapesOutdated: true });
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bearbeiten", "Text", "Formen", "Details"]);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bearbeiten", "Text", "Vektor", "Formen", "Details"]);
     fireEvent.click(screen.getByRole("tab", { name: "Formen" }));
     expect(view.container.querySelector(".editor-canvas__image")?.getAttribute("src")).toStartWith("/api/documents/1/edited?");
     expect(screen.getByRole("button", { name: "Rechteck 1" })).toBeTruthy();

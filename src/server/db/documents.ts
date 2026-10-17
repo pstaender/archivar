@@ -300,12 +300,24 @@ export class DocumentRepository {
     return this.db.query("DELETE FROM documents WHERE user_id = ? AND id = ?").run(userId, id).changes > 0;
   }
 
+  private vectorSummaries(ids: number[]): Map<number, { count: number; geometry: string }> {
+    const result = new Map<number, { count: number; geometry: string }>();
+    if (ids.length === 0) return result;
+    const rows = this.db
+      .query("SELECT document_id AS id, area_count AS count, geometry FROM document_vectors WHERE document_id IN (SELECT value FROM json_each(?))")
+      .all(JSON.stringify(ids)) as { id: number; count: number; geometry: string }[];
+    for (const { id, count, geometry } of rows) result.set(id, { count, geometry });
+    return result;
+  }
+
   private hydrate(rows: DocumentRow[]): StoredDocument[] {
     const folders = this.folders.pathsForDocuments(rows.map((r) => r.id));
+    const vectors = this.vectorSummaries(rows.map((r) => r.id));
     return rows.map((row) => {
       const editSettings = normalizeEditSettings(JSON.parse(row.edit_settings));
       const layer = row.shapes ? (JSON.parse(row.shapes) as ShapeLayer) : null;
       const shapes = normalizeShapes(layer?.shapes);
+      const vector = vectors.get(row.id);
       return {
       id: row.id,
       userId: row.user_id,
@@ -323,6 +335,8 @@ export class DocumentRepository {
       editSettings,
       shapes,
       shapesOutdated: shapes.length > 0 && layer?.geometry !== shapeGeometry(editSettings),
+      vectorCount: vector?.count ?? 0,
+      vectorsOutdated: vector !== undefined && vector.geometry !== shapeGeometry(editSettings),
       ocrText: row.ocr_text,
       ocrStatus: row.ocr_status,
       ocrConfidence: row.ocr_confidence,

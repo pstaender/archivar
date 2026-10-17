@@ -75,6 +75,8 @@ export function makeDocument(overrides: Partial<ArchiveDocument> = {}): ArchiveD
     editSettings: { ...DEFAULT_EDIT_SETTINGS },
     shapes: [],
     shapesOutdated: false,
+    vectorCount: 0,
+    vectorsOutdated: false,
     ocrText: "",
     ocrStatus: "none",
     ocrConfidence: null,

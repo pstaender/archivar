@@ -149,6 +149,15 @@ const migrations: string[] = [
   WHERE ocr = 1 AND status = 'done'
     AND (SELECT ocr_status FROM documents WHERE id = job_items.document_id) NOT IN ('pending', 'running');
   `,
+  // Vector graphics can be large, so they are kept out of the documents table that every library listing reads.
+  `
+  CREATE TABLE document_vectors (
+    document_id INTEGER PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,
+    areas TEXT NOT NULL,
+    area_count INTEGER NOT NULL,
+    geometry TEXT NOT NULL
+  );
+  `,
 ];
 
 export function migrate(db: Database): void {

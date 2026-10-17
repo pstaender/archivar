@@ -52,7 +52,7 @@ export const derivedKeys = {
   preview: (documentId: number) => `derived/${documentId}/preview-${PREVIEW_SIZE}.jpg`,
   anyPreview: "derived/*/preview*.jpg",
   processed: (documentId: number) => `derived/${documentId}/processed.jpg`,
-  /** The edited image without its shapes; only exists while it has shapes. */
+  /** The edited image without its shapes and vector areas; only exists while it has some. */
   edited: (documentId: number) => `derived/${documentId}/edited.jpg`,
   thumbnail: (documentId: number) => `derived/${documentId}/thumbnail.jpg`,
 };

@@ -29,6 +29,8 @@ import type {
 import { type DocumentRepository, type StoredDocument, toPublicDocument } from "../db/documents";
 import type { FolderRepository } from "../db/folders";
 import type { StackRepository } from "../db/stacks";
+import type { VectorRepository } from "../db/vectors";
+import { normalizeVectorAreas, type VectorArea } from "../../vectorizer";
 import { normalizeShapes, shapeGeometry } from "../../shared/shapes";
 import { HttpError } from "../http";
 import { derivedKeys, type FileStorage } from "../storage";
@@ -70,6 +72,7 @@ export class ArchiveService {
     private ocr: OcrQueue,
     private dewarp: DewarpEngine,
     private ocrEngine: OcrEngine,
+    private vectors: VectorRepository,
   ) {}
 
   library(userId: number, query: LibraryQuery): LibraryItem[] {
@@ -202,6 +205,33 @@ export class ArchiveService {
       updated = this.documents.get(userId, id)!;
     }
     return toPublicDocument(updated);
+  }
+
+  /** The vectorized areas of an image and whether rotation, crop or dewarping changed since. */
+  getVectors(userId: number, id: number): { areas: VectorArea[]; outdated: boolean } {
+    const doc = this.getDocument(userId, id);
+    const layer = this.vectors.get(userId, doc.id);
+    return { areas: layer?.areas ?? [], outdated: doc.vectorsOutdated };
+  }
+
+  /** Replaces the vectorized areas (those without a graphic are dropped) and renders the image with them. */
+  async setVectors(userId: number, id: number, value: unknown): Promise<{ document: ArchiveDocument; areas: VectorArea[] }> {
+    const doc = this.getDocument(userId, id);
+    if (doc.kind !== "image") throw new HttpError(400, "Only images can be vectorized");
+    if (!Array.isArray(value)) throw new HttpError(400, "areas must be a list");
+    const areas = normalizeVectorAreas(value).filter((area) => area.graphic !== null);
+    const before = JSON.stringify(this.vectors.get(userId, id)?.areas ?? []);
+    this.vectors.set(id, { areas, geometry: shapeGeometry(doc.editSettings) });
+    let updated = this.documents.get(userId, id)!;
+    if (JSON.stringify(areas) !== before) {
+      await this.imaging.renderDerivatives(updated);
+      this.documents.touch(id);
+      if (updated.stackId !== null) this.stacks.touch(updated.stackId);
+      // Vectorized text reads differently, and replaced text must not stay in the search and PDF exports.
+      if (updated.ocrStatus !== "none") this.ocr.enqueue(id, { allText: updated.ocrAllText });
+      updated = this.documents.get(userId, id)!;
+    }
+    return { document: toPublicDocument(updated), areas };
   }
 
   async deleteDocument(userId: number, id: number): Promise<void> {
