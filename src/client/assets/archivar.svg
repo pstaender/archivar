@@ -4,13 +4,10 @@
     <g transform="matrix(3,0,0,3,0,0)">
         <path d="M10,30L10,10L30,10M70,10L90,10L90,30M90,70L90,90L70,90M30,90L10,90L10,70" style="fill:none;fill-rule:nonzero;stroke:rgb(22,24,29);stroke-width:6px;"/>
     </g>
-    <g transform="matrix(3,0,0,3,0,0)">
-        <path d="M32,24L56,24L68,36L68,76L32,76L32,24Z" style="fill:rgb(22,24,29);fill-rule:nonzero;"/>
+    <g transform="matrix(3.22834,0,0,3.22834,-11.115,-9.40443)">
+        <path d="M32,24L47.534,23.966L68,44.452L68,76L32,76L32,24Z" style="fill:rgb(22,24,29);fill-rule:nonzero;"/>
     </g>
-    <g transform="matrix(3,0,0,3,0,0)">
-        <path d="M56,24L56,36L68,36L56,24Z" style="fill:white;fill-rule:nonzero;"/>
-    </g>
-    <g transform="matrix(3,0,0,3,0,0)">
-        <path d="M30,55L70,55" style="fill-rule:nonzero;stroke:white;stroke-width:4px;"/>
+    <g transform="matrix(5.49783,0,0,5.49783,-165.441,-63.8723)">
+        <path d="M56,24L56,36L68,36L56,24Z" style="fill:rgb(223,64,255);fill-rule:nonzero;"/>
     </g>
 </svg>
