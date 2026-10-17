@@ -221,7 +221,23 @@ export function EditControls({
             <Slider label="Farbton" value={settings.hue} min={-180} max={180} step={1} format={(v) => `${signed(v)}°`} onChange={(v) => set("hue", v)} />
           </>
         )}
-        {settings.colorMode === "grayscale" && <GrayMixControls value={settings.grayMix} onChange={(mix) => set("grayMix", mix)} />}
+        {settings.colorMode === "grayscale" && (
+          <>
+            <GrayMixControls value={settings.grayMix} onChange={(mix) => set("grayMix", mix)} />
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={settings.grayThreshold !== null}
+                onChange={(e) => set("grayThreshold", e.target.checked ? settings.bwThreshold : null)}
+              />
+              <span className="switch__track" aria-hidden />
+              <span>Schwellenwert</span>
+            </label>
+            {settings.grayThreshold !== null && (
+              <Slider label="Schwelle" value={settings.grayThreshold} min={0} max={255} step={1} defaultValue={128} onChange={(v) => set("grayThreshold", v)} />
+            )}
+          </>
+        )}
         {settings.colorMode === "bw" && (
           <Slider label="Schwelle" value={settings.bwThreshold} min={0} max={255} step={1} defaultValue={128} onChange={(v) => set("bwThreshold", v)} />
         )}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_EDIT_SETTINGS, FULL_QUAD, isDefaultEditSettings, normalizeEditSettings, rotateBy } from "./editSettings";
+import { DEFAULT_EDIT_SETTINGS, FULL_QUAD, isBlackAndWhite, isDefaultEditSettings, normalizeEditSettings, rotateBy } from "./editSettings";
 
 describe("normalizeEditSettings", () => {
   test("returns defaults for invalid input", () => {
@@ -14,6 +14,22 @@ describe("normalizeEditSettings", () => {
     expect(s.hue).toBe(180);
     expect(s.denoise).toBe(3);
     expect(s.bwThreshold).toBe(0);
+  });
+
+  test("keeps a grayscale threshold as a whole number in range, or null", () => {
+    expect(normalizeEditSettings({ grayThreshold: 300.4 }).grayThreshold).toBe(255);
+    expect(normalizeEditSettings({ grayThreshold: 99.6 }).grayThreshold).toBe(100);
+    expect(normalizeEditSettings({ grayThreshold: "x" }).grayThreshold).toBeNull();
+    const base = normalizeEditSettings({ grayThreshold: 90 });
+    expect(normalizeEditSettings({}, base).grayThreshold).toBe(90);
+    expect(normalizeEditSettings({ grayThreshold: null }, base).grayThreshold).toBeNull();
+  });
+
+  test("treats S/W and grayscale with a threshold as black and white", () => {
+    expect(isBlackAndWhite({ ...DEFAULT_EDIT_SETTINGS, colorMode: "bw" })).toBe(true);
+    expect(isBlackAndWhite({ ...DEFAULT_EDIT_SETTINGS, colorMode: "grayscale", grayThreshold: 128 })).toBe(true);
+    expect(isBlackAndWhite({ ...DEFAULT_EDIT_SETTINGS, colorMode: "grayscale" })).toBe(false);
+    expect(isBlackAndWhite({ ...DEFAULT_EDIT_SETTINGS, colorMode: "color", grayThreshold: 128 })).toBe(false);
   });
 
   test("rejects unknown rotation and color mode", () => {

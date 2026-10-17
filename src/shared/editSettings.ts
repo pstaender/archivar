@@ -11,6 +11,7 @@ export const DEFAULT_EDIT_SETTINGS: EditSettings = Object.freeze({
   hue: 0,
   colorMode: "color",
   grayMix: null,
+  grayThreshold: null,
   bwThreshold: 128,
   denoise: 0,
   autoLevels: false,
@@ -83,10 +84,20 @@ export function normalizeEditSettings(input: unknown, base: EditSettings = DEFAU
     hue: clamp(src.hue ?? base.hue, -180, 180, base.hue),
     colorMode,
     grayMix: "grayMix" in src ? normalizeGrayMix(src.grayMix) : base.grayMix,
+    grayThreshold: "grayThreshold" in src ? normalizeThreshold(src.grayThreshold) : base.grayThreshold,
     bwThreshold: Math.round(clamp(src.bwThreshold ?? base.bwThreshold, 0, 255, base.bwThreshold)),
     denoise: Math.round(clamp(src.denoise ?? base.denoise, 0, 3, base.denoise)),
     autoLevels: typeof src.autoLevels === "boolean" ? src.autoLevels : base.autoLevels,
   };
+}
+
+function normalizeThreshold(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? Math.round(Math.min(255, Math.max(0, value))) : null;
+}
+
+/** Whether the edited image only has black and white pixels: S/W, or grayscale with a threshold. */
+export function isBlackAndWhite(settings: EditSettings): boolean {
+  return settings.colorMode === "bw" || (settings.colorMode === "grayscale" && settings.grayThreshold !== null);
 }
 
 export function isDefaultEditSettings(settings: EditSettings): boolean {

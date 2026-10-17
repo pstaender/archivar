@@ -579,6 +579,14 @@ describe("settings", () => {
     expect(server.ocr.calls).toBe(1);
   });
 
+  test("exports grayscale with a threshold as a 1-bit image", async () => {
+    const [doc] = await upload([{ name: "scan.jpg", data: await makeJpeg(300, 400, [250, 250, 250]), type: "image/jpeg" }]);
+    await patch(`/api/documents/${doc!.id}`, { editSettings: { colorMode: "grayscale", grayThreshold: 128 } });
+    const pdf = await PDFDocument.load(await (await post(`/api/documents/${doc!.id}/pdf`, {})).arrayBuffer());
+    const image = pdf.context.enumerateIndirectObjects().find(([, obj]) => obj instanceof PDFRawStream && obj.dict.get(PDFName.of("Subtype")) === PDFName.of("Image"));
+    expect((image![1] as PDFRawStream).dict.get(PDFName.of("BitsPerComponent"))!.toString()).toBe("1");
+  });
+
   test("scales images in exported PDFs down to the chosen quality, by default the setting's", async () => {
     const [doc] = await upload([{ name: "scan.jpg", data: await makeJpeg(3000, 4000, [250, 250, 250]), type: "image/jpeg" }]);
     await patch(`/api/documents/${doc!.id}`, { editSettings: { colorMode: "bw" } });

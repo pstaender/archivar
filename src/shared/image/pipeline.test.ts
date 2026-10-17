@@ -81,6 +81,16 @@ describe("applyEdits", () => {
     expect(applyEdits(solid(1, 1, [0, 0, 200, 255]), settings({ colorMode: "grayscale", grayMix: mix })).bitmap.data[0]).toBe(0);
   });
 
+  test("grayscale with a threshold turns the mixed gray into black and white", () => {
+    const blueFilter = { reds: -100, yellows: 0, greens: 0, cyans: 0, blues: 100, magentas: 0 };
+    const red = solid(1, 1, [200, 0, 0, 255]);
+    const blue = solid(1, 1, [0, 0, 200, 255]);
+    const threshold = (src: typeof red) => Array.from(applyEdits(src, settings({ colorMode: "grayscale", grayMix: blueFilter, grayThreshold: 100 })).bitmap.data.slice(0, 3));
+    expect(threshold(red)).toEqual([0, 0, 0]);
+    expect(threshold(blue)).toEqual([255, 255, 255]);
+    expect(applyEdits(solid(1, 1, [120, 120, 120, 255]), settings({ colorMode: "grayscale", grayThreshold: 200 })).bitmap.data[0]).toBe(0);
+  });
+
   test("black and white uses the threshold", () => {
     const src = solid(2, 2, [120, 120, 120, 255]);
     expect(applyEdits(src, settings({ colorMode: "bw", bwThreshold: 100 })).bitmap.data[0]).toBe(255);

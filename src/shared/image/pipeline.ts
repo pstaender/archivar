@@ -61,6 +61,10 @@ export function applyEdits(source: JimpImage, settings: EditSettings): JimpImage
   } else if (settings.colorMode === "grayscale") {
     if (settings.grayMix) mixGray(image.bitmap.data, settings.grayMix);
     else image.greyscale();
+    if (settings.grayThreshold !== null) {
+      binarize(image, settings.grayThreshold);
+      if (settings.denoise > 0) removeSpecks(image.bitmap, settings.denoise);
+    }
   } else {
     binarize(image, settings.bwThreshold);
     if (settings.denoise > 0) removeSpecks(image.bitmap, settings.denoise);

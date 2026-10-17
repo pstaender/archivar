@@ -33,6 +33,7 @@ const SLIDERS: Partial<Record<PresetStep, { min: number; max: number; step: numb
   contrast: { min: -1, max: 1, step: 0.01, format: formatPercent },
   saturation: { min: -100, max: 100, step: 1, format: formatSigned },
   hue: { min: -180, max: 180, step: 1, format: (v) => `${formatSigned(v)}°` },
+  grayThreshold: { min: 0, max: 255, step: 1, defaultValue: 128 },
   bwThreshold: { min: 0, max: 255, step: 1, defaultValue: 128 },
   denoise: { min: 0, max: 3, step: 1, format: (v) => DENOISE_LABELS[v] ?? String(v) },
 };
@@ -42,6 +43,7 @@ const SLIDER_LABELS: Partial<Record<PresetStep, string>> = {
   contrast: "Kontrast",
   saturation: "Sättigung",
   hue: "Farbton",
+  grayThreshold: "Schwelle",
   bwThreshold: "Schwelle",
   denoise: "Entrauschen",
 };

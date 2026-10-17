@@ -28,6 +28,8 @@ export interface EditSettings {
   colorMode: ColorMode;
   /** Weights per hue for grayscale (percent); null converts by brightness. */
   grayMix: GrayMix | null;
+  /** Grayscale only: the mixed gray becomes black and white at this value (0..255); null keeps the gray tones. */
+  grayThreshold: number | null;
   bwThreshold: number;
   denoise: number;
   autoLevels: boolean;

@@ -1,5 +1,5 @@
 import { extname } from "node:path";
-import { isDefaultEditSettings } from "../../shared/editSettings";
+import { isBlackAndWhite, isDefaultEditSettings } from "../../shared/editSettings";
 import { isEditableImageType, Jimp, type JimpImage } from "../../shared/image/jimp";
 import { applyEdits, scaleToFit } from "../../shared/image/pipeline";
 import { PREVIEW_SIZE } from "../../shared/preview";
@@ -232,7 +232,7 @@ export class ImagingService {
         ctx.fillRect(x, y, Math.round((shape.x + shape.width) * width) - x, Math.round((shape.y + shape.height) * height) - y);
       }
     }
-    return { image: await preparePdfImage(canvas, quality, doc.editSettings.colorMode === "bw"), width, height, vectors };
+    return { image: await preparePdfImage(canvas, quality, isBlackAndWhite(doc.editSettings)), width, height, vectors };
   }
 
   async ocrImages(doc: StoredDocument): Promise<OcrImage[]> {

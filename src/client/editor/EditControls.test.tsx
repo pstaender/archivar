@@ -50,6 +50,21 @@ describe("EditControls", () => {
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ grayMix: null }));
   });
 
+  test("grayscale can add a threshold that starts at the S/W threshold", () => {
+    const { onChange } = setup({ colorMode: "grayscale", bwThreshold: 140 });
+    expect(screen.queryByLabelText("Schwelle") === null).toBe(true);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Schwellenwert" }));
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ grayThreshold: 140 }));
+  });
+
+  test("the grayscale threshold slider changes the threshold and can be switched off", () => {
+    const { onChange } = setup({ colorMode: "grayscale", grayThreshold: 90 });
+    fireEvent.change(screen.getByLabelText("Schwelle"), { target: { value: "110" } });
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ grayThreshold: 110 }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Schwellenwert" }));
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ grayThreshold: null }));
+  });
+
   test("moving the channels back to the plain conversion stores no mix", () => {
     const { onChange } = setup({ colorMode: "grayscale", grayMix: { ...LUMA_GRAY_MIX, reds: 31 } });
     fireEvent.change(screen.getByLabelText("Rottöne"), { target: { value: String(LUMA_GRAY_MIX.reds) } });

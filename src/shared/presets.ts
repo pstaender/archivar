@@ -19,6 +19,8 @@ export interface PresetSteps {
   autoBw?: boolean;
   colorMode?: ColorMode;
   grayMix?: GrayMix;
+  /** Grayscale threshold, see `EditSettings.grayThreshold`. */
+  grayThreshold?: number;
   brightness?: number;
   contrast?: number;
   saturation?: number;
@@ -60,6 +62,7 @@ export const PRESET_STEPS: PresetStep[] = [
   "autoBw",
   "colorMode",
   "grayMix",
+  "grayThreshold",
   "brightness",
   "contrast",
   "saturation",
@@ -76,7 +79,7 @@ export const AUTO_STEPS: PresetStep[] = ["autoRotate", "autoDewarp", "autoCrop",
 const REPLACED_BY: Partial<Record<PresetStep, PresetStep[]>> = {
   autoRotate: ["rotation"],
   autoCrop: ["crop"],
-  autoBw: ["colorMode", "grayMix", "brightness", "contrast", "bwThreshold"],
+  autoBw: ["colorMode", "grayMix", "grayThreshold", "brightness", "contrast", "bwThreshold"],
 };
 
 const ROTATIONS: Rotation[] = [0, 90, 180, 270];
@@ -103,6 +106,7 @@ export function normalizePresetSteps(input: unknown): PresetSteps {
     contrast: number(src.contrast, -1, 1),
     saturation: number(src.saturation, -100, 100),
     hue: number(src.hue, -180, 180),
+    grayThreshold: number(src.grayThreshold, 0, 255, true),
     bwThreshold: number(src.bwThreshold, 0, 255, true),
     denoise: number(src.denoise, 0, 3, true),
   };
@@ -144,6 +148,7 @@ export function presetStepsFromSettings(settings: EditSettings, auto: AutoApplie
     if (settings.brightness !== d.brightness) steps.brightness = settings.brightness;
     if (settings.contrast !== d.contrast) steps.contrast = settings.contrast;
     if (settings.colorMode === "grayscale" && settings.grayMix) steps.grayMix = settings.grayMix;
+    if (settings.colorMode === "grayscale" && settings.grayThreshold !== null) steps.grayThreshold = settings.grayThreshold;
     if (settings.colorMode === "bw" && settings.bwThreshold !== d.bwThreshold) steps.bwThreshold = settings.bwThreshold;
   }
   if (settings.autoLevels) steps.autoLevels = true;
@@ -159,7 +164,7 @@ export function presetStepsFromSettings(settings: EditSettings, auto: AutoApplie
 export function applyFixedSteps(settings: EditSettings, steps: PresetSteps): EditSettings {
   const next = { ...settings };
   if (steps.crop) next.corners = steps.crop;
-  for (const key of ["colorMode", "grayMix", "brightness", "contrast", "saturation", "hue", "bwThreshold", "denoise", "autoLevels"] as const) {
+  for (const key of ["colorMode", "grayMix", "grayThreshold", "brightness", "contrast", "saturation", "hue", "bwThreshold", "denoise", "autoLevels"] as const) {
     if (steps[key] !== undefined) (next as Record<string, unknown>)[key] = steps[key];
   }
   return next;
@@ -189,6 +194,8 @@ export function describeStep(steps: PresetSteps, step: PresetStep): string {
       return COLOR_MODE_LABELS[steps.colorMode!];
     case "grayMix":
       return `Graustufen-Kanäle: ${describeGrayMix(steps.grayMix!)}`;
+    case "grayThreshold":
+      return `Graustufen-Schwelle ${steps.grayThreshold}`;
     case "brightness":
       return `Helligkeit ${formatPercent(steps.brightness!)}`;
     case "contrast":

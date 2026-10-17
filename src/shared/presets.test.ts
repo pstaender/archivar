@@ -40,6 +40,15 @@ describe("image presets", () => {
     expect(presetStepsFromSettings(settings({ colorMode: "bw", grayMix: red }))).toEqual({ colorMode: "bw" });
   });
 
+  test("store the grayscale threshold only in grayscale mode and apply it as a fixed step", () => {
+    expect(presetStepsFromSettings(settings({ colorMode: "grayscale", grayMix: red, grayThreshold: 140 }))).toEqual({ colorMode: "grayscale", grayMix: red, grayThreshold: 140 });
+    expect(presetStepsFromSettings(settings({ colorMode: "bw", grayThreshold: 140 }))).toEqual({ colorMode: "bw" });
+    expect(normalizePresetSteps({ grayThreshold: 300 })).toEqual({ grayThreshold: 255 });
+    expect(normalizePresetSteps({ autoBw: true, grayThreshold: 90 })).toEqual({ autoBw: true });
+    expect(applyFixedSteps(settings({}), { colorMode: "grayscale", grayThreshold: 90 })).toEqual(settings({ colorMode: "grayscale", grayThreshold: 90 }));
+    expect(describePreset({ colorMode: "grayscale", grayThreshold: 90 })).toBe("Graustufen, Graustufen-Schwelle 90");
+  });
+
   test("describe fixed crops and grayscale channels", () => {
     expect(describePreset({ crop: rect, grayMix: red })).toBe("Fester Ausschnitt, Graustufen-Kanäle: Rotfilter");
     expect(describePreset({ crop: [rect[0], { x: 0.95, y: 0.1 }, rect[2], rect[3]] })).toBe("Feste Entzerrung");
