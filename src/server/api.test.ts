@@ -1217,6 +1217,28 @@ describe("shapes", () => {
     expect(redrawn.shapesOutdated).toBe(false);
   });
 
+  test("can be stored in an image preset and applied on import, in batch jobs and in the editor", async () => {
+    const preset = (await (await post("/api/presets", { name: "Schwärzen", steps: { shapes: [black] } })).json()) as ImagePreset;
+    expect(preset.steps).toEqual({ shapes: [black] });
+
+    const doc = await uploadImage();
+    const applied = (await (await post(`/api/documents/${doc.id}/apply-preset`, { presetId: preset.id })).json()) as { shapes: unknown };
+    expect(applied.shapes).toEqual([black]);
+    expect(server.ctx.documents.getById(doc.id)?.shapes).toEqual([]);
+
+    const res = await post("/api/jobs", { kind: "batch", documentIds: [doc.id], presetId: preset.id, ocr: false });
+    expect(res.status).toBe(201);
+    await server.ctx.jobQueue.idle();
+    expect(server.ctx.documents.getById(doc.id)).toMatchObject({ shapes: [black], shapesOutdated: false });
+    expect(isDark(await pixel(doc.id, "image", 10, 20))).toBe(true);
+
+    await patch("/api/settings", { importPresetId: preset.id });
+    const imported = await uploadImage("neu.jpg");
+    expect(imported.shapes).toEqual([black]);
+    expect(isDark(await pixel(imported.id, "image", 10, 20))).toBe(true);
+    expect(isDark(await pixel(imported.id, "edited", 10, 20))).toBe(false);
+  });
+
   test("only exist for images", async () => {
     const [pdf] = await upload([{ name: "a.pdf", data: makePdf("Hallo"), type: "application/pdf" }]);
     expect((await patch(`/api/documents/${pdf!.id}`, { shapes: [black] })).status).toBe(400);

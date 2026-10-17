@@ -341,7 +341,8 @@ export class ArchiveService {
   private async applyPresetOnUpload(doc: StoredDocument, steps: PresetSteps): Promise<StoredDocument> {
     try {
       const editSettings = await this.presetSettings(doc, steps, doc.editSettings);
-      return this.documents.update(doc.userId, doc.id, { editSettings }) ?? doc;
+      const shapes = steps.shapes ? { shapes: steps.shapes, geometry: shapeGeometry(editSettings) } : undefined;
+      return this.documents.update(doc.userId, doc.id, { editSettings, shapes }) ?? doc;
     } catch (error) {
       console.warn(`Image preset failed for document ${doc.id}:`, error);
       return doc;

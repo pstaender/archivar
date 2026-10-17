@@ -194,7 +194,8 @@ export function createApiRoutes(ctx: AppContext) {
         const body = await readJson<{ presetId?: unknown; editSettings?: Partial<EditSettings> }>(req);
         const preset = ctx.presets.get(userId(req), parseId(String(body.presetId)));
         if (!preset) throw new HttpError(404, "Preset not found");
-        return json({ editSettings: await archive.applyPreset(userId(req), parseId(req.params.id), preset.steps, body.editSettings) });
+        const editSettings = await archive.applyPreset(userId(req), parseId(req.params.id), preset.steps, body.editSettings);
+        return json({ editSettings, shapes: preset.steps.shapes ?? null });
       }),
     },
 

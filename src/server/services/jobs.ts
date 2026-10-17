@@ -44,7 +44,7 @@ export class JobQueue {
       let applied = false;
       if (options.preset && doc.kind === "image") {
         const editSettings = await this.archive.applyPreset(userId, doc.id, options.preset.steps);
-        await this.archive.updateDocument(userId, doc.id, { editSettings });
+        await this.archive.updateDocument(userId, doc.id, { editSettings, shapes: options.preset.steps.shapes });
         applied = true;
       }
       const ocr = options.ocr && doc.kind !== "file";

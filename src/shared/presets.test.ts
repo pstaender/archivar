@@ -58,6 +58,13 @@ describe("image presets", () => {
     expect(normalizePresetSteps({ grayMix: { reds: 10 } })).toEqual({});
   });
 
+  test("store shapes as a step and describe them", () => {
+    const shape = { id: "a", type: "rect" as const, x: 0.1, y: 0.1, width: 0.2, height: 0.2, color: "#000000" };
+    expect(normalizePresetSteps({ shapes: [shape, { ...shape, color: "x" }] })).toEqual({ shapes: [shape] });
+    expect(normalizePresetSteps({ shapes: [], brightness: 0.1 })).toEqual({ brightness: 0.1 });
+    expect(describePreset({ autoBw: true, shapes: [shape, shape] })).toBe("Automatisch SW, Formen: 2 Rechtecke");
+  });
+
   test("pick the chosen steps and write fixed values onto settings", () => {
     const steps = { autoBw: true, denoise: 2, hue: 10 };
     expect(pickSteps(steps, ["denoise", "brightness"])).toEqual({ denoise: 2 });

@@ -10,9 +10,10 @@ afterEach(() => fetchMock.restore());
 
 const shape: Shape = { id: "a", type: "rect", x: 0.1, y: 0.1, width: 0.2, height: 0.2, color: "#000000" };
 
-async function open(overrides: Parameters<typeof makeDocument>[0] = {}) {
+async function open(overrides: Parameters<typeof makeDocument>[0] = {}, routes: Parameters<typeof mockFetch>[0] = {}) {
   let doc = makeDocument({ id: 1, ocrStatus: "done", ocrText: "Geheim", ...overrides });
   fetchMock = mockFetch({
+    ...routes,
     "GET /api/config": () => ({ dewarpAvailable: false, convertibleImageTypes: [], ocrLanguages: ["deu", "eng"] }),
     "GET /api/settings": () => DEFAULT_USER_SETTINGS,
     "GET /api/folders": () => [],
@@ -49,6 +50,40 @@ describe("Formen tab", () => {
     await screen.findByText("Formen gespeichert – Text wird neu erkannt");
     expect(fetchMock.calls.find((c) => c.method === "PATCH")?.body).toEqual({ shapes: [] });
     expect(save.disabled).toBe(true);
+  });
+
+  test("offers the rectangles as an image preset", async () => {
+    const presets: unknown[] = [];
+    await open({ shapes: [shape] }, {
+      "GET /api/presets": () => presets,
+      "POST /api/presets": (_url, init) => {
+        const preset = { id: 7, createdAt: "", ...JSON.parse(String(init.body)) };
+        presets.push(preset);
+        return preset;
+      },
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Formen" }));
+    fireEvent.click(screen.getByRole("button", { name: "Als Bildeinstellung" }));
+    const dialog = (await screen.findByText("Formen: 1 Rechteck")).closest("dialog") as HTMLElement;
+    fireEvent.change(within(dialog).getByLabelText("Name", { selector: "input" }), { target: { value: "Schwärzen" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Speichern", hidden: true }));
+    await screen.findByText("Bildeinstellung „Schwärzen“ gespeichert");
+    expect(fetchMock.calls.find((c) => c.method === "POST" && c.path === "/api/presets")?.body).toEqual({ name: "Schwärzen", steps: { shapes: [shape] } });
+  });
+
+  test("applying a preset in Bearbeiten takes over its rectangles", async () => {
+    const preset = { id: 7, name: "Schwärzen", steps: { shapes: [shape] }, createdAt: "" };
+    await open({}, {
+      "GET /api/presets": () => [preset],
+      "POST /api/documents/1/apply-preset": () => ({ editSettings: makeDocument().editSettings, shapes: [shape] }),
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Bearbeiten" }));
+    await waitFor(() => expect(screen.getByRole("option", { name: "Schwärzen" })).toBeTruthy());
+    fireEvent.change(screen.getByLabelText("Bildeinstellung anwenden"), { target: { value: "7" } });
+    await screen.findByText(/Formen der Bildeinstellung wurden übernommen/);
+    fireEvent.click(screen.getByRole("tab", { name: "Formen" }));
+    expect(screen.getByRole("button", { name: "Rechteck 1" })).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Speichern" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   test("asks before leaving the tab with unsaved shapes", async () => {

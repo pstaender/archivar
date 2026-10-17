@@ -1,4 +1,4 @@
-import { Loader, Plus, Trash } from "../icons";
+import { Loader, Plus, SavePlus, Trash } from "../icons";
 import { type KeyboardEvent, type PointerEvent, useRef } from "react";
 import { MIN_SHAPE_SIZE, SHAPE_COLORS, type Shape } from "../../shared/shapes";
 
@@ -173,9 +173,25 @@ interface ShapeControlsProps {
   onSelect: (id: string | null) => void;
   onSave: () => void;
   onDiscard: () => void;
+  /** Offers the rectangles as a step of a new image preset. */
+  onSavePreset?: () => void;
 }
 
-export function ShapeControls({ shapes, selected, color, outdated, hasText, dirty, saving, onColorChange, onChange, onSelect, onSave, onDiscard }: ShapeControlsProps) {
+export function ShapeControls({
+  shapes,
+  selected,
+  color,
+  outdated,
+  hasText,
+  dirty,
+  saving,
+  onColorChange,
+  onChange,
+  onSelect,
+  onSave,
+  onDiscard,
+  onSavePreset,
+}: ShapeControlsProps) {
   const selectedShape = shapes.find((s) => s.id === selected) ?? null;
   const current = selectedShape?.color ?? color;
   const custom = !SHAPE_COLORS.some((c) => c.color === current);
@@ -211,6 +227,17 @@ export function ShapeControls({ shapes, selected, color, outdated, hasText, dirt
               >
                 <Trash size={16} />
                 Rechteck löschen
+              </button>
+            )}
+            {shapes.length > 0 && onSavePreset && (
+              <button
+                type="button"
+                className="btn btn--sm"
+                onClick={onSavePreset}
+                title="Als Bildeinstellung speichern, um die Rechtecke beim Import oder in der Stapelverarbeitung auf andere Bilder anzuwenden"
+              >
+                <SavePlus size={16} />
+                Als Bildeinstellung
               </button>
             )}
             {shapes.length > 0 && (

@@ -1,6 +1,7 @@
 import { DEFAULT_EDIT_SETTINGS, normalizeQuad } from "./editSettings";
 import { describeGrayMix, normalizeGrayMix } from "./image/grayMix";
 import { isAxisAlignedRect } from "./image/perspective";
+import { normalizeShapes, type Shape } from "./shapes";
 import type { ColorMode, EditSettings, GrayMix, Quad, Rotation } from "./types";
 
 /**
@@ -25,6 +26,8 @@ export interface PresetSteps {
   bwThreshold?: number;
   denoise?: number;
   autoLevels?: boolean;
+  /** Rectangles drawn onto the edited image, relative to its size; they replace the image's shapes. */
+  shapes?: Shape[];
 }
 
 export type PresetStep = keyof PresetSteps;
@@ -64,6 +67,7 @@ export const PRESET_STEPS: PresetStep[] = [
   "bwThreshold",
   "autoLevels",
   "denoise",
+  "shapes",
 ];
 
 export const AUTO_STEPS: PresetStep[] = ["autoRotate", "autoDewarp", "autoCrop", "autoBw"];
@@ -104,6 +108,8 @@ export function normalizePresetSteps(input: unknown): PresetSteps {
   };
   for (const [key, value] of Object.entries(values)) if (value !== undefined) steps[key as "brightness"] = value;
   if (typeof src.autoLevels === "boolean") steps.autoLevels = src.autoLevels;
+  const shapes = normalizeShapes(src.shapes);
+  if (shapes.length > 0) steps.shapes = shapes;
   for (const [auto, replaced] of Object.entries(REPLACED_BY)) {
     if (steps[auto as PresetStep]) for (const step of replaced) delete steps[step];
   }
@@ -197,6 +203,8 @@ export function describeStep(steps: PresetSteps, step: PresetStep): string {
       return steps.autoLevels ? "Auto-Tonwerte" : "Tonwerte manuell";
     case "denoise":
       return `Entrauschen: ${DENOISE_LABELS[steps.denoise!]}`;
+    case "shapes":
+      return `Formen: ${steps.shapes!.length === 1 ? "1 Rechteck" : `${steps.shapes!.length} Rechtecke`}`;
   }
 }
 

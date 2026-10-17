@@ -75,7 +75,8 @@ export function DocumentPage() {
   const [cropping, setCropping] = useState(false);
   const [autoValues, setAutoValues] = useState<AutoValues>({});
   const [applyingPreset, setApplyingPreset] = useState(false);
-  const [savingPreset, setSavingPreset] = useState(false);
+  /** Steps offered by the open „Bildeinstellung speichern“ dialog. */
+  const [presetDialogSteps, setPresetDialogSteps] = useState<PresetSteps | null>(null);
   const { presets, reload: reloadPresets } = usePresets();
   const stack = useResource(() => (stackId ? api.stack(stackId) : Promise.resolve(null)), [stackId]);
   const doc = resource.data;
@@ -239,18 +240,26 @@ export function DocumentPage() {
     setDraft((current) => ({ ...current, ...variant, colorMode: "bw" }));
   };
 
-  const presetCandidates = presetStepsFromSettings(draft, {
-    rotation: autoValues.rotation !== undefined && autoValues.rotation === draft.rotation,
-    crop: draft.corners !== null && draft.corners === autoValues.corners,
-    bw: bwState !== null || (autoValues.bw !== undefined && isBwVariant(draft, autoValues.bw)),
-  });
+  const presetCandidates: PresetSteps = {
+    ...presetStepsFromSettings(draft, {
+      rotation: autoValues.rotation !== undefined && autoValues.rotation === draft.rotation,
+      crop: draft.corners !== null && draft.corners === autoValues.corners,
+      bw: bwState !== null || (autoValues.bw !== undefined && isBwVariant(draft, autoValues.bw)),
+    }),
+    ...(shapes.length > 0 ? { shapes } : {}),
+  };
 
   const applyPreset = async (presetId: number) => {
     const preset = presets.find((p) => p.id === presetId);
     if (!preset) return;
     setApplyingPreset(true);
     try {
-      const { editSettings } = await api.applyPreset(doc.id, preset.id, draft);
+      const { editSettings, shapes: presetShapes } = await api.applyPreset(doc.id, preset.id, draft);
+      if (presetShapes) {
+        setShapes(presetShapes);
+        setSelectedShape(null);
+        toast.show("Die Formen der Bildeinstellung wurden übernommen und werden im Tab „Formen“ gespeichert.");
+      }
       const { steps } = preset;
       setAutoValues((current) => ({
         rotation: steps.autoRotate ? editSettings.rotation : current.rotation,
@@ -438,7 +447,7 @@ export function DocumentPage() {
                   <button
                     type="button"
                     className="btn btn--sm btn--icon"
-                    onClick={() => setSavingPreset(true)}
+                    onClick={() => setPresetDialogSteps(presetCandidates)}
                     disabled={Object.keys(presetCandidates).length === 0}
                     aria-label="Als Bildeinstellung speichern"
                     title="Als Bildeinstellung speichern, um die Bearbeitung auf andere Bilder anzuwenden"
@@ -497,6 +506,7 @@ export function DocumentPage() {
                 onSelect={setSelectedShape}
                 onSave={() => void saveShapes()}
                 onDiscard={discardShapes}
+                onSavePreset={() => setPresetDialogSteps({ shapes })}
               />
             )}
             {tab === "details" && <DetailsPanel doc={doc} onFoldersChange={(folders) => update({ folders })} />}
@@ -514,13 +524,13 @@ export function DocumentPage() {
         onClose={() => setConfirmDelete(false)}
       />
       <PresetDialog
-        open={savingPreset}
+        open={presetDialogSteps !== null}
         title="Bildeinstellung speichern"
         initialName={documentLabel(doc)}
-        steps={presetCandidates}
+        steps={presetDialogSteps ?? {}}
         submitLabel="Speichern"
         onSubmit={createPreset}
-        onClose={() => setSavingPreset(false)}
+        onClose={() => setPresetDialogSteps(null)}
       />
       <UnsavedChangesDialog
         open={leave.asking}

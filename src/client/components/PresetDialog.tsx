@@ -149,6 +149,9 @@ export function PresetDialog({ open, title, initialName, steps, editValues, subm
                     {grayMixPresetId(values.grayMix ?? null) === null && <option value="custom">Eigene Werte</option>}
                   </select>
                 )}
+                {on && step === "shapes" && (
+                  <p className="muted small">Liegen relativ zur Bildgröße an derselben Stelle – passend für gleich aufgebaute Scans. Ersetzen vorhandene Formen.</p>
+                )}
                 {editValues && on && step === "rotation" && (
                   <select className="input input--sm" aria-label="Drehung" value={values.rotation} onChange={(e) => setValue("rotation", Number(e.target.value) as Rotation)}>
                     {[0, 90, 180, 270].map((r) => (

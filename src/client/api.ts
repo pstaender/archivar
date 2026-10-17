@@ -2,6 +2,7 @@ import { PREVIEW_SIZE } from "../shared/preview";
 import type { Job, JobCreate } from "../shared/jobs";
 import type { ImagePreset, ImagePresetInput } from "../shared/presets";
 import type { UserSettings } from "../shared/settings";
+import type { Shape } from "../shared/shapes";
 import type { ApiToken, CreatedApiToken } from "../shared/tokens";
 import type {
   AppConfig,
@@ -122,7 +123,7 @@ export const api = {
     request<BwVariant[]>(`/api/documents/${id}/auto-bw`, jsonBody("POST", { editSettings })),
   /** The settings after applying a preset on top of `editSettings` (default: the stored ones); nothing is saved. */
   applyPreset: (id: number, presetId: number, editSettings?: EditSettings) =>
-    request<{ editSettings: EditSettings }>(`/api/documents/${id}/apply-preset`, jsonBody("POST", { presetId, editSettings })),
+    request<{ editSettings: EditSettings; shapes: Shape[] | null }>(`/api/documents/${id}/apply-preset`, jsonBody("POST", { presetId, editSettings })),
   /** Searchable PDF of the edited image with `text` (default: the stored text) as its text layer. */
   exportPdf: async (id: number, text?: string) => download(await send(`/api/documents/${id}/pdf`, jsonBody("POST", { text })), `dokument-${id}.pdf`),
   /** One PDF of the documents in order: images as searchable pages, PDFs with all pages; other files are left out. */
