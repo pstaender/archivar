@@ -467,6 +467,7 @@ export function DocumentPage() {
               mode={mode}
               onCornersChange={(corners) => setDraft({ ...draft, corners })}
               processed={processed}
+              shapes={shapes}
             />
           )}
         </div>
@@ -623,9 +624,10 @@ interface ViewerProps {
   mode: GeometryMode;
   onCornersChange: (corners: NonNullable<EditSettings["corners"]>) => void;
   processed: ReturnType<typeof useProcessedPreview>;
+  shapes: Shape[];
 }
 
-function Viewer({ doc, editing, draft, mode, onCornersChange, processed }: ViewerProps) {
+function Viewer({ doc, editing, draft, mode, onCornersChange, processed, shapes }: ViewerProps) {
   if (doc.kind === "image") {
     if (editing) {
       return (
@@ -638,6 +640,7 @@ function Viewer({ doc, editing, draft, mode, onCornersChange, processed }: Viewe
           processing={processed.processing}
           onPreview={() => void processed.request()}
           onLive={processed.clear}
+          shapes={shapes}
         />
       );
     }

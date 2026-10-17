@@ -1098,6 +1098,17 @@ a.folder-tree__row .folder-tree__toggle {
   touch-action: none;
 }
 
+.shape-preview {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+
+  & > span {
+    position: absolute;
+  }
+}
+
 .shape {
   position: absolute;
   padding: 0;

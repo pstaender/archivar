@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { waitFor } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { createRoot } from "react-dom/client";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
 import { ImageEditor } from "./ImageEditor";
@@ -60,5 +60,19 @@ describe("ImageEditor", () => {
       container.remove();
       (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = actEnvironment;
     }
+  });
+
+  test("shows the shapes on top of the preview, but not while corners are edited", async () => {
+    const shapes = [{ id: "a", type: "rect" as const, x: 0.1, y: 0.2, width: 0.3, height: 0.4, color: "#000000" }];
+    const props = { src: "/a", settings: { ...DEFAULT_EDIT_SETTINGS }, onCornersChange: () => {}, shapes };
+    const view = render(<ImageEditor {...props} mode="none" />);
+    await waitFor(() => expect(view.container.querySelector(".shape-preview") !== null).toBe(true));
+    const shape = view.container.querySelector<HTMLElement>(".shape-preview > span")!;
+    expect([shape.style.left, shape.style.top, shape.style.width, shape.style.height]).toEqual(["10%", "20%", "30%", "40%"]);
+    expect(shape.style.background).toBe("#000000");
+
+    view.rerender(<ImageEditor {...props} mode="perspective" />);
+    expect(view.container.querySelector(".shape-preview") === null).toBe(true);
+    view.unmount();
   });
 });

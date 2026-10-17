@@ -1,5 +1,6 @@
 import { Loader } from "../icons";
 import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
+import type { Shape } from "../../shared/shapes";
 import type { EditSettings, Point, Quad } from "../../shared/types";
 import { type GeometryMode, moveCorner, quadOrFull, translateQuad } from "./geometry";
 import { type LensPointer, Magnifier } from "./Magnifier";
@@ -35,9 +36,11 @@ interface ImageEditorProps {
   processing?: boolean;
   onPreview?: () => void;
   onLive?: () => void;
+  /** Painted onto the saved image after the edit settings; shown on top, except while corners are edited. */
+  shapes?: Shape[];
 }
 
-export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc, processing = false, onPreview, onLive }: ImageEditorProps) {
+export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc, processing = false, onPreview, onLive, shapes = [] }: ImageEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const processedRef = useRef<HTMLImageElement>(null);
   const [pointer, setPointer] = useState<LensPointer | null>(null);
@@ -127,6 +130,22 @@ export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc
             onPointerMove={(e) => e.pointerType === "mouse" && setPointer({ clientX: e.clientX, clientY: e.clientY })}
             onPointerLeave={() => setPointer(null)}
           />
+        )}
+        {renderers && mode === "none" && shapes.length > 0 && (
+          <div className="shape-preview" aria-hidden="true">
+            {shapes.map((shape) => (
+              <span
+                key={shape.id}
+                style={{
+                  left: `${shape.x * 100}%`,
+                  top: `${shape.y * 100}%`,
+                  width: `${shape.width * 100}%`,
+                  height: `${shape.height * 100}%`,
+                  background: shape.color,
+                }}
+              />
+            ))}
+          </div>
         )}
         {renderers && mode !== "none" && (
           <QuadOverlay quad={quadOrFull(settings.corners)} mode={mode} onChange={onCornersChange} />
