@@ -11,7 +11,7 @@ let loaded: { url: string; bitmap: Promise<ImageBitmap> } | null = null;
 function load(url: string): Promise<ImageBitmap> {
   if (loaded?.url !== url) {
     const bitmap = fetch(url).then(async (response) => {
-      if (!response.ok) throw new Error(`Bild konnte nicht geladen werden (${response.status})`);
+      if (!response.ok) throw new Error(`The image could not be loaded (${response.status})`);
       return createImageBitmap(await response.blob());
     });
     bitmap.catch(() => loaded?.bitmap === bitmap && (loaded = null));
@@ -23,7 +23,7 @@ function load(url: string): Promise<ImageBitmap> {
 async function region(request: VectorizerRequest): Promise<{ image: RgbaImage; pixelScale: number }> {
   const bitmap = await load(request.url);
   const plan = regionPlan(request.area, bitmap.width, bitmap.height);
-  if (!plan) throw new Error("Der Bereich ist leer");
+  if (!plan) throw new Error("The area is empty");
   const canvas = new OffscreenCanvas(plan.outWidth, plan.outHeight);
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingQuality = "high";

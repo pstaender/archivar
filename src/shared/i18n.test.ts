@@ -69,6 +69,23 @@ describe("translations", () => {
     expect(messages.filter((message) => !keys.has(serverMessageParts(message).key))).toEqual([]);
   });
 
+  test("every message the workers send can be translated", async () => {
+    const files = [
+      "src/client/editor/preview.worker.ts",
+      "src/client/editor/previewRenderer.ts",
+      ...(await Array.fromAsync(new Glob("src/vectorizer/**/*.ts").scan("."))),
+      ...(await Array.fromAsync(new Glob("src/shared/image/*.ts").scan("."))),
+    ].filter((file) => !file.includes(".test."));
+    const messages: string[] = [];
+    for (const file of files) {
+      const source = await Bun.file(file).text();
+      for (const match of source.matchAll(/(?:new Error\(|\|\| )(?:"([^"]+)"|`([^`]+)`)/g)) messages.push((match[1] ?? match[2]!).replace(/\$\{[^}]+\}/g, "0"));
+    }
+    expect(messages.length).toBeGreaterThan(8);
+    const keys = new Set(Object.keys(translations.de.workerMessages as object));
+    expect(messages.filter((message) => !keys.has(serverMessageParts(message).key))).toEqual([]);
+  });
+
   test("server message keys leave out quoted names and numbers", () => {
     expect(serverMessageParts('"scan 2.pdf" could not be read as a PDF')).toEqual({ key: "could_not_be_read_as_a_pdf", quoted: [["scan 2.pdf"]], numbers: [] });
     expect(serverMessageParts('Already stored as "a", "b"')).toEqual({ key: "already_stored_as", quoted: [["a", "b"]], numbers: [] });

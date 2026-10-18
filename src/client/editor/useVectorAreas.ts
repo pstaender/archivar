@@ -4,6 +4,7 @@ import { DEFAULT_VECTOR_SETTINGS, type VectorArea, type VectorSettings } from ".
 import type { ArchiveDocument } from "../../shared/types";
 import { api, assetUrl } from "../api";
 import type { Rect } from "./rects";
+import { translateWorkerError } from "../serverMessages";
 
 const rectKey = (a: Rect) => JSON.stringify([a.x, a.y, a.width, a.height]);
 const settingsKey = (s: VectorSettings) => JSON.stringify(s);
@@ -37,7 +38,7 @@ export function useVectorAreas(doc: ArchiveDocument | undefined, onError: (error
   const [toSuggest, setToSuggest] = useState<Set<string>>(new Set());
   const client = useMemo(() => new VectorizerClient(), []);
   const errorRef = useRef(onError);
-  errorRef.current = onError;
+  errorRef.current = (error) => onError(translateWorkerError(error));
 
   useEffect(() => () => client.dispose(), [client]);
 

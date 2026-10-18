@@ -45,7 +45,7 @@ async function handle(request: WorkerRequest): Promise<void> {
 
 async function decode(url: string, maxSize: number | null): Promise<JimpImage> {
   const response = await fetch(url);
-  if (!response.ok) throw new Error(`Bild konnte nicht geladen werden (${response.status})`);
+  if (!response.ok) throw new Error(`The image could not be loaded (${response.status})`);
   const bitmap = await createImageBitmap(await response.blob());
   const scale = maxSize ? Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height)) : 1;
   const width = Math.max(1, Math.round(bitmap.width * scale));

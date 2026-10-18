@@ -623,7 +623,6 @@ preview:
   loadFailed: "L'aperçu n'a pas pu être chargé : {{error}}"
   fullResolution: Aperçu en pleine résolution
   renderingLabel: Calcul de l'aperçu
-  renderFailed: L'aperçu n'a pas pu être calculé
   moveCorner: "Déplacer le coin {{number}}"
 
 document:
@@ -779,3 +778,15 @@ serverMessages:
   upload_timed_out: "Délai d'envoi dépassé"
   wrong_current_password: "Le mot de passe actuel est incorrect."
   wrong_user_name_or_password: "Le nom d'utilisateur ou le mot de passe est incorrect."
+
+# Messages from the preview and vectorizer workers, which are English like the server's; same keys as serverMessages.
+workerMessages:
+  degenerate_quad: "Les coins ne délimitent aucune surface"
+  empty_image: "L'image est vide"
+  no_image_loaded: "Aucune image chargée"
+  opencv_is_not_loaded: "OpenCV n'est pas chargé"
+  the_area_is_empty: "La zone est vide"
+  the_image_could_not_be_loaded: "L'image n'a pas pu être chargée ({{n0}})"
+  the_preview_could_not_be_rendered: "L'aperçu n'a pas pu être calculé"
+  unexpected_worker_response: "Réponse inattendue du processus en arrière-plan"
+  vectorizing_failed: "Échec de la vectorisation"

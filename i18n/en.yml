@@ -606,7 +606,6 @@ preview:
   loadFailed: "The preview could not be loaded: {{error}}"
   fullResolution: Full-resolution preview
   renderingLabel: Rendering preview
-  renderFailed: The preview could not be rendered
   moveCorner: "Move corner {{number}}"
 
 document:
@@ -760,3 +759,15 @@ serverMessages:
   upload_timed_out: "Upload timed out"
   wrong_current_password: "The current password is wrong."
   wrong_user_name_or_password: "The user name or password is wrong."
+
+# Messages from the preview and vectorizer workers, which are English like the server's; same keys as serverMessages.
+workerMessages:
+  degenerate_quad: "The corners do not enclose an area"
+  empty_image: "The image is empty"
+  no_image_loaded: "No image loaded"
+  opencv_is_not_loaded: "OpenCV is not loaded"
+  the_area_is_empty: "The area is empty"
+  the_image_could_not_be_loaded: "The image could not be loaded ({{n0}})"
+  the_preview_could_not_be_rendered: "The preview could not be rendered"
+  unexpected_worker_response: "Unexpected answer from the background process"
+  vectorizing_failed: "Vectorizing failed"

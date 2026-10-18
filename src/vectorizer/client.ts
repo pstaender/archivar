@@ -73,7 +73,7 @@ export class VectorizerClient {
       event.preventDefault?.();
       worker.terminate();
       if (this.worker === worker) this.worker = null;
-      this.failAll(new Error(event.message || "Vektorisierung fehlgeschlagen"));
+      this.failAll(new Error(event.message || "Vectorizing failed"));
     };
     this.worker = worker;
     return worker;

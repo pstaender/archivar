@@ -7,6 +7,7 @@ import { type LensPointer, Magnifier } from "./Magnifier";
 import { PreviewBar } from "./PreviewBar";
 import { PreviewRenderer, type RenderedPreview, RendererDisposedError } from "./previewRenderer";
 import { useTranslation } from "react-i18next";
+import { translateWorkerMessage } from "../serverMessages";
 
 // Filters behave differently on a downscaled image (thin strokes turn gray and fall below the threshold), so the
 // preview is rendered from the full base image in a worker. Slow settings (colors, denoise) additionally get a small
@@ -68,7 +69,7 @@ export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc
         }
         if (!cancelled) setRenderers({ full, draft });
       })
-      .catch((e) => !cancelled && !(e instanceof RendererDisposedError) && setError(e instanceof Error ? e.message : String(e)));
+      .catch((e) => !cancelled && !(e instanceof RendererDisposedError) && setError(translateWorkerMessage(e instanceof Error ? e.message : String(e))));
     return () => {
       cancelled = true;
       full.dispose();
@@ -88,7 +89,7 @@ export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc
       return true;
     };
     // Switching to another image disposes the renderers while a render may still run.
-    const fail = (e: unknown) => !cancelled && !(e instanceof RendererDisposedError) && setError(e instanceof Error ? e.message : String(e));
+    const fail = (e: unknown) => !cancelled && !(e instanceof RendererDisposedError) && setError(translateWorkerMessage(e instanceof Error ? e.message : String(e)));
     const { full, draft } = renderers;
     const instant = !draft || fullRenderMs.current <= INSTANT_RENDER_MS;
     const draftTimer = instant

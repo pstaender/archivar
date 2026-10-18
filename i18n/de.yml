@@ -606,7 +606,6 @@ preview:
   loadFailed: "Vorschau konnte nicht geladen werden: {{error}}"
   fullResolution: Vorschau in voller Auflösung
   renderingLabel: Vorschau wird berechnet
-  renderFailed: Vorschau konnte nicht berechnet werden
   moveCorner: "Ecke {{number}} verschieben"
 
 document:
@@ -760,3 +759,15 @@ serverMessages:
   upload_timed_out: "Zeitüberschreitung beim Upload"
   wrong_current_password: "Das aktuelle Kennwort ist falsch."
   wrong_user_name_or_password: "Benutzername oder Kennwort ist falsch."
+
+# Messages from the preview and vectorizer workers, which are English like the server's; same keys as serverMessages.
+workerMessages:
+  degenerate_quad: "Die Ecken schließen keine Fläche ein"
+  empty_image: "Das Bild ist leer"
+  no_image_loaded: "Kein Bild geladen"
+  opencv_is_not_loaded: "OpenCV ist nicht geladen"
+  the_area_is_empty: "Der Bereich ist leer"
+  the_image_could_not_be_loaded: "Bild konnte nicht geladen werden ({{n0}})"
+  the_preview_could_not_be_rendered: "Vorschau konnte nicht berechnet werden"
+  unexpected_worker_response: "Unerwartete Antwort vom Hintergrundprozess"
+  vectorizing_failed: "Vektorisierung fehlgeschlagen"

@@ -623,7 +623,6 @@ preview:
   loadFailed: "No se pudo cargar la vista previa: {{error}}"
   fullResolution: Vista previa a resolución completa
   renderingLabel: Calculando la vista previa
-  renderFailed: No se pudo calcular la vista previa
   moveCorner: "Mover la esquina {{number}}"
 
 document:
@@ -779,3 +778,15 @@ serverMessages:
   upload_timed_out: "Tiempo de subida agotado"
   wrong_current_password: "La contraseña actual no es correcta."
   wrong_user_name_or_password: "El nombre de usuario o la contraseña no son correctos."
+
+# Messages from the preview and vectorizer workers, which are English like the server's; same keys as serverMessages.
+workerMessages:
+  degenerate_quad: "Las esquinas no delimitan ninguna superficie"
+  empty_image: "La imagen está vacía"
+  no_image_loaded: "No se ha cargado ninguna imagen"
+  opencv_is_not_loaded: "OpenCV no está cargado"
+  the_area_is_empty: "La zona está vacía"
+  the_image_could_not_be_loaded: "No se pudo cargar la imagen ({{n0}})"
+  the_preview_could_not_be_rendered: "No se pudo calcular la vista previa"
+  unexpected_worker_response: "Respuesta inesperada del proceso en segundo plano"
+  vectorizing_failed: "Error al vectorizar"
