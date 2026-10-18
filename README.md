@@ -36,11 +36,6 @@ curl -H "Authorization: Bearer $ARCHIVAR_TOKEN" -F "files=@scan.jpg" http://loca
 
 This tool is vibe coded: most of the code was written by an AI coding assistant. It is nevertheless tested – by an automated test suite and by humans who actually use it.
 
-## Upcoming features
-
-- multi language support (i18n), currently german only
-- user management
-
 ## License
 
 MIT
