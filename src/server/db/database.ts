@@ -1,4 +1,6 @@
 import { Database } from "bun:sqlite";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { seedImportPresets } from "./presets";
 
 export const DEFAULT_USER_NAME = "default";
@@ -269,6 +271,7 @@ export function migrate(db: Database, until = migrations.length): void {
 }
 
 export function openDatabase(path: string): Database {
+  if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const db = new Database(path, { create: true, strict: true });
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA foreign_keys = ON");

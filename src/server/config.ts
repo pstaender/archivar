@@ -1,3 +1,4 @@
+import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
 export interface Config {
@@ -14,8 +15,21 @@ export interface Config {
   origin: string | null;
 }
 
-export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
-  const dataDir = resolve(env.ARCHIVAR_DATA_DIR ?? "data");
+type Env = Record<string, string | undefined>;
+
+/** The per-user application data directory of the OS. */
+export function appDataDir(env: Env = process.env, platform: NodeJS.Platform = process.platform, home = homedir()): string {
+  if (platform === "win32") return env.APPDATA || join(home, "AppData", "Roaming");
+  if (platform === "darwin") return join(home, "Library", "Application Support");
+  return env.XDG_CONFIG_HOME || join(home, ".config");
+}
+
+export function defaultDataDir(env: Env = process.env, platform: NodeJS.Platform = process.platform, home = homedir()): string {
+  return join(appDataDir(env, platform, home), "archivar", "data");
+}
+
+export function loadConfig(env: Env = process.env): Config {
+  const dataDir = resolve(env.ARCHIVAR_DATA_DIR || defaultDataDir(env));
   return {
     port: Number(env.PORT ?? 3000),
     dataDir,

@@ -27,7 +27,7 @@ bun install
 bun run dev
 ```
 
-Open http://localhost:3000. Data is stored in `./data` (database, files, OCR language data).
+Open http://localhost:3000. Data (database, files, OCR language data) is stored in `archivar/data` in the OS application data directory, e.g. `~/Library/Application Support/archivar/data` on macOS or `~/.config/archivar/data` on Linux; the server prints it at startup and `ARCHIVAR_DATA_DIR` changes it (see [Configuration](#configuration)).
 On first OCR run the language data (`deu`, `eng`) is downloaded once, the orientation model (`osd`, 10 MB) on first automatic rotation.
 
 For automatic dewarping, export the UVDoc model once (needs `git` and [`uv`](https://docs.astral.sh/uv/); Python is only used for the export):
@@ -45,7 +45,7 @@ Optional: with [ImageMagick](https://imagemagick.org) installed (`brew install i
 | Variable                 | Default                    | Description                    |
 | ------------------------ | -------------------------- | ------------------------------ |
 | `PORT`                   | `3000`                     | HTTP port                      |
-| `ARCHIVAR_DATA_DIR`      | `./data`                   | Database, files, OCR cache     |
+| `ARCHIVAR_DATA_DIR`      | `<app data>/archivar/data` | Database, files, OCR cache; created if missing. `<app data>` is `~/Library/Application Support` on macOS, `$XDG_CONFIG_HOME` or `~/.config` on Linux, `%APPDATA%` on Windows |
 | `ARCHIVAR_DATABASE`      | `<data>/archivar.sqlite`   | SQLite file                    |
 | `ARCHIVAR_OCR_LANGS`     | `deu+eng`                  | Tesseract languages            |
 | `ARCHIVAR_MAX_UPLOAD_MB` | `512`                      | Max request body size          |
@@ -68,7 +68,7 @@ bun run password --remove   # no login any more, also deletes the passkeys
 
 ## Backup
 
-„Einstellungen" → „Export" → „Archiv exportieren" shows the size and, once confirmed, downloads the whole archive as a zip: a consistent snapshot of the SQLite database as `archivar.sqlite` (the data of all users) and every stored file under `files/` (originals and derived images). The tab is only shown, and the download only allowed, while the user has a password. Unzipped into an empty data directory (`ARCHIVAR_DATA_DIR`, default `data/`) it restores the archive.
+„Einstellungen" → „Export" → „Archiv exportieren" shows the size and, once confirmed, downloads the whole archive as a zip: a consistent snapshot of the SQLite database as `archivar.sqlite` (the data of all users) and every stored file under `files/` (originals and derived images). The tab is only shown, and the download only allowed, while the user has a password. Unzipped into an empty data directory (`ARCHIVAR_DATA_DIR`, see [Configuration](#configuration)) it restores the archive.
 
 The same export on the server (it can keep running):
 

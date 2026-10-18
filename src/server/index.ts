@@ -53,7 +53,7 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Archivar running at ${server.url}`);
+console.log(`Archivar running at ${server.url}, data in ${config.dataDir}`);
 
 async function shutdown() {
   await server.stop();
