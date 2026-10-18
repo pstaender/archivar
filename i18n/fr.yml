@@ -45,9 +45,6 @@ auth:
   loading: Chargement
 
 api:
-  uploadFailed: Échec de l'envoi
-  uploadAborted: Envoi annulé
-  uploadTimeout: Délai d'envoi dépassé
   documentFileName: "document-{{id}}.pdf"
   documentsFileName: Documents.pdf
 
@@ -144,7 +141,6 @@ tokens:
   delete: "Supprimer le jeton « {{name}} »"
 
 access:
-  wrongCurrent: Le mot de passe actuel est incorrect.
   minLength: "Au moins {{count}} caractères."
   mismatch: Les mots de passe ne correspondent pas.
   changed: Mot de passe modifié
@@ -711,3 +707,75 @@ details:
   copyOf: Duplicata de
   usesOriginal: " (utilise son fichier original)"
   copies: Duplicatas
+
+# Messages from the server, which always answers in English; keys from serverMessageParts (src/shared/serverMessages.ts).
+serverMessages:
+  a_folder_cannot_be_moved_into_itself: "Un dossier ne peut pas être déplacé dans lui-même"
+  a_stack_needs_at_least_one_document: "Une pile doit contenir au moins un document"
+  already_stored_as: "Déjà enregistré sous {{q0}}"
+  areas_must_be_a_list: "Les zones doivent être une liste"
+  could_not_be_read_as_a_pdf: "{{q0}} n'a pas pu être lu comme PDF"
+  dewarping_model_is_not_installed: "Le modèle de redressement n'est pas installé"
+  document_is_not_a_duplicate: "Le document n'est pas un duplicata"
+  document_not_found: "Document introuvable"
+  document_segmentation_model_is_not_installed: "Le modèle de détection de page n'est pas installé"
+  document_type_does_not_support_ocr: "La reconnaissance du texte n'est pas disponible pour ce type de fichier"
+  documentids_must_be_an_array: "Les documents doivent être une liste"
+  documentids_required: "Aucun document indiqué"
+  expected_multipart_form_data: "multipart/form-data attendu"
+  exporting_the_archive_needs_a_password: "L'export de l'archive nécessite un mot de passe"
+  exporting_the_archive_needs_an_admin: "Seuls les administrateurs peuvent exporter l'archive"
+  file_not_found: "Fichier introuvable"
+  files_required: "Aucun fichier indiqué"
+  folder_and_items_required: "Dossier et éléments requis"
+  folder_not_found: "Dossier introuvable"
+  folder_path_must_not_be_empty: "Le nom du dossier ne doit pas être vide"
+  internal_server_error: "Erreur interne du serveur"
+  invalid_api_token: "Jeton d'API non valide"
+  invalid_createdat: "Date de création non valide"
+  invalid_id: "Identifiant non valide"
+  invalid_item: "Élément non valide"
+  invalid_json_body: "Requête non valide"
+  invalid_storage_key: "Chemin de fichier non valide"
+  job_item_not_found: "Élément de tâche introuvable"
+  job_not_found: "Tâche introuvable"
+  languages_must_be_a_list: "Les langues doivent être une liste"
+  login_required: "Connexion requise"
+  name_required: "Nom requis"
+  no_files_uploaded: "Aucun fichier envoyé"
+  no_images_or_pdfs_selected: "Aucune image ni aucun PDF sélectionné"
+  no_settings_chosen: "Aucun réglage choisi"
+  not_found: "Introuvable"
+  nothing_to_do: "Rien à faire"
+  ocr_is_only_available_for_images_and_pdfs: "La reconnaissance du texte n'est disponible que pour les images et les PDF"
+  only_images_can_be_cropped: "Seules les images peuvent être recadrées"
+  only_images_can_be_dewarped: "Seules les images peuvent être redressées"
+  only_images_can_be_edited: "Seules les images peuvent être modifiées"
+  only_images_can_be_exported_as_pdf: "Seules les images peuvent être exportées en PDF"
+  only_images_can_be_rotated: "Seules les images peuvent être pivotées"
+  only_images_can_be_vectorized: "Seules les images peuvent être vectorisées"
+  only_images_can_have_shapes: "Seules les images peuvent avoir des formes"
+  passkey_could_not_be_verified: "La clé d'accès n'a pas pu être vérifiée"
+  passkey_not_found: "Clé d'accès introuvable"
+  passkey_request_expired: "La demande de clé d'accès a expiré"
+  passkeys_need_a_password: "Les clés d'accès nécessitent un mot de passe"
+  preset_not_found: "Réglage d'image introuvable"
+  shapes_must_be_a_list: "Les formes doivent être une liste"
+  stack_not_found: "Pile introuvable"
+  text_recognition_failed: "Échec de la reconnaissance du texte"
+  text_recognition_took_too_long_and_was_stopped: "La reconnaissance du texte a pris trop de temps et a été interrompue."
+  the_document_was_deleted: "Le document a été supprimé."
+  the_job_is_still_running: "La tâche est encore en cours"
+  the_password_needs_at_least_characters: "Le mot de passe doit contenir au moins {{n0}} caractères"
+  the_upload_was_interrupted: "L'envoi a été interrompu."
+  token_not_found: "Jeton introuvable"
+  unknown_document: "Document inconnu {{n0}}"
+  unknown_job_kind: "Type de tâche inconnu"
+  unknown_ocr_language: "Langue de reconnaissance du texte inconnue"
+  unknown_passkey: "Clé d'accès inconnue"
+  unknown_sort: "Tri inconnu"
+  upload_cancelled: "Envoi annulé"
+  upload_failed: "Échec de l'envoi"
+  upload_timed_out: "Délai d'envoi dépassé"
+  wrong_current_password: "Le mot de passe actuel est incorrect."
+  wrong_user_name_or_password: "Le nom d'utilisateur ou le mot de passe est incorrect."

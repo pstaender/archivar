@@ -45,9 +45,6 @@ auth:
   loading: Cargando
 
 api:
-  uploadFailed: Error al subir
-  uploadAborted: Subida cancelada
-  uploadTimeout: Tiempo de subida agotado
   documentFileName: "documento-{{id}}.pdf"
   documentsFileName: Documentos.pdf
 
@@ -144,7 +141,6 @@ tokens:
   delete: "Eliminar el token «{{name}}»"
 
 access:
-  wrongCurrent: La contraseña actual no es correcta.
   minLength: "Al menos {{count}} caracteres."
   mismatch: Las contraseñas no coinciden.
   changed: Contraseña cambiada
@@ -711,3 +707,75 @@ details:
   copyOf: Duplicado de
   usesOriginal: " (usa su archivo original)"
   copies: Duplicados
+
+# Messages from the server, which always answers in English; keys from serverMessageParts (src/shared/serverMessages.ts).
+serverMessages:
+  a_folder_cannot_be_moved_into_itself: "Una carpeta no se puede mover dentro de sí misma"
+  a_stack_needs_at_least_one_document: "Una pila necesita al menos un documento"
+  already_stored_as: "Ya guardado como {{q0}}"
+  areas_must_be_a_list: "Las zonas deben ser una lista"
+  could_not_be_read_as_a_pdf: "{{q0}} no se pudo leer como PDF"
+  dewarping_model_is_not_installed: "El modelo de enderezado no está instalado"
+  document_is_not_a_duplicate: "El documento no es un duplicado"
+  document_not_found: "Documento no encontrado"
+  document_segmentation_model_is_not_installed: "El modelo de detección de página no está instalado"
+  document_type_does_not_support_ocr: "El reconocimiento de texto no está disponible para este tipo de archivo"
+  documentids_must_be_an_array: "Los documentos deben ser una lista"
+  documentids_required: "No se han indicado documentos"
+  expected_multipart_form_data: "Se esperaba multipart/form-data"
+  exporting_the_archive_needs_a_password: "Exportar el archivo requiere una contraseña"
+  exporting_the_archive_needs_an_admin: "Solo los administradores pueden exportar el archivo"
+  file_not_found: "Archivo no encontrado"
+  files_required: "No se han indicado archivos"
+  folder_and_items_required: "Faltan la carpeta y los elementos"
+  folder_not_found: "Carpeta no encontrada"
+  folder_path_must_not_be_empty: "El nombre de la carpeta no puede estar vacío"
+  internal_server_error: "Error interno del servidor"
+  invalid_api_token: "Token de API no válido"
+  invalid_createdat: "Fecha de creación no válida"
+  invalid_id: "ID no válido"
+  invalid_item: "Elemento no válido"
+  invalid_json_body: "Solicitud no válida"
+  invalid_storage_key: "Ruta de archivo no válida"
+  job_item_not_found: "Elemento del trabajo no encontrado"
+  job_not_found: "Trabajo no encontrado"
+  languages_must_be_a_list: "Los idiomas deben ser una lista"
+  login_required: "Inicio de sesión necesario"
+  name_required: "Falta el nombre"
+  no_files_uploaded: "No se ha subido ningún archivo"
+  no_images_or_pdfs_selected: "No se han seleccionado imágenes ni PDF"
+  no_settings_chosen: "No se ha elegido ningún ajuste"
+  not_found: "No encontrado"
+  nothing_to_do: "Nada que hacer"
+  ocr_is_only_available_for_images_and_pdfs: "El reconocimiento de texto solo está disponible para imágenes y PDF"
+  only_images_can_be_cropped: "Solo se pueden recortar imágenes"
+  only_images_can_be_dewarped: "Solo se pueden enderezar imágenes"
+  only_images_can_be_edited: "Solo se pueden editar imágenes"
+  only_images_can_be_exported_as_pdf: "Solo se pueden exportar imágenes como PDF"
+  only_images_can_be_rotated: "Solo se pueden girar imágenes"
+  only_images_can_be_vectorized: "Solo se pueden vectorizar imágenes"
+  only_images_can_have_shapes: "Solo las imágenes pueden tener formas"
+  passkey_could_not_be_verified: "No se pudo verificar la llave de acceso"
+  passkey_not_found: "Llave de acceso no encontrada"
+  passkey_request_expired: "La solicitud de llave de acceso ha caducado"
+  passkeys_need_a_password: "Las llaves de acceso requieren una contraseña"
+  preset_not_found: "Ajuste de imagen no encontrado"
+  shapes_must_be_a_list: "Las formas deben ser una lista"
+  stack_not_found: "Pila no encontrada"
+  text_recognition_failed: "Error en el reconocimiento de texto"
+  text_recognition_took_too_long_and_was_stopped: "El reconocimiento de texto tardó demasiado y se detuvo."
+  the_document_was_deleted: "El documento se ha eliminado."
+  the_job_is_still_running: "El trabajo sigue en curso"
+  the_password_needs_at_least_characters: "La contraseña necesita al menos {{n0}} caracteres"
+  the_upload_was_interrupted: "La subida se interrumpió."
+  token_not_found: "Token no encontrado"
+  unknown_document: "Documento desconocido {{n0}}"
+  unknown_job_kind: "Tipo de trabajo desconocido"
+  unknown_ocr_language: "Idioma de reconocimiento de texto desconocido"
+  unknown_passkey: "Llave de acceso desconocida"
+  unknown_sort: "Orden desconocido"
+  upload_cancelled: "Subida cancelada"
+  upload_failed: "Error al subir"
+  upload_timed_out: "Tiempo de subida agotado"
+  wrong_current_password: "La contraseña actual no es correcta."
+  wrong_user_name_or_password: "El nombre de usuario o la contraseña no son correctos."

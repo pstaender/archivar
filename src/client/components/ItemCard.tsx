@@ -6,6 +6,7 @@ import { assetUrl } from "../api";
 import { documentLabel, formatDate, isOcrBusy, ocrStatusLabel } from "../format";
 import type { SmartStack } from "../smartStacks";
 import { useTranslation } from "react-i18next";
+import { translateServerMessage } from "../serverMessages";
 
 interface ItemCardProps {
   item: LibraryItem;
@@ -170,7 +171,7 @@ function OcrIndicator({ doc }: { doc: ArchiveDocument }) {
   }
   if (doc.ocrStatus === "failed") {
     return (
-      <span className="card__status card__status--error" title={doc.ocrError ?? ocrStatusLabel("failed")}>
+      <span className="card__status card__status--error" title={doc.ocrError ? translateServerMessage(doc.ocrError) : ocrStatusLabel("failed")}>
         !
       </span>
     );

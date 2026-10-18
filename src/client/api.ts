@@ -27,13 +27,15 @@ import type {
   User,
 } from "../shared/types";
 import { t } from "./i18n";
+import { translateServerMessage } from "./serverMessages";
 
+/** `message` is in the UI language, `serverMessage` the English one the server sent, e.g. to report it back. */
 export class ApiRequestError extends Error {
   constructor(
     public status: number,
-    message: string,
+    public serverMessage: string,
   ) {
-    super(message);
+    super(translateServerMessage(serverMessage));
   }
 }
 
@@ -81,13 +83,13 @@ function sendWithProgress<T>(path: string, body: FormData, onProgress?: (loaded:
       if (xhr.status >= 200 && xhr.status < 300) resolve(response as T);
       else {
         reportLoggedOut(path, xhr.status);
-        reject(new ApiRequestError(xhr.status, response?.error ?? (xhr.statusText || t("api.uploadFailed"))));
+        reject(new ApiRequestError(xhr.status, response?.error ?? (xhr.statusText || "Upload failed")));
       }
     };
-    xhr.onerror = () => reject(new ApiRequestError(0, t("api.uploadFailed")));
+    xhr.onerror = () => reject(new ApiRequestError(0, "Upload failed"));
     // Without these the promise would never settle and block the upload queue until the page is reloaded.
-    xhr.onabort = () => reject(new ApiRequestError(0, t("api.uploadAborted")));
-    xhr.ontimeout = () => reject(new ApiRequestError(0, t("api.uploadTimeout")));
+    xhr.onabort = () => reject(new ApiRequestError(0, "Upload cancelled"));
+    xhr.ontimeout = () => reject(new ApiRequestError(0, "Upload timed out"));
     xhr.send(body);
   });
 }

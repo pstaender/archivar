@@ -1,15 +1,12 @@
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { MIN_PASSWORD_LENGTH, type Passkey } from "../../shared/auth";
-import { api, ApiRequestError } from "../api";
+import { api } from "../api";
 import { formatDateTime } from "../format";
 import { useAuth } from "../hooks/auth";
 import { useToast } from "../hooks/toast";
 import { Fingerprint, Loader, LogOut, Plus, Trash } from "../icons";
 import { createPasskey, passkeyCancelled, passkeysSupported } from "../passkeys";
 import { Trans, useTranslation } from "react-i18next";
-import { i18n } from "../i18n";
-
-const wrongPassword = (error: unknown) => (error instanceof ApiRequestError && error.status === 403 ? new Error(i18n.t("access.wrongCurrent")) : error);
 
 /** Password and passkeys; changes take effect at once, not with the dialog's „Speichern“. */
 export function AccessSettings() {
@@ -61,7 +58,7 @@ export function AccessSettings() {
       toast.success(passwordSet ? t("access.changed") : t("access.set"));
       await refresh();
     } catch (error) {
-      toast.error(wrongPassword(error));
+      toast.error(error);
     } finally {
       setBusy(null);
     }
@@ -76,7 +73,7 @@ export function AccessSettings() {
       toast.success(t("access.removed"));
       await refresh();
     } catch (error) {
-      toast.error(wrongPassword(error));
+      toast.error(error);
     } finally {
       setBusy(null);
     }

@@ -42,9 +42,6 @@ auth:
   loading: Loading
 
 api:
-  uploadFailed: Upload failed
-  uploadAborted: Upload cancelled
-  uploadTimeout: Upload timed out
   documentFileName: "document-{{id}}.pdf"
   documentsFileName: Documents.pdf
 
@@ -139,7 +136,6 @@ tokens:
   delete: "Delete token “{{name}}”"
 
 access:
-  wrongCurrent: The current password is wrong.
   minLength: "At least {{count}} characters."
   mismatch: The passwords do not match.
   changed: Password changed
@@ -692,3 +688,75 @@ details:
   copyOf: Duplicate of
   usesOriginal: " (uses its original file)"
   copies: Duplicates
+
+# Messages from the server, which always answers in English; keys from serverMessageParts (src/shared/serverMessages.ts).
+serverMessages:
+  a_folder_cannot_be_moved_into_itself: "A folder cannot be moved into itself"
+  a_stack_needs_at_least_one_document: "A stack needs at least one document"
+  already_stored_as: "Already stored as {{q0}}"
+  areas_must_be_a_list: "The areas must be a list"
+  could_not_be_read_as_a_pdf: "{{q0}} could not be read as a PDF"
+  dewarping_model_is_not_installed: "The dewarping model is not installed"
+  document_is_not_a_duplicate: "The document is not a duplicate"
+  document_not_found: "Document not found"
+  document_segmentation_model_is_not_installed: "The document segmentation model is not installed"
+  document_type_does_not_support_ocr: "Text recognition is not available for this file type"
+  documentids_must_be_an_array: "The documents must be a list"
+  documentids_required: "No documents given"
+  expected_multipart_form_data: "Expected multipart/form-data"
+  exporting_the_archive_needs_a_password: "Exporting the archive needs a password"
+  exporting_the_archive_needs_an_admin: "Exporting the archive needs an admin"
+  file_not_found: "File not found"
+  files_required: "No files given"
+  folder_and_items_required: "Folder and items required"
+  folder_not_found: "Folder not found"
+  folder_path_must_not_be_empty: "The folder name must not be empty"
+  internal_server_error: "Internal server error"
+  invalid_api_token: "Invalid API token"
+  invalid_createdat: "Invalid creation date"
+  invalid_id: "Invalid id"
+  invalid_item: "Invalid item"
+  invalid_json_body: "Invalid request"
+  invalid_storage_key: "Invalid file path"
+  job_item_not_found: "Job item not found"
+  job_not_found: "Job not found"
+  languages_must_be_a_list: "The languages must be a list"
+  login_required: "Login required"
+  name_required: "Name required"
+  no_files_uploaded: "No files uploaded"
+  no_images_or_pdfs_selected: "No images or PDFs selected"
+  no_settings_chosen: "No settings chosen"
+  not_found: "Not found"
+  nothing_to_do: "Nothing to do"
+  ocr_is_only_available_for_images_and_pdfs: "Text recognition is only available for images and PDFs"
+  only_images_can_be_cropped: "Only images can be cropped"
+  only_images_can_be_dewarped: "Only images can be dewarped"
+  only_images_can_be_edited: "Only images can be edited"
+  only_images_can_be_exported_as_pdf: "Only images can be exported as PDF"
+  only_images_can_be_rotated: "Only images can be rotated"
+  only_images_can_be_vectorized: "Only images can be vectorized"
+  only_images_can_have_shapes: "Only images can have shapes"
+  passkey_could_not_be_verified: "The passkey could not be verified"
+  passkey_not_found: "Passkey not found"
+  passkey_request_expired: "The passkey request expired"
+  passkeys_need_a_password: "Passkeys need a password"
+  preset_not_found: "Image preset not found"
+  shapes_must_be_a_list: "The shapes must be a list"
+  stack_not_found: "Stack not found"
+  text_recognition_failed: "Text recognition failed"
+  text_recognition_took_too_long_and_was_stopped: "Text recognition took too long and was stopped."
+  the_document_was_deleted: "The document was deleted."
+  the_job_is_still_running: "The job is still running"
+  the_password_needs_at_least_characters: "The password needs at least {{n0}} characters"
+  the_upload_was_interrupted: "The upload was interrupted."
+  token_not_found: "Token not found"
+  unknown_document: "Unknown document {{n0}}"
+  unknown_job_kind: "Unknown job kind"
+  unknown_ocr_language: "Unknown text recognition language"
+  unknown_passkey: "Unknown passkey"
+  unknown_sort: "Unknown sort order"
+  upload_cancelled: "Upload cancelled"
+  upload_failed: "Upload failed"
+  upload_timed_out: "Upload timed out"
+  wrong_current_password: "The current password is wrong."
+  wrong_user_name_or_password: "The user name or password is wrong."

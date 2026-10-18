@@ -2,7 +2,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { matchPath, useLocation } from "react-router";
 import type { ArchiveDocument } from "../../shared/types";
 import { isSupportedUpload } from "../../shared/uploads";
-import { api, type UploadOptions } from "../api";
+import { api, ApiRequestError, type UploadOptions } from "../api";
 import { folderFromPathname } from "../routes";
 import { useConfig } from "./config";
 import { useFolders } from "./folders";
@@ -104,7 +104,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
             setVersion((v) => v + 1);
           } catch (error) {
             failures.push({ file, error });
-            if (job && jobItem) void api.failJobItem(job.id, jobItem.id, error instanceof Error ? error.message : String(error)).catch(() => undefined);
+            if (job && jobItem) void api.failJobItem(job.id, jobItem.id, error instanceof ApiRequestError ? error.serverMessage : error instanceof Error ? error.message : String(error)).catch(() => undefined);
           } finally {
             s.done++;
             s.doneBytes += file.size;

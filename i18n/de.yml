@@ -42,9 +42,6 @@ auth:
   loading: Wird geladen
 
 api:
-  uploadFailed: Upload fehlgeschlagen
-  uploadAborted: Upload abgebrochen
-  uploadTimeout: Zeitüberschreitung beim Upload
   documentFileName: "dokument-{{id}}.pdf"
   documentsFileName: Dokumente.pdf
 
@@ -139,7 +136,6 @@ tokens:
   delete: "Token „{{name}}“ löschen"
 
 access:
-  wrongCurrent: Das aktuelle Kennwort ist falsch.
   minLength: "Mindestens {{count}} Zeichen."
   mismatch: Die Kennwörter stimmen nicht überein.
   changed: Kennwort geändert
@@ -692,3 +688,75 @@ details:
   copyOf: Duplikat von
   usesOriginal: " (verwendet dessen Originaldatei)"
   copies: Duplikate
+
+# Messages from the server, which always answers in English; keys from serverMessageParts (src/shared/serverMessages.ts).
+serverMessages:
+  a_folder_cannot_be_moved_into_itself: "Ein Ordner kann nicht in sich selbst verschoben werden"
+  a_stack_needs_at_least_one_document: "Ein Stapel braucht mindestens ein Dokument"
+  already_stored_as: "Bereits vorhanden als {{q0}}"
+  areas_must_be_a_list: "Die Bereiche müssen eine Liste sein"
+  could_not_be_read_as_a_pdf: "{{q0}} konnte nicht als PDF gelesen werden"
+  dewarping_model_is_not_installed: "Das Modell zum Entzerren ist nicht installiert"
+  document_is_not_a_duplicate: "Das Dokument ist kein Duplikat"
+  document_not_found: "Dokument nicht gefunden"
+  document_segmentation_model_is_not_installed: "Das Modell zur Seitenerkennung ist nicht installiert"
+  document_type_does_not_support_ocr: "Für diesen Dateityp gibt es keine Texterkennung"
+  documentids_must_be_an_array: "Die Dokumente müssen eine Liste sein"
+  documentids_required: "Keine Dokumente angegeben"
+  expected_multipart_form_data: "multipart/form-data erwartet"
+  exporting_the_archive_needs_a_password: "Für den Export des Archivs ist ein Kennwort nötig"
+  exporting_the_archive_needs_an_admin: "Nur Admins können das Archiv exportieren"
+  file_not_found: "Datei nicht gefunden"
+  files_required: "Keine Dateien angegeben"
+  folder_and_items_required: "Ordner und Einträge fehlen"
+  folder_not_found: "Ordner nicht gefunden"
+  folder_path_must_not_be_empty: "Der Ordnername darf nicht leer sein"
+  internal_server_error: "Interner Serverfehler"
+  invalid_api_token: "Ungültiger API-Token"
+  invalid_createdat: "Ungültiges Erstellungsdatum"
+  invalid_id: "Ungültige ID"
+  invalid_item: "Ungültiger Eintrag"
+  invalid_json_body: "Ungültige Anfrage"
+  invalid_storage_key: "Ungültiger Dateipfad"
+  job_item_not_found: "Auftragseintrag nicht gefunden"
+  job_not_found: "Auftrag nicht gefunden"
+  languages_must_be_a_list: "Die Sprachen müssen eine Liste sein"
+  login_required: "Anmeldung erforderlich"
+  name_required: "Name fehlt"
+  no_files_uploaded: "Keine Dateien hochgeladen"
+  no_images_or_pdfs_selected: "Keine Bilder oder PDFs ausgewählt"
+  no_settings_chosen: "Keine Einstellungen gewählt"
+  not_found: "Nicht gefunden"
+  nothing_to_do: "Nichts zu tun"
+  ocr_is_only_available_for_images_and_pdfs: "Texterkennung gibt es nur für Bilder und PDFs"
+  only_images_can_be_cropped: "Nur Bilder lassen sich zuschneiden"
+  only_images_can_be_dewarped: "Nur Bilder lassen sich entzerren"
+  only_images_can_be_edited: "Nur Bilder lassen sich bearbeiten"
+  only_images_can_be_exported_as_pdf: "Nur Bilder lassen sich als PDF exportieren"
+  only_images_can_be_rotated: "Nur Bilder lassen sich drehen"
+  only_images_can_be_vectorized: "Nur Bilder lassen sich vektorisieren"
+  only_images_can_have_shapes: "Nur Bilder können Formen haben"
+  passkey_could_not_be_verified: "Der Passkey konnte nicht geprüft werden"
+  passkey_not_found: "Passkey nicht gefunden"
+  passkey_request_expired: "Die Passkey-Anfrage ist abgelaufen"
+  passkeys_need_a_password: "Passkeys brauchen ein Kennwort"
+  preset_not_found: "Bildeinstellung nicht gefunden"
+  shapes_must_be_a_list: "Die Formen müssen eine Liste sein"
+  stack_not_found: "Stapel nicht gefunden"
+  text_recognition_failed: "Texterkennung fehlgeschlagen"
+  text_recognition_took_too_long_and_was_stopped: "Die Texterkennung hat zu lange gedauert und wurde abgebrochen."
+  the_document_was_deleted: "Das Dokument wurde gelöscht."
+  the_job_is_still_running: "Der Auftrag läuft noch"
+  the_password_needs_at_least_characters: "Das Kennwort braucht mindestens {{n0}} Zeichen"
+  the_upload_was_interrupted: "Der Upload wurde abgebrochen."
+  token_not_found: "Token nicht gefunden"
+  unknown_document: "Unbekanntes Dokument {{n0}}"
+  unknown_job_kind: "Unbekannte Auftragsart"
+  unknown_ocr_language: "Unbekannte Sprache für die Texterkennung"
+  unknown_passkey: "Unbekannter Passkey"
+  unknown_sort: "Unbekannte Sortierung"
+  upload_cancelled: "Upload abgebrochen"
+  upload_failed: "Upload fehlgeschlagen"
+  upload_timed_out: "Zeitüberschreitung beim Upload"
+  wrong_current_password: "Das aktuelle Kennwort ist falsch."
+  wrong_user_name_or_password: "Benutzername oder Kennwort ist falsch."

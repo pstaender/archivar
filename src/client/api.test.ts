@@ -88,11 +88,11 @@ describe("api client", () => {
     expect(await api.deleteDocument(1)).toBeUndefined();
   });
 
-  test("throws ApiRequestError with the server message", async () => {
+  test("throws ApiRequestError with the translated server message", async () => {
     fetchMock = mockFetch({ "GET /api/documents/9": () => Response.json({ error: "Document not found" }, { status: 404 }) });
     const error = await api.document(9).catch((e) => e);
     expect(error).toBeInstanceOf(ApiRequestError);
-    expect(error).toMatchObject({ status: 404, message: "Document not found" });
+    expect(error).toMatchObject({ status: 404, message: "Dokument nicht gefunden", serverMessage: "Document not found" });
   });
 });
 

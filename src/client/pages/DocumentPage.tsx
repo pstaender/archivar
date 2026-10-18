@@ -38,6 +38,7 @@ import { useToast } from "../hooks/toast";
 import { useResource } from "../hooks/useResource";
 import { documentLabel, formatBytes, formatDateTime, isOcrBusy, ocrLanguageName, ocrStatusLabel } from "../format";
 import { useTranslation } from "react-i18next";
+import { translateServerMessage } from "../serverMessages";
 
 type Tab = "edit" | "text" | "vectors" | "shapes" | "details";
 
@@ -772,7 +773,7 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
           </select>
         </div>
       )}
-      {doc.ocrStatus === "failed" && doc.ocrError && <div className="alert alert--error">{doc.ocrError}</div>}
+      {doc.ocrStatus === "failed" && doc.ocrError && <div className="alert alert--error">{translateServerMessage(doc.ocrError)}</div>}
       {doc.ocrStatus === "done" && doc.ocrRemoved > 0 && (
         <p className="muted small">
           {t("textPanel.removed", { count: doc.ocrRemoved })}{" "}

@@ -8,6 +8,7 @@ import { useToast } from "../hooks/toast";
 import { formatDateTime, formatDuration, formatRelativeTime, ocrLanguageName } from "../format";
 import { t } from "../i18n";
 import { useTranslation } from "react-i18next";
+import { translateServerMessage } from "../serverMessages";
 
 const IMPORT_STATES: JobItemState[] = ["pending", "running"];
 
@@ -151,8 +152,8 @@ function JobItemRow({ item, kind }: { item: JobItem; kind: Job["kind"] }) {
         {item.state === "failed" && <CircleAlert size={14} aria-hidden />}
         {label}
       </span>
-      {item.error && <span className="job-item__error small">{item.error}</span>}
-      {item.note && <span className="job-item__note small">{item.note}</span>}
+      {item.error && <span className="job-item__error small">{translateServerMessage(item.error)}</span>}
+      {item.note && <span className="job-item__note small">{translateServerMessage(item.note)}</span>}
     </li>
   );
 }

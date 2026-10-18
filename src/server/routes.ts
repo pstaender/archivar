@@ -476,7 +476,7 @@ export function createApiRoutes(ctx: AppContext) {
           allText: body.allText === true,
           rename: typeof body.rename === "string" && body.rename.trim() ? body.rename.trim() : null,
         };
-        if (!options.preset && !options.ocr && !options.rename) throw new HttpError(400, "Nichts zu tun");
+        if (!options.preset && !options.ocr && !options.rename) throw new HttpError(400, "Nothing to do");
         const items = docs.map((doc) => ({ name: doc.title.trim() || doc.originalName, documentId: doc.id }));
         const id = ctx.jobs.create(userId(req), "batch", options, items);
         ctx.jobQueue.start();

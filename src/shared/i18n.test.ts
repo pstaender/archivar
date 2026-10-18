@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { Glob } from "bun";
 import { createI18n, translations, UI_LANGUAGES } from "./i18n";
+import { duplicateNote } from "./jobs";
+import { serverMessageParts } from "./serverMessages";
 
 const PLURAL = /_(zero|one|two|few|many|other)$/;
 
@@ -44,5 +46,32 @@ describe("translations", () => {
   test("falls back to English for other languages", () => {
     expect(createI18n({ lng: "it" }).t("common.save")).toBe("Save");
     expect(createI18n({ lng: "de-AT" }).t("common.save")).toBe("Speichern");
+  });
+
+  test("every message the server sends can be translated", async () => {
+    const patterns = [
+      /HttpError\(\d+, (?:"([^"]+)"|`([^`]+)`)/g,
+      /json\(\{ error: "([^"]+)" \}/g,
+      /_MESSAGE = "([^"]+)"/g,
+      /\?\? "([A-Z][^"]+)"/g,
+      /new Error\("([^"]+)"\)/g,
+    ];
+    const messages = [duplicateNote([{ title: "a" }, { title: "b" }])];
+    for await (const file of new Glob("src/server/**/*.ts").scan(".")) {
+      if (file.includes(".test.") || (file.includes("/services/") && !file.endsWith("ocr.ts") && !file.endsWith("archive.ts") && !file.endsWith("auth.ts"))) continue;
+      const source = await Bun.file(file).text();
+      for (const pattern of patterns) for (const match of source.matchAll(pattern)) messages.push((match[1] ?? match[2]!).replace(/\$\{[^}]+\}/g, "0"));
+    }
+    const client = await Bun.file("src/client/api.ts").text();
+    for (const match of client.matchAll(/(?:ApiRequestError\(\d+, |\|\| )"([^"]+)"/g)) messages.push(match[1]!);
+    expect(messages.length).toBeGreaterThan(60);
+    const keys = new Set(Object.keys(translations.de.serverMessages as object));
+    expect(messages.filter((message) => !keys.has(serverMessageParts(message).key))).toEqual([]);
+  });
+
+  test("server message keys leave out quoted names and numbers", () => {
+    expect(serverMessageParts('"scan 2.pdf" could not be read as a PDF')).toEqual({ key: "could_not_be_read_as_a_pdf", quoted: [["scan 2.pdf"]], numbers: [] });
+    expect(serverMessageParts('Already stored as "a", "b"')).toEqual({ key: "already_stored_as", quoted: [["a", "b"]], numbers: [] });
+    expect(serverMessageParts("The password needs at least 8 characters").key).toBe("the_password_needs_at_least_characters");
   });
 });
