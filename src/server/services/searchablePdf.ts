@@ -72,7 +72,7 @@ async function appendPdf(pdf: PDFDocument, { name, data }: Extract<PdfPart, { ki
   try {
     source = await PDFDocument.load(data, { ignoreEncryption: true });
   } catch {
-    throw new HttpError(422, `„${name}“ konnte nicht als PDF gelesen werden`);
+    throw new HttpError(422, `"${name}" could not be read as a PDF`);
   }
   for (const page of await pdf.copyPages(source, source.getPageIndices())) pdf.addPage(page);
 }

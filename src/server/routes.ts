@@ -429,7 +429,7 @@ export function createApiRoutes(ctx: AppContext) {
         const name = normalizePresetName(body.name);
         const steps = normalizePresetSteps(body.steps);
         if (!name) throw new HttpError(400, "Name required");
-        if (Object.keys(steps).length === 0) throw new HttpError(400, "Keine Einstellungen gewählt");
+        if (Object.keys(steps).length === 0) throw new HttpError(400, "No settings chosen");
         return json(ctx.presets.create(userId(req), name, steps), 201);
       }),
     },
@@ -440,7 +440,7 @@ export function createApiRoutes(ctx: AppContext) {
         const name = body.name === undefined ? undefined : normalizePresetName(body.name);
         const steps = body.steps === undefined ? undefined : normalizePresetSteps(body.steps);
         if (name === "") throw new HttpError(400, "Name required");
-        if (steps && Object.keys(steps).length === 0) throw new HttpError(400, "Keine Einstellungen gewählt");
+        if (steps && Object.keys(steps).length === 0) throw new HttpError(400, "No settings chosen");
         const preset = ctx.presets.update(userId(req), parseId(req.params.id), { name, steps });
         if (!preset) throw new HttpError(404, "Preset not found");
         return json(preset);
@@ -488,7 +488,7 @@ export function createApiRoutes(ctx: AppContext) {
       DELETE: handle((req: Req) => {
         const job = ctx.jobs.get(userId(req), parseId(req.params.id));
         if (!job) throw new HttpError(404, "Job not found");
-        if (job.active) throw new HttpError(409, "Der Auftrag läuft noch");
+        if (job.active) throw new HttpError(409, "The job is still running");
         ctx.jobs.delete(userId(req), job.id);
         return noContent();
       }),
@@ -501,7 +501,7 @@ export function createApiRoutes(ctx: AppContext) {
         const item = ctx.jobs.item(userId(req), parseId(req.params.itemId));
         if (!item || item.jobId !== parseId(req.params.id)) throw new HttpError(404, "Job item not found");
         if (item.kind === "import" && item.status === "pending") {
-          ctx.jobs.updateItem(item.id, { status: "failed", error: typeof body.error === "string" ? body.error : "Upload fehlgeschlagen" });
+          ctx.jobs.updateItem(item.id, { status: "failed", error: typeof body.error === "string" ? body.error : "Upload failed" });
         }
         return noContent();
       }),

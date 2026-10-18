@@ -26,11 +26,11 @@ describe("import preset seeding", () => {
 
     const [fresh] = presets.list(1);
     expect(presets.list(1)).toHaveLength(1);
-    expect(fresh).toMatchObject({ name: "OCR Optimiert", steps: { autoRotate: true, autoBw: true, autoLevels: true } });
+    expect(fresh).toMatchObject({ name: "OCR optimized", steps: { autoRotate: true, autoBw: true, autoLevels: true } });
     expect(stored(db, 1)).toEqual({ importPresetId: fresh!.id });
 
     const gray = presets.list(2).find((p) => p.id === stored(db, 2).importPresetId);
-    expect(gray).toMatchObject({ name: "Automatisch drehen, Automatisch entzerren, Graustufen, Auto-Tonwerte" });
+    expect(gray).toMatchObject({ name: "Rotate automatically, Dewarp automatically, Grayscale, Auto levels" });
     expect(stored(db, 2)).toEqual({ ocrAllText: true, importPresetId: gray!.id });
 
     expect(presets.list(3)).toHaveLength(1);

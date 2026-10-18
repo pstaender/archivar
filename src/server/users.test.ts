@@ -37,10 +37,10 @@ describe("users", () => {
 
   test("creating checks the name and the password", async () => {
     const { users } = server.ctx;
-    await expect(createUser(users, " ", "geheim123", false)).rejects.toThrow("leer");
-    await expect(createUser(users, "anna maria", "geheim123", false)).rejects.toThrow("Leerzeichen");
-    await expect(createUser(users, "admin", "geheim123", false)).rejects.toThrow("gibt es schon");
-    await expect(createUser(users, "anna", "kurz", false)).rejects.toThrow("mindestens");
+    await expect(createUser(users, " ", "geheim123", false)).rejects.toThrow("must not be empty");
+    await expect(createUser(users, "anna maria", "geheim123", false)).rejects.toThrow("must not contain spaces");
+    await expect(createUser(users, "admin", "geheim123", false)).rejects.toThrow("already exists");
+    await expect(createUser(users, "anna", "kurz", false)).rejects.toThrow("at least");
     const anna = await createUser(users, " anna ", "geheim123", true);
     expect(anna).toMatchObject({ name: "anna", admin: true });
     expect(await Bun.password.verify("geheim123", users.passwordHash(anna.id)!)).toBe(true);

@@ -19,16 +19,16 @@ const db = openDatabase(loadConfig().databasePath);
 const users = new UserRepository(db);
 const all = users.list();
 const user = name ? users.findByName(name) : all.length === 1 ? all[0] : null;
-if (!user) fail(name ? `Benutzer „${name}“ nicht gefunden. Vorhanden: ${all.map((u) => u.name).join(", ")}` : `Bitte einen Benutzer angeben: ${all.map((u) => u.name).join(", ")}`);
+if (!user) fail(name ? `User "${name}" not found. Existing users: ${all.map((u) => u.name).join(", ")}` : `Please give a user: ${all.map((u) => u.name).join(", ")}`);
 
 const auth = new AuthService(users, new AuthRepository(db));
 if (remove) {
   auth.setPassword(user.id, null);
-  console.log(all.length > 1 ? `Kennwort von „${user.name}“ entfernt, die Anmeldung geht mit leerem Kennwort.` : `Kennwort von „${user.name}“ entfernt, die Anmeldung ist ausgeschaltet.`);
+  console.log(all.length > 1 ? `Removed the password of "${user.name}", who now logs in with an empty password.` : `Removed the password of "${user.name}", the login is turned off.`);
 } else {
   const password = await readNewPassword();
-  if (password.length < MIN_PASSWORD_LENGTH) fail(`Das Kennwort braucht mindestens ${MIN_PASSWORD_LENGTH} Zeichen.`);
+  if (password.length < MIN_PASSWORD_LENGTH) fail(`The password needs at least ${MIN_PASSWORD_LENGTH} characters.`);
   auth.setPassword(user.id, await Bun.password.hash(password));
-  console.log(`Kennwort von „${user.name}“ gesetzt. Alle Sitzungen wurden beendet.`);
+  console.log(`Set the password of "${user.name}". All sessions were ended.`);
 }
 db.close();

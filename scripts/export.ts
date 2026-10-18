@@ -5,13 +5,14 @@
 import { loadConfig } from "../src/server/config";
 import { openDatabase } from "../src/server/db/database";
 import { archiveExportSize, exportArchive, exportFilename } from "../src/server/services/archiveExport";
-import { formatBytes } from "../src/client/format";
+
+const formatBytes = (bytes: number) => `${(bytes / 1024 ** 2).toLocaleString("en", { maximumFractionDigits: 1 })} MB`;
 
 const target = process.argv[2] ?? exportFilename();
 const config = loadConfig();
 const db = openDatabase(config.databasePath);
 const toStdout = target === "-";
-if (!toStdout) console.log(`Exportiere etwa ${formatBytes(await archiveExportSize(db, config.storageDir))} nach ${target} …`);
+if (!toStdout) console.log(`Exporting about ${formatBytes(await archiveExportSize(db, config.storageDir))} to ${target} …`);
 // Bun.write() with a streamed Response hangs, so the chunks go through a FileSink.
 const sink = (toStdout ? Bun.stdout : Bun.file(target)).writer();
 let written = 0;
@@ -21,4 +22,4 @@ for await (const chunk of exportArchive(db, config.storageDir)) {
 }
 await sink.end();
 db.close();
-if (!toStdout) console.log(`Fertig: ${formatBytes(written)} geschrieben.`);
+if (!toStdout) console.log(`Done: wrote ${formatBytes(written)}.`);

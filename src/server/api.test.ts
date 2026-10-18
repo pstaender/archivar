@@ -573,7 +573,7 @@ describe("settings", () => {
     server = await startTestServer({ importPreset: true });
     server.ocr.orientation = { rotation: 90, confidence: 8 };
     const [preset] = (await (await server.api("/api/presets")).json()) as ImagePreset[];
-    expect(preset).toMatchObject({ name: "OCR Optimiert", steps: { autoRotate: true, autoBw: true, autoLevels: true } });
+    expect(preset).toMatchObject({ name: "OCR optimized", steps: { autoRotate: true, autoBw: true, autoLevels: true } });
     expect(await (await server.api("/api/settings")).json()).toMatchObject({ importPresetId: preset!.id });
 
     const doc = await uploadImage();
@@ -781,7 +781,7 @@ describe("image presets", () => {
     expect(preset).toMatchObject({ name: "Beleg", steps: { autoBw: true, denoise: 3 } });
     await createPreset({ name: "Aquarell", steps: { saturation: 20 } });
     const list = (await (await server.api("/api/presets")).json()) as ImagePreset[];
-    expect(list.map((p) => p.name)).toEqual(["Aquarell", "Beleg", "OCR Optimiert"]);
+    expect(list.map((p) => p.name)).toEqual(["Aquarell", "Beleg", "OCR optimized"]);
 
     const res = await patch(`/api/presets/${preset.id}`, { name: "Kassenbon", steps: { brightness: 0.2 } });
     expect(await res.json()).toMatchObject({ name: "Kassenbon", steps: { brightness: 0.2 } });
@@ -954,7 +954,7 @@ describe("jobs", () => {
     await patch(`/api/jobs/${job.id}/items/${b!.id}`, { error: "Netzwerkfehler" });
 
     const listed = (await jobs())[0]!;
-    expect(listed.items[0]).toMatchObject({ state: expect.stringMatching(/ocr|done/), note: "Bereits vorhanden als „vorher“", document: { id: doc.id, title: "a" } });
+    expect(listed.items[0]).toMatchObject({ state: expect.stringMatching(/ocr|done/), note: "Already stored as \"vorher\"", document: { id: doc.id, title: "a" } });
     expect(states(listed)?.slice(1)).toEqual([
       ["b.jpg", "failed", "Netzwerkfehler"],
       ["c.jpg", "pending", null],
@@ -967,7 +967,7 @@ describe("jobs", () => {
     await server.ctx.ocr.idle();
     expect(states((await jobs())[0])?.slice(1)).toEqual([
       ["b.jpg", "failed", "Netzwerkfehler"],
-      ["c.jpg", "failed", "Der Upload wurde abgebrochen."],
+      ["c.jpg", "failed", "The upload was interrupted."],
     ]);
     expect((await jobs())[0]!.finishedAt).toEqual(expect.any(String));
     expect((await server.api(`/api/jobs/${job.id}`, { method: "DELETE" })).status).toBe(204);
@@ -986,7 +986,7 @@ describe("jobs", () => {
     server.ctx.jobQueue.start();
     await server.ctx.jobQueue.idle();
     expect(states(server.ctx.jobs.get(1, id)!)).toEqual([
-      ["a", "failed", "Das Dokument wurde gelöscht."],
+      ["a", "failed", "The document was deleted."],
       ["b", "done", null],
     ]);
   });

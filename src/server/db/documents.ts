@@ -263,7 +263,7 @@ export class DocumentRepository {
              error = CASE WHEN $failed THEN $error ELSE error END
            WHERE document_id = $id AND ocr = 1 AND status = 'done' AND ocr_settled = 0`,
         )
-        .run({ id, failed: result.status === "failed" ? 1 : 0, error: result.error ?? "Texterkennung fehlgeschlagen" });
+        .run({ id, failed: result.status === "failed" ? 1 : 0, error: result.error ?? "Text recognition failed" });
     }
   }
 

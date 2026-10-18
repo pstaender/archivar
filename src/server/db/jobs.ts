@@ -63,7 +63,7 @@ function toItem(row: ItemRow): JobItem {
     if (row.ocr_status === "pending" || row.ocr_status === "running") state = "ocr";
     else if (row.ocr_status === "failed") {
       state = "failed";
-      error = row.ocr_error ?? "Texterkennung fehlgeschlagen";
+      error = row.ocr_error ?? "Text recognition failed";
     }
   }
   return {
@@ -151,7 +151,7 @@ export class JobRepository {
         `UPDATE job_items SET ocr_settled = 1, ocr_finished_at = finished_at,
            status = CASE WHEN (SELECT ocr_status FROM documents WHERE id = job_items.document_id) = 'failed' THEN 'failed' ELSE status END,
            error = CASE WHEN (SELECT ocr_status FROM documents WHERE id = job_items.document_id) = 'failed'
-             THEN COALESCE((SELECT ocr_error FROM documents WHERE id = job_items.document_id), 'Texterkennung fehlgeschlagen') ELSE error END
+             THEN COALESCE((SELECT ocr_error FROM documents WHERE id = job_items.document_id), 'Text recognition failed') ELSE error END
          WHERE id = ? AND status = 'done' AND ocr = 1 AND ocr_settled = 0
            AND (SELECT ocr_status FROM documents WHERE id = job_items.document_id) IN ('done', 'failed')`,
       )

@@ -147,7 +147,7 @@ export const migrations: string[] = [
     ocr_settled = 1,
     status = CASE WHEN (SELECT ocr_status FROM documents WHERE id = job_items.document_id) = 'failed' THEN 'failed' ELSE status END,
     error = CASE WHEN (SELECT ocr_status FROM documents WHERE id = job_items.document_id) = 'failed'
-      THEN COALESCE((SELECT ocr_error FROM documents WHERE id = job_items.document_id), 'Texterkennung fehlgeschlagen') ELSE error END
+      THEN COALESCE((SELECT ocr_error FROM documents WHERE id = job_items.document_id), 'Text recognition failed') ELSE error END
   WHERE ocr = 1 AND status = 'done'
     AND (SELECT ocr_status FROM documents WHERE id = job_items.document_id) NOT IN ('pending', 'running');
   `,
@@ -254,6 +254,23 @@ export const migrations: string[] = [
   `,
   `
   UPDATE users SET name = 'admin' WHERE name = 'default' AND NOT EXISTS (SELECT 1 FROM users WHERE name = 'admin');
+  `,
+  // Server messages are English now; this translates the ones stored before.
+  `
+  UPDATE documents SET ocr_error = 'Text recognition failed' WHERE ocr_error = 'Texterkennung fehlgeschlagen';
+  UPDATE documents SET ocr_error = 'Text recognition took too long and was stopped.'
+    WHERE ocr_error = 'Die Texterkennung hat zu lange gedauert und wurde abgebrochen.';
+  UPDATE job_items SET error = CASE error
+      WHEN 'Texterkennung fehlgeschlagen' THEN 'Text recognition failed'
+      WHEN 'Die Texterkennung hat zu lange gedauert und wurde abgebrochen.' THEN 'Text recognition took too long and was stopped.'
+      WHEN 'Der Upload wurde abgebrochen.' THEN 'The upload was interrupted.'
+      WHEN 'Das Dokument wurde gelöscht.' THEN 'The document was deleted.'
+      WHEN 'Upload fehlgeschlagen' THEN 'Upload failed'
+      ELSE error END
+    WHERE error IS NOT NULL;
+  UPDATE job_items SET note = 'Already stored as ' || REPLACE(REPLACE(SUBSTR(note, LENGTH('Bereits vorhanden als ') + 1), '„', '"'), '“', '"')
+    WHERE note LIKE 'Bereits vorhanden als %';
+  UPDATE image_presets SET name = 'OCR optimized' WHERE name = 'OCR Optimiert';
   `,
 ];
 

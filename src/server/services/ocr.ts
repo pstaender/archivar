@@ -107,7 +107,7 @@ export class TesseractEngine implements OcrEngine {
 
 // Recognizing one image or PDF page normally takes seconds; a worker that hangs must not block the queue forever.
 export const OCR_PAGE_TIMEOUT_MS = 3 * 60_000;
-export const OCR_TIMEOUT_MESSAGE = "Die Texterkennung hat zu lange gedauert und wurde abgebrochen.";
+export const OCR_TIMEOUT_MESSAGE = "Text recognition took too long and was stopped.";
 
 class OcrTimeoutError extends Error {}
 

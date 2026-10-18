@@ -44,7 +44,7 @@ export interface ImagePreset {
 
 /** Created for every user and applied on import until they choose otherwise. */
 export const DEFAULT_IMPORT_PRESET: { name: string; steps: PresetSteps } = {
-  name: "OCR Optimiert",
+  name: "OCR optimized",
   steps: { autoRotate: true, autoBw: true, autoLevels: true },
 };
 

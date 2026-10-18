@@ -85,7 +85,7 @@ export function seedImportPresets(db: Database): void {
       const legacy = fresh ? DEFAULT_IMPORT_PRESET.steps : legacyImportSteps(stored);
       let importPresetId: number | null = null;
       if (legacy && JSON.stringify(normalizePresetSteps(legacy)) === JSON.stringify(defaultPreset.steps)) importPresetId = defaultPreset.id;
-      else if (legacy) importPresetId = presets.create(user.id, describePreset(createI18n({ lng: "de" }).t, legacy), normalizePresetSteps(legacy)).id;
+      else if (legacy) importPresetId = presets.create(user.id, describePreset(createI18n({ lng: "en" }).t, legacy), normalizePresetSteps(legacy)).id;
       const { uploadEnhancement: _, autoDewarp: __, ...kept } = stored;
       db.query("UPDATE users SET settings = ?, import_preset_seeded = 1 WHERE id = ?").run(JSON.stringify({ ...kept, importPresetId }), user.id);
     }

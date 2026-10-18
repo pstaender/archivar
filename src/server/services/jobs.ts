@@ -3,8 +3,8 @@ import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
 import { applyNameScheme } from "../../shared/nameScheme";
 import type { ArchiveService } from "./archive";
 
-export const UPLOAD_INTERRUPTED_MESSAGE = "Der Upload wurde abgebrochen.";
-const DOCUMENT_DELETED_MESSAGE = "Das Dokument wurde gelöscht.";
+export const UPLOAD_INTERRUPTED_MESSAGE = "The upload was interrupted.";
+const DOCUMENT_DELETED_MESSAGE = "The document was deleted.";
 
 /** Runs batch jobs in the background, one document at a time; like the OCR queue it only lives in memory. */
 export class JobQueue {

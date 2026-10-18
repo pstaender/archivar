@@ -62,3 +62,24 @@ test("the first user is created as admin, an existing default user is renamed to
     { name: "anna", admin: 0 },
   ]);
 });
+
+test("messages stored in German before are translated to English", () => {
+  const db = new Database(":memory:", { strict: true });
+  migrate(db, migrations.findIndex((sql) => sql.includes("Already stored as")));
+  db.query("INSERT INTO users (name) VALUES ('admin')").run();
+  db.query("INSERT INTO image_presets (user_id, name) VALUES (1, 'OCR Optimiert'), (1, 'Beleg')").run();
+  db.query("INSERT INTO jobs (user_id, kind) VALUES (1, 'import')").run();
+  db.query(
+    `INSERT INTO job_items (job_id, position, name, status, error, note) VALUES
+       (1, 0, 'a', 'failed', 'Der Upload wurde abgebrochen.', NULL),
+       (1, 1, 'b', 'done', NULL, 'Bereits vorhanden als „Brief“, „Brief 2“'),
+       (1, 2, 'c', 'failed', 'Tesseract crashed', NULL)`,
+  ).run();
+  migrate(db);
+  expect(db.query("SELECT name FROM image_presets ORDER BY id").all()).toEqual([{ name: "OCR optimized" }, { name: "Beleg" }]);
+  expect(db.query("SELECT error, note FROM job_items ORDER BY position").all()).toEqual([
+    { error: "The upload was interrupted.", note: null },
+    { error: null, note: 'Already stored as "Brief", "Brief 2"' },
+    { error: "Tesseract crashed", note: null },
+  ]);
+});

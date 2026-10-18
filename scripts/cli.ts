@@ -39,9 +39,9 @@ export function readHidden(prompt: string): Promise<string> {
 /** `optional`: an empty password is accepted without asking again. */
 export async function readNewPassword(optional = false): Promise<string> {
   if (!process.stdin.isTTY) return (await Bun.stdin.text()).replace(/\r?\n$/, "");
-  const password = await readHidden(optional ? "Kennwort (leer: ohne Kennwort): " : "Neues Kennwort: ");
+  const password = await readHidden(optional ? "Password (empty: no password): " : "New password: ");
   if (optional && !password) return password;
-  if ((await readHidden("Kennwort wiederholen: ")) !== password) fail("Die Kennwörter stimmen nicht überein.");
+  if ((await readHidden("Repeat password: ")) !== password) fail("The passwords do not match.");
   return password;
 }
 
@@ -52,7 +52,7 @@ export function ask(question: string): string | null {
 
 /** y/n question; `fallback` is used for an empty answer. */
 export function askYesNo(question: string, fallback: boolean): boolean {
-  const answer = ask(`${question} [${fallback ? "J/n" : "j/N"}]`);
+  const answer = ask(`${question} [${fallback ? "Y/n" : "y/N"}]`);
   if (!answer) return fallback;
-  return /^(j|ja|y|yes)$/i.test(answer);
+  return /^(y|yes)$/i.test(answer);
 }

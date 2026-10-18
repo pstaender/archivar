@@ -64,7 +64,7 @@ export interface Job {
 }
 
 export function duplicateNote(duplicates: { title: string }[]): string {
-  return `Bereits vorhanden als ${duplicates.map((doc) => `„${doc.title}“`).join(", ")}`;
+  return `Already stored as ${duplicates.map((doc) => `"${doc.title}"`).join(", ")}`;
 }
 
 export const FINISHED_STATES: JobItemState[] = ["done", "skipped", "failed"];

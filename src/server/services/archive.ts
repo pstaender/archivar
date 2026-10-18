@@ -319,10 +319,10 @@ export class ArchiveService {
     quality: PdfQuality,
   ): Promise<{ pdf: Uint8Array<ArrayBuffer>; filename: string }> {
     const docs = ids.map((id) => this.getDocument(userId, id)).filter((doc) => doc.kind !== "file");
-    if (docs.length === 0) throw new HttpError(400, "Keine Bilder oder PDFs ausgewählt");
+    if (docs.length === 0) throw new HttpError(400, "No images or PDFs selected");
     const parts: PdfPart[] = [];
     for (const doc of docs) parts.push(await this.pdfPart(userId, doc, quality));
-    const name = title?.trim() || "Dokumente";
+    const name = title?.trim() || "Documents";
     return { pdf: await createSearchablePdf(parts, name), filename: `${name}.pdf` };
   }
 
