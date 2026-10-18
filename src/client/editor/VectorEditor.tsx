@@ -4,6 +4,8 @@ import { MAX_DETAIL, MIN_AREA_SIZE, MIN_DETAIL, type VectorArea, type VectorSett
 import { Slider } from "./EditControls";
 import { fromEdges, HANDLES, type Handle, moveBy, nudge, type Point, pointIn, type Rect, resize } from "./rects";
 import type { VectorAreasState } from "./useVectorAreas";
+import { useTranslation } from "react-i18next";
+import { locale } from "../i18n";
 
 type Drag =
   | { kind: "create"; id: string; anchor: Point }
@@ -12,7 +14,6 @@ type Drag =
 
 const tooSmall = (r: Rect) => r.width < MIN_AREA_SIZE || r.height < MIN_AREA_SIZE;
 
-const DETAIL_LABELS = ["Sehr grob", "Grob", "Mittel", "Fein", "Sehr fein"];
 
 interface VectorCanvasProps {
   src: string;
@@ -26,6 +27,7 @@ export function VectorCanvas({ src, alt, state, showOriginal }: VectorCanvasProp
   const { areas, selected, setAreas, setSelected, setDragging } = state;
   const overlay = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
+  const { t } = useTranslation();
 
   const toPoint = (e: PointerEvent): Point => pointIn(overlay.current!, e);
   const replace = (area: VectorArea) => setAreas((list) => list.map((a) => (a.id === area.id ? area : a)));
@@ -110,7 +112,7 @@ export function VectorCanvas({ src, alt, state, showOriginal }: VectorCanvasProp
                 data-area-id={area.id}
                 className={`shape vector-area ${area.id === selected ? "is-selected" : ""}`}
                 style={{ left: `${area.x * 100}%`, top: `${area.y * 100}%`, width: `${area.width * 100}%`, height: `${area.height * 100}%` }}
-                aria-label={`Vektorbereich ${index + 1}`}
+                aria-label={t("vector.area", { number: index + 1 })}
                 aria-pressed={area.id === selected}
                 aria-busy={busy}
                 onFocus={() => setSelected(area.id)}
@@ -150,6 +152,7 @@ interface VectorControlsProps {
 
 export function VectorControls({ state, showOriginal, onShowOriginal, hasText, onSave }: VectorControlsProps) {
   const { areas, selected, working, dirty, saving, pending } = state;
+  const { t } = useTranslation();
   const area = areas.find((a) => a.id === selected) ?? null;
   const set = <K extends keyof VectorSettings>(key: K, value: VectorSettings[K]) => area && state.changeSettings(area.id, { ...area.settings, [key]: value });
   const vectorized = areas.filter((a) => a.graphic !== null).length;
@@ -159,14 +162,13 @@ export function VectorControls({ state, showOriginal, onShowOriginal, hasText, o
       <div className="edit-controls">
         {state.outdated && (
           <div className="alert alert--warning small">
-            Zuschnitt, Drehung oder Entzerrung wurden nach dem Vektorisieren geändert. Prüfe, ob die Bereiche noch an der richtigen Stelle liegen.
+            {t("vector.outdated")}
           </div>
         )}
         <section className="control-group">
-          <h3>Bereiche</h3>
+          <h3>{t("vector.title")}</h3>
           <p className="muted small">
-            Auf dem Bild einen Bereich aufziehen: Er wird mit passenden Einstellungen vektorisiert und ersetzt beim Speichern die Pixel des Bildes. Bereiche lassen
-            sich verschieben, an den Griffen in der Größe ändern und mit Entf löschen.
+            {t("vector.intro")}
           </p>
           <div className="button-row">
             {area && (
@@ -179,13 +181,13 @@ export function VectorControls({ state, showOriginal, onShowOriginal, hasText, o
                 }}
               >
                 <Trash size={16} />
-                Bereich löschen
+                {t("vector.delete")}
               </button>
             )}
             {areas.length > 0 && (
               <button type="button" className="btn btn--sm" aria-pressed={showOriginal} onClick={() => onShowOriginal(!showOriginal)}>
                 <Eye size={16} />
-                {showOriginal ? "Vektoren zeigen" : "Original zeigen"}
+                {showOriginal ? t("vector.showVectors") : t("vector.showOriginal")}
               </button>
             )}
             {areas.length > 0 && (
@@ -197,25 +199,25 @@ export function VectorControls({ state, showOriginal, onShowOriginal, hasText, o
                   state.setSelected(null);
                 }}
               >
-                Alle entfernen
+                {t("shapes.removeAll")}
               </button>
             )}
           </div>
           <p className="muted small" aria-live="polite">
             {areas.length === 0
-              ? "Noch keine Bereiche."
-              : `${areas.length === 1 ? "1 Bereich" : `${areas.length} Bereiche`}, ${vectorized} vektorisiert`}
+              ? t("vector.none")
+              : t("vector.areas", { count: areas.length, vectorized })}
           </p>
         </section>
 
         {area && (
           <section className="control-group">
-            <h3>Vektorisierung</h3>
-            <div className="segmented" role="radiogroup" aria-label="Farben">
+            <h3>{t("vector.vectorization")}</h3>
+            <div className="segmented" role="radiogroup" aria-label={t("vector.colors")}>
               {(
                 [
-                  ["bw", "Schwarzweiß"],
-                  ["color", "Farben"],
+                  ["bw", t("vector.bw")],
+                  ["color", t("vector.colors")],
                 ] as const
               ).map(([value, label]) => (
                 <button key={value} type="button" role="radio" aria-checked={area.settings.mode === value} className={area.settings.mode === value ? "is-active" : ""} onClick={() => set("mode", value)}>
@@ -224,23 +226,23 @@ export function VectorControls({ state, showOriginal, onShowOriginal, hasText, o
               ))}
             </div>
             <Slider
-              label="Details"
+              label={t("vector.detail")}
               value={area.settings.detail}
               min={MIN_DETAIL}
               max={MAX_DETAIL}
               step={1}
               defaultValue={3}
-              format={(v) => DETAIL_LABELS[v - 1] ?? String(v)}
+              format={(v) => t(`vector.details.${v}`, { defaultValue: String(v) })}
               onChange={(v) => set("detail", v)}
             />
             {area.settings.mode === "bw" && (
-              <Slider label="Schwelle" value={area.settings.threshold} min={1} max={254} step={1} defaultValue={128} onChange={(v) => set("threshold", v)} />
+              <Slider label={t("vector.threshold")} value={area.settings.threshold} min={1} max={254} step={1} defaultValue={128} onChange={(v) => set("threshold", v)} />
             )}
-            <div className="segmented" role="radiogroup" aria-label="Kanten">
+            <div className="segmented" role="radiogroup" aria-label={t("vector.edges")}>
               {(
                 [
-                  ["smooth", "Glatt"],
-                  ["sharp", "Eckig"],
+                  ["smooth", t("vector.smooth")],
+                  ["sharp", t("vector.sharp")],
                 ] as const
               ).map(([value, label]) => (
                 <button key={value} type="button" role="radio" aria-checked={area.settings.curves === value} className={area.settings.curves === value ? "is-active" : ""} onClick={() => set("curves", value)}>
@@ -251,42 +253,42 @@ export function VectorControls({ state, showOriginal, onShowOriginal, hasText, o
             <div className="button-row">
               <button type="button" className="btn btn--sm" onClick={() => state.resuggest(area.id)} disabled={working?.id === area.id && working.step === "suggest"}>
                 <WandSparkles size={16} />
-                Automatisch einstellen
+                {t("vector.auto")}
               </button>
               {working?.id === area.id && working.step === "vectorize" && (
                 <button type="button" className="btn btn--sm btn--ghost" onClick={state.cancel}>
-                  Abbrechen
+                  {t("common.cancel")}
                 </button>
               )}
             </div>
             <p className="muted small" aria-live="polite">
               {working?.id === area.id
                 ? working.step === "suggest"
-                  ? "Einstellungen werden ermittelt …"
-                  : "Wird vektorisiert …"
+                  ? t("vector.suggesting")
+                  : t("vector.vectorizing")
                 : state.failedIds.has(area.id)
-                  ? "Nicht vektorisiert – Einstellungen ändern, um es erneut zu versuchen."
+                  ? t("vector.failed")
                   : area.graphic && state.isCurrent(area)
-                    ? `${area.graphic.paths.length === 1 ? "1 Form" : `${area.graphic.paths.length} Formen`}${state.lastMs !== null ? ` · ${(state.lastMs / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} s` : ""}`
+                    ? `${t("vector.paths", { count: area.graphic.paths.length })}${state.lastMs !== null ? ` · ${t("vector.seconds", { value: (state.lastMs / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 }) })}` : ""}`
                     : ""}
             </p>
           </section>
         )}
-        {hasText && <p className="muted small">Nach dem Speichern wird der Text neu erkannt.</p>}
+        {hasText && <p className="muted small">{t("vector.ocrHint")}</p>}
       </div>
       <div className="panel__footer">
         <span className="spacer saving-hint">
           {(saving || pending) && (
             <span className="muted small" role="status">
-              <Loader size={14} className="spin" /> {saving ? "Speichert …" : "Vektorisiert …"}
+              <Loader size={14} className="spin" /> {saving ? t("shapes.saving") : t("vector.pending")}
             </span>
           )}
         </span>
         <button type="button" className="btn btn--sm" onClick={state.discard} disabled={(!dirty && !pending) || saving}>
-          Verwerfen
+          {t("unsaved.discard")}
         </button>
         <button type="button" className="btn btn--sm btn--primary" onClick={onSave} disabled={!dirty || saving || pending}>
-          Speichern
+          {t("common.save")}
         </button>
       </div>
     </>

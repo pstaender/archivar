@@ -1,19 +1,14 @@
 import type { ArchiveDocument, OcrStatus } from "../shared/types";
-
-const dateFormat = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
-const dateTimeFormat = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" });
+import { locale, t } from "./i18n";
 
 export function formatDate(iso: string): string {
-  return dateFormat.format(new Date(iso));
+  return new Intl.DateTimeFormat(locale(), { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso));
 }
 
 export function formatDateTime(iso: string): string {
-  return dateTimeFormat.format(new Date(iso));
+  return new Intl.DateTimeFormat(locale(), { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
 }
 
-const relativeFormat = new Intl.RelativeTimeFormat("de", { numeric: "auto" });
-const weekdayFormat = new Intl.DateTimeFormat("de", { weekday: "long" });
-const timeFormat = new Intl.DateTimeFormat("de", { hour: "2-digit", minute: "2-digit" });
 const RECENT_DAYS = 6;
 
 /**
@@ -25,32 +20,34 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   const seconds = Math.max(0, Math.round((now.getTime() - date.getTime()) / 1000));
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const days = Math.round((startOfDay(now) - startOfDay(date)) / 86_400_000);
+  const relativeFormat = new Intl.RelativeTimeFormat(locale(), { numeric: "auto" });
+  const time = new Intl.DateTimeFormat(locale(), { hour: "2-digit", minute: "2-digit" }).format(date);
   if (days <= 0) {
     if (seconds < 60) return relativeFormat.format(-seconds, "second");
     if (seconds < 3600) return relativeFormat.format(-Math.floor(seconds / 60), "minute");
     return relativeFormat.format(-Math.floor(seconds / 3600), "hour");
   }
-  if (days === 1) return `Gestern, ${timeFormat.format(date)}`;
-  if (days <= RECENT_DAYS) return `${weekdayFormat.format(date)}, ${timeFormat.format(date)}`;
+  if (days === 1) return t("format.yesterday", { time });
+  if (days <= RECENT_DAYS) return t("format.weekdayTime", { weekday: new Intl.DateTimeFormat(locale(), { weekday: "long" }).format(date), time });
   return formatDateTime(iso);
 }
 
-const unit = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const unit = (count: number, name: "seconds" | "minutes" | "hours") => t(`format.${name}`, { count });
 
 /** E.g. "45 Sekunden", "2 Minuten 5 Sekunden" (seconds only below 10 minutes), "1 Stunde 20 Minuten". */
 export function formatDuration(ms: number): string {
   const seconds = Math.max(1, Math.round(ms / 1000));
-  if (seconds < 60) return unit(seconds, "Sekunde", "Sekunden");
+  if (seconds < 60) return unit(seconds, "seconds");
   if (seconds < 600) {
     const rest = seconds % 60;
-    const minutes = unit(Math.floor(seconds / 60), "Minute", "Minuten");
-    return rest ? `${minutes} ${unit(rest, "Sekunde", "Sekunden")}` : minutes;
+    const minutes = unit(Math.floor(seconds / 60), "minutes");
+    return rest ? `${minutes} ${unit(rest, "seconds")}` : minutes;
   }
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return unit(minutes, "Minute", "Minuten");
+  if (minutes < 60) return unit(minutes, "minutes");
   const rest = minutes % 60;
-  const hours = unit(Math.floor(minutes / 60), "Stunde", "Stunden");
-  return rest ? `${hours} ${unit(rest, "Minute", "Minuten")}` : hours;
+  const hours = unit(Math.floor(minutes / 60), "hours");
+  return rest ? `${hours} ${unit(rest, "minutes")}` : hours;
 }
 
 export function formatBytes(bytes: number): string {
@@ -62,16 +59,17 @@ export function formatBytes(bytes: number): string {
     value /= 1024;
     unit++;
   }
-  return `${value.toLocaleString("de-DE", { maximumFractionDigits: value < 10 ? 1 : 0 })} ${units[unit]}`;
+  return `${value.toLocaleString(locale(), { maximumFractionDigits: value < 10 ? 1 : 0 })} ${units[unit]}`;
 }
 
-export const OCR_STATUS_LABEL: Record<OcrStatus, string> = {
-  none: "Kein Text erkannt",
-  pending: "Texterkennung wartet",
-  running: "Texterkennung läuft",
-  done: "Text erkannt",
-  failed: "Texterkennung fehlgeschlagen",
-};
+/** The name of an OCR language (Tesseract code) in the UI language. */
+export function ocrLanguageName(code: string): string {
+  return t(`ocrLanguages.${code}`, { defaultValue: code });
+}
+
+export function ocrStatusLabel(status: OcrStatus): string {
+  return t(`ocrStatus.${status}`);
+}
 
 export function isOcrBusy(doc: Pick<ArchiveDocument, "ocrStatus">): boolean {
   return doc.ocrStatus === "pending" || doc.ocrStatus === "running";

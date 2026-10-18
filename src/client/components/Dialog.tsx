@@ -1,5 +1,6 @@
 import { X } from "../icons";
 import { type ReactNode, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 interface DialogProps {
   open: boolean;
@@ -11,6 +12,7 @@ interface DialogProps {
 
 export function Dialog({ open, title, onClose, children, footer }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const dialog = ref.current;
@@ -42,7 +44,7 @@ export function Dialog({ open, title, onClose, children, footer }: DialogProps) 
       <div className="dialog__panel">
         <header className="dialog__header">
           <h2>{title}</h2>
-          <button type="button" className="btn btn--ghost btn--icon" onClick={onClose} aria-label="Schließen">
+          <button type="button" className="btn btn--ghost btn--icon" onClick={onClose} aria-label={t("common.close")}>
             <X size={18} />
           </button>
         </header>
@@ -64,6 +66,7 @@ interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog({ open, title, message, confirmLabel, danger, onConfirm, onClose }: ConfirmDialogProps) {
+  const { t } = useTranslation();
   return (
     <Dialog
       open={open}
@@ -72,7 +75,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel, danger, onCo
       footer={
         <>
           <button type="button" className="btn" onClick={onClose}>
-            Abbrechen
+            {t("common.cancel")}
           </button>
           <button
             type="button"

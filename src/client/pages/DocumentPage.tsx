@@ -2,7 +2,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, Fil
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
-import { languageName, OCR_LANGUAGES } from "../../shared/languages";
+import { OCR_LANGUAGES } from "../../shared/languages";
 import { type PresetSteps, presetStepsFromSettings } from "../../shared/presets";
 import type { PdfQuality } from "../../shared/settings";
 import { SHAPE_COLORS, type Shape } from "../../shared/shapes";
@@ -36,7 +36,8 @@ import { documentOrder, itemHash, libraryLocation } from "../documentOrder";
 import { usePolling } from "../hooks/usePolling";
 import { useToast } from "../hooks/toast";
 import { useResource } from "../hooks/useResource";
-import { documentLabel, formatBytes, formatDateTime, isOcrBusy, OCR_STATUS_LABEL } from "../format";
+import { documentLabel, formatBytes, formatDateTime, isOcrBusy, ocrLanguageName, ocrStatusLabel } from "../format";
+import { useTranslation } from "react-i18next";
 
 type Tab = "edit" | "text" | "vectors" | "shapes" | "details";
 
@@ -44,15 +45,8 @@ const IMAGE_TABS: Tab[] = ["edit", "vectors", "shapes"];
 const TABS: Tab[] = ["edit", "text", "vectors", "shapes", "details"];
 const TAB_KEY = "archivar.documentTab";
 
-const EDIT_TAB: TabItem<Tab> = { id: "edit", label: "Bearbeiten" };
-const MAIN_TABS: TabItem<Tab>[] = [
-  { id: "text", label: "Text" },
-  { id: "details", label: "Datei" },
-];
-const MORE_TABS: TabItem<Tab>[] = [
-  { id: "vectors", label: "Vektor" },
-  { id: "shapes", label: "Formen" },
-];
+const MAIN_TABS: Tab[] = ["text", "details"];
+const MORE_TABS: Tab[] = ["vectors", "shapes"];
 
 /** The tab chosen last, for all documents. */
 function storedTab(): Tab {
@@ -101,6 +95,7 @@ export function DocumentPage() {
   const stackId = params.get("stack") ? Number(params.get("stack")) : null;
   const navigate = useNavigate();
   const toast = useToast();
+  const { t } = useTranslation();
   const { reload: reloadFolders } = useFolders();
   const { ocrAllText } = useSettings().settings;
   const resource = useResource(() => api.document(id), [id]);
@@ -168,12 +163,12 @@ export function DocumentPage() {
       <div className="page">
         <div className="alert alert--error">{resource.error.message}</div>
         <Link to="/" className="btn">
-          Zur Übersicht
+          {t("notFound.home")}
         </Link>
       </div>
     );
   }
-  if (!doc) return <div className="page-loading">Lade …</div>;
+  if (!doc) return <div className="page-loading">{t("stack.loading")}</div>;
 
   const backHref = (stackId ? `/stacks/${stackId}` : libraryLocation()) + itemHash({ type: "document", id: doc.id });
 
@@ -199,7 +194,7 @@ export function DocumentPage() {
     saveEditSettings(doc.id, settings).then(
       ({ doc: saved, latest }) => {
         if (latest) resource.setData((current) => (sameDoc(current) ? saved : current!));
-        toast.success(`Bearbeitung von „${documentLabel(saved)}“ gespeichert`);
+        toast.success(t("document.editSaved", { title: documentLabel(saved) }));
       },
       (error: Error & { latest?: boolean }) => {
         if (error.latest) resource.setData((current) => (sameDoc(current) ? { ...current, editSettings: previous } : current!));
@@ -215,7 +210,7 @@ export function DocumentPage() {
       resource.setData(updated);
       setShapes(updated.shapes);
       setSelectedShape((current) => (updated.shapes.some((s) => s.id === current) ? current : null));
-      toast.success(updated.ocrStatus === "pending" ? "Formen gespeichert – Text wird neu erkannt" : "Formen gespeichert");
+      toast.success(updated.ocrStatus === "pending" ? t("document.shapesSavedOcr") : t("document.shapesSaved"));
     } catch (error) {
       toast.error(error);
     } finally {
@@ -232,7 +227,7 @@ export function DocumentPage() {
     const updated = await vectors.save();
     if (!updated) return;
     resource.setData(updated);
-    toast.success(updated.ocrStatus === "pending" ? "Vektoren gespeichert – Text wird neu erkannt" : "Vektoren gespeichert");
+    toast.success(updated.ocrStatus === "pending" ? t("document.vectorsSavedOcr") : t("document.vectorsSaved"));
   };
 
   const unsavedIn = (current: Tab) =>
@@ -261,8 +256,8 @@ export function DocumentPage() {
     try {
       const { rotation } = await api.detectOrientation(doc.id);
       if (rotation !== null) setAutoValues((current) => ({ ...current, rotation }));
-      if (rotation === null) toast.show("Ausrichtung nicht erkannt – zu wenig Text im Bild.", "warning");
-      else if (rotation === draft.rotation) toast.show("Das Bild ist bereits richtig ausgerichtet.");
+      if (rotation === null) toast.show(t("document.noOrientation"), "warning");
+      else if (rotation === draft.rotation) toast.show(t("document.alreadyUpright"));
       else {
         setDraft((current) => withRotation(current, rotation));
         setMode("none");
@@ -279,7 +274,7 @@ export function DocumentPage() {
     const requested = draft;
     try {
       const { corners } = await api.autoCrop(doc.id, requested);
-      if (!corners) toast.show("Kein Seitenrand gefunden.", "warning");
+      if (!corners) toast.show(t("document.noEdges"), "warning");
       else {
         setAutoValues((current) => ({ ...current, corners }));
         // Corners are relative to the rotated and dewarped image they were detected in.
@@ -319,7 +314,7 @@ export function DocumentPage() {
       if (presetShapes) {
         setShapes(presetShapes);
         setSelectedShape(null);
-        toast.show("Die Formen der Bildeinstellung wurden übernommen und werden im Tab „Formen“ gespeichert.");
+        toast.show(t("document.presetShapes"));
       }
       const { steps } = preset;
       setAutoValues((current) => ({
@@ -340,7 +335,7 @@ export function DocumentPage() {
     try {
       await api.createPreset({ name, steps });
       await reloadPresets();
-      toast.success(`Bildeinstellung „${name}“ gespeichert`);
+      toast.success(t("document.presetSaved", { name }));
     } catch (error) {
       toast.error(error);
       throw error;
@@ -379,7 +374,7 @@ export function DocumentPage() {
   const remove = async () => {
     try {
       await api.deleteDocument(doc.id);
-      toast.success("Dokument gelöscht");
+      toast.success(t("document.deleted"));
       void reloadFolders();
       leave.skipNext();
       navigate(backHref);
@@ -392,7 +387,7 @@ export function DocumentPage() {
     try {
       await whenEditsSaved(doc.id);
       const copy = await api.duplicateDocument(doc.id);
-      toast.success("Duplikat erstellt");
+      toast.success(t("document.duplicated"));
       void reloadFolders();
       if (stackId) void stack.refresh();
       navigate(stackId ? `/documents/${copy.id}?stack=${stackId}` : `/documents/${copy.id}`);
@@ -404,7 +399,7 @@ export function DocumentPage() {
   const detach = async () => {
     try {
       resource.setData(await api.detachDocument(doc.id));
-      toast.success("Das Dokument hat jetzt eine eigene Originaldatei");
+      toast.success(t("document.detached"));
     } catch (error) {
       toast.error(error);
     }
@@ -412,15 +407,13 @@ export function DocumentPage() {
 
   const heir = doc.copies[0];
   const deleteMessage =
-    `„${documentLabel(doc)}“ inklusive Bearbeitungen und erkanntem Text endgültig löschen?` +
-    (heir
-      ? ` Die Originaldatei bleibt für ${doc.copies.length === 1 ? "das Duplikat" : `die ${doc.copies.length} Duplikate`} erhalten, „${heir.title}“ wird zum neuen Original.`
-      : "");
+    t("document.deleteText", { title: documentLabel(doc) }) + (heir ? t("document.deleteHeir", { count: doc.copies.length, heir: heir.title }) : "");
+  const tabItems = (ids: Tab[]): TabItem<Tab>[] => ids.map((tabId) => ({ id: tabId, label: t(`document.tabs.${tabId}`) }));
 
   return (
     <div className="page page--document">
       <header className="page__header page__header--detail">
-        <Link to={backHref} className="btn btn--ghost btn--icon" aria-label="Zurück">
+        <Link to={backHref} className="btn btn--ghost btn--icon" aria-label={t("common.back")}>
           <ArrowLeft size={18} />
         </Link>
         <div className="page__title">
@@ -431,7 +424,7 @@ export function DocumentPage() {
                 <Link to={backHref} className="underline">
                   {stack.data.title}
                 </Link>{" "}
-                · Seite {position + 1} von {siblings.length}
+                · {t("document.pageOf", { page: position + 1, count: siblings.length })}
               </>
             ) : (
               <>
@@ -448,8 +441,8 @@ export function DocumentPage() {
                 className="btn btn--ghost btn--icon"
                 onClick={() => goTo(-1)}
                 disabled={!neighbour(-1)}
-                aria-label={stack.data ? "Vorherige Seite" : "Vorheriges Dokument"}
-                title={`${stack.data ? "Vorherige Seite" : "Vorheriges Dokument"} (←)`}
+                aria-label={stack.data ? t("document.previousPage") : t("document.previousDocument")}
+                title={`${stack.data ? t("document.previousPage") : t("document.previousDocument")} (←)`}
               >
                 <ChevronLeft size={18} />
               </button>
@@ -458,17 +451,17 @@ export function DocumentPage() {
                 className="btn btn--ghost btn--icon"
                 onClick={() => goTo(1)}
                 disabled={!neighbour(1)}
-                aria-label={stack.data ? "Nächste Seite" : "Nächstes Dokument"}
-                title={`${stack.data ? "Nächste Seite" : "Nächstes Dokument"} (→)`}
+                aria-label={stack.data ? t("document.nextPage") : t("document.nextDocument")}
+                title={`${stack.data ? t("document.nextPage") : t("document.nextDocument")} (→)`}
               >
                 <ChevronRight size={18} />
               </button>
             </>
           )}
-          <a href={assetUrl(doc, "file")} download={doc.originalName} className="btn btn--ghost btn--icon" aria-label="Original herunterladen" title="Original herunterladen">
+          <a href={assetUrl(doc, "file")} download={doc.originalName} className="btn btn--ghost btn--icon" aria-label={t("document.downloadOriginal")} title={t("document.downloadOriginal")}>
             <Download size={18} />
           </a>
-          <button type="button" className="btn btn--ghost btn--icon btn--danger-ghost" onClick={() => setConfirmDelete(true)} aria-label="Dokument löschen" title="Löschen">
+          <button type="button" className="btn btn--ghost btn--icon btn--danger-ghost" onClick={() => setConfirmDelete(true)} aria-label={t("document.delete")} title={t("common.delete")}>
             <Trash size={18} />
           </button>
         </div>
@@ -503,8 +496,8 @@ export function DocumentPage() {
 
         <aside className="panel">
           <TabBar
-            tabs={doc.kind === "image" ? [EDIT_TAB, ...MAIN_TABS] : MAIN_TABS}
-            more={doc.kind === "image" ? MORE_TABS : []}
+            tabs={tabItems(doc.kind === "image" ? ["edit", ...MAIN_TABS] : MAIN_TABS)}
+            more={doc.kind === "image" ? tabItems(MORE_TABS) : []}
             current={tab}
             onSelect={selectTab}
           />
@@ -515,26 +508,26 @@ export function DocumentPage() {
                 <div className="preset-bar">
                   <select
                     className="input input--sm"
-                    aria-label="Bildeinstellung anwenden"
+                    aria-label={t("document.applyPreset")}
                     value=""
                     disabled={applyingPreset || presets.length === 0}
                     onChange={(e) => applyPreset(Number(e.target.value))}
                   >
-                    <option value="">{presets.length ? "Bildeinstellung anwenden …" : "Keine Bildeinstellungen gespeichert"}</option>
+                    <option value="">{presets.length ? t("document.applyPresetOption") : t("document.noPresets")}</option>
                     {presets.map((preset) => (
                       <option key={preset.id} value={preset.id}>
                         {preset.name}
                       </option>
                     ))}
                   </select>
-                  {applyingPreset && <Loader size={16} className="spin" aria-label="Wird angewendet" />}
+                  {applyingPreset && <Loader size={16} className="spin" aria-label={t("document.applying")} />}
                   <button
                     type="button"
                     className="btn btn--sm btn--icon"
                     onClick={() => setPresetDialogSteps(presetCandidates)}
                     disabled={Object.keys(presetCandidates).length === 0}
-                    aria-label="Als Bildeinstellung speichern"
-                    title="Als Bildeinstellung speichern, um die Bearbeitung auf andere Bilder anzuwenden"
+                    aria-label={t("document.savePreset")}
+                    title={t("document.savePresetTitle")}
                   >
                     <SavePlus size={16} />
                   </button>
@@ -557,20 +550,20 @@ export function DocumentPage() {
                 />
                 <div className="panel__footer">
                   <button type="button" className="btn btn--ghost btn--sm" onClick={() => setDraft(DEFAULT_EDIT_SETTINGS)}>
-                    Zurücksetzen
+                    {t("editControls.reset")}
                   </button>
                   <span className="spacer saving-hint">
                     {saving && (
                       <span className="muted small" role="status">
-                        <Loader size={14} className="spin" /> Speichert …
+                        <Loader size={14} className="spin" /> {t("shapes.saving")}
                       </span>
                     )}
                   </span>
                   <button type="button" className="btn btn--sm" onClick={() => setDraft(doc.editSettings)} disabled={!dirty}>
-                    Verwerfen
+                    {t("unsaved.discard")}
                   </button>
                   <button type="button" className="btn btn--sm btn--primary" onClick={save} disabled={!dirty}>
-                    Speichern
+                    {t("common.save")}
                   </button>
                 </div>
               </>
@@ -611,19 +604,19 @@ export function DocumentPage() {
 
       <ConfirmDialog
         open={confirmDelete}
-        title="Dokument löschen"
+        title={t("document.delete")}
         message={deleteMessage}
-        confirmLabel="Löschen"
+        confirmLabel={t("common.delete")}
         danger
         onConfirm={remove}
         onClose={() => setConfirmDelete(false)}
       />
       <PresetDialog
         open={presetDialogSteps !== null}
-        title="Bildeinstellung speichern"
+        title={t("document.savePresetDialog")}
         initialName={documentLabel(doc)}
         steps={presetDialogSteps ?? {}}
-        submitLabel="Speichern"
+        submitLabel={t("common.save")}
         onSubmit={createPreset}
         onClose={() => setPresetDialogSteps(null)}
       />
@@ -659,6 +652,7 @@ interface ViewerProps {
 }
 
 function Viewer({ doc, editing, draft, mode, onCornersChange, processed, shapes }: ViewerProps) {
+  const { t } = useTranslation();
   if (doc.kind === "image") {
     if (editing) {
       return (
@@ -683,7 +677,7 @@ function Viewer({ doc, editing, draft, mode, onCornersChange, processed, shapes 
         <iframe src={assetUrl(doc, "file")} title={documentLabel(doc)} className="viewer__frame" />
         <a href={assetUrl(doc, "file")} target="_blank" rel="noreferrer" className="btn viewer__open">
           <ExternalLink size={16} />
-          PDF öffnen
+          {t("document.openPdf")}
         </a>
       </div>
     );
@@ -691,10 +685,10 @@ function Viewer({ doc, editing, draft, mode, onCornersChange, processed, shapes 
   return (
     <div className="empty-state">
       <FileText size={40} strokeWidth={1.25} />
-      <p className="muted">Für diesen Dateityp gibt es keine Vorschau.</p>
+      <p className="muted">{t("document.noPreview")}</p>
       <a href={assetUrl(doc, "file")} download={doc.originalName} className="btn">
         <Download size={16} />
-        Herunterladen
+        {t("document.download")}
       </a>
     </div>
   );
@@ -708,6 +702,7 @@ interface TextPanelProps {
 
 export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
   const toast = useToast();
+  const { t } = useTranslation();
   const config = useConfig();
   const [text, setText] = useState(doc.ocrText);
   const current = doc.ocrLanguages?.join("+") ?? "";
@@ -719,12 +714,12 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
 
   const languageChanged = language !== current;
   const recognize = () => onRunOcr(languageChanged ? { languages: language ? language.split("+") : null } : {});
-  const defaultLanguages = config.ocrLanguages.map(languageName).join(" + ");
+  const defaultLanguages = config.ocrLanguages.map(ocrLanguageName).join(" + ");
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Text kopiert");
+      toast.success(t("textPanel.copied"));
     } catch (error) {
       toast.error(error);
     }
@@ -735,22 +730,22 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
       <div className="text-panel__status">
         <span className={`status status--${doc.ocrStatus}`}>
           {busy && <Loader size={14} className="spin" />}
-          {OCR_STATUS_LABEL[doc.ocrStatus]}
-          {doc.ocrStatus === "done" && doc.ocrConfidence !== null && ` · ${Math.round(doc.ocrConfidence)} % Konfidenz`}
-          {doc.metadata.textSource === "pdf" && " · aus PDF übernommen"}
+          {ocrStatusLabel(doc.ocrStatus)}
+          {doc.ocrStatus === "done" && doc.ocrConfidence !== null && ` · ${t("textPanel.confidence", { value: Math.round(doc.ocrConfidence) })}`}
+          {doc.metadata.textSource === "pdf" && ` · ${t("textPanel.fromPdf")}`}
         </span>
         <div className="button-row">
-          <button type="button" className="btn btn--sm btn--ghost btn--icon" onClick={copy} disabled={!text} aria-label="Text kopieren" title="Text kopieren">
+          <button type="button" className="btn btn--sm btn--ghost btn--icon" onClick={copy} disabled={!text} aria-label={t("textPanel.copy")} title={t("textPanel.copy")}>
             <Copy size={16} />
           </button>
           {doc.kind !== "file" && (
             <button type="button" className="btn btn--sm" onClick={recognize} disabled={busy}>
               <ScanText size={16} />
               {languageChanged && language
-                ? `Auf ${languageName(language)} erkennen`
+                ? t("textPanel.recognizeIn", { language: language.split("+").map(ocrLanguageName).join(" + ") })
                 : doc.ocrStatus === "none"
-                  ? "Text erkennen"
-                  : "Erneut erkennen"}
+                  ? t("textPanel.recognize")
+                  : t("textPanel.recognizeAgain")}
             </button>
           )}
         </div>
@@ -758,20 +753,20 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
       {doc.kind !== "file" && (
         <div className="text-panel__language">
           <span className="muted small">
-            {doc.ocrLanguage ? `Sprache: ${languageName(doc.ocrLanguage)}` : doc.ocrStatus === "done" && doc.ocrText ? "Sprache nicht erkannt" : ""}
+            {doc.ocrLanguage ? t("textPanel.language", { language: ocrLanguageName(doc.ocrLanguage) }) : doc.ocrStatus === "done" && doc.ocrText ? t("textPanel.languageUnknown") : ""}
           </span>
           <select
             className="input input--sm text-panel__language-select"
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
             disabled={busy}
-            aria-label="Sprache für die Texterkennung"
-            title="Sprache für die Texterkennung"
+            aria-label={t("textPanel.languageSelect")}
+            title={t("textPanel.languageSelect")}
           >
-            <option value="">Automatisch ({defaultLanguages})</option>
-            {OCR_LANGUAGES.map(({ code, name }) => (
+            <option value="">{t("batch.automaticLanguages", { languages: defaultLanguages })}</option>
+            {OCR_LANGUAGES.map((code) => (
               <option key={code} value={code}>
-                {name}
+                {ocrLanguageName(code)}
               </option>
             ))}
           </select>
@@ -780,18 +775,17 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
       {doc.ocrStatus === "failed" && doc.ocrError && <div className="alert alert--error">{doc.ocrError}</div>}
       {doc.ocrStatus === "done" && doc.ocrRemoved > 0 && (
         <p className="muted small">
-          {doc.ocrRemoved === 1 ? "1 unsicherer Textteil wurde" : `${doc.ocrRemoved} unsichere Textteile wurden`} als vermutlich fehlerhaft
-          ausgeblendet.{" "}
+          {t("textPanel.removed", { count: doc.ocrRemoved })}{" "}
           <button type="button" className="link-button" onClick={() => onRunOcr({ allText: true })}>
-            Alle Textteile erkennen
+            {t("settings.allText")}
           </button>
         </p>
       )}
       {doc.ocrStatus === "done" && doc.ocrAllText && (
         <p className="muted small">
-          Alle Textteile wurden übernommen, auch unsichere.{" "}
+          {t("textPanel.allTextKept")}{" "}
           <button type="button" className="link-button" onClick={() => onRunOcr({ allText: false })}>
-            Unsichere Textteile ausblenden
+            {t("textPanel.hideUncertain")}
           </button>
         </p>
       )}
@@ -799,16 +793,16 @@ export function TextPanel({ doc, onRunOcr, onSave }: TextPanelProps) {
         className="textarea text-panel__text"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder={busy ? "Text wird erkannt …" : "Noch kein Text vorhanden."}
+        placeholder={busy ? t("textPanel.recognizing") : t("textPanel.noText")}
         disabled={busy}
-        aria-label="Erkannter Text"
+        aria-label={t("textPanel.recognized")}
       />
       <div className="text-panel__actions">
         <button type="button" className="btn btn--sm" onClick={() => setText(doc.ocrText)} disabled={text === doc.ocrText}>
-          Verwerfen
+          {t("unsaved.discard")}
         </button>
         <button type="button" className="btn btn--sm btn--primary" onClick={() => onSave(text)} disabled={text === doc.ocrText}>
-          Text speichern
+          {t("textPanel.save")}
         </button>
       </div>
     </div>
@@ -824,6 +818,7 @@ interface DetailsPanelProps {
 
 export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach }: DetailsPanelProps) {
   const toast = useToast();
+  const { t } = useTranslation();
   const [exporting, setExporting] = useState(false);
   const [busy, setBusy] = useState(false);
   const run = async (action: () => Promise<void>) => {
@@ -835,13 +830,13 @@ export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach }: De
     }
   };
   const rows: [string, string][] = [
-    ["Dateiname", doc.originalName],
-    ["Typ", doc.mimeType],
-    ["Größe", formatBytes(doc.size)],
+    [t("details.fileName"), doc.originalName],
+    [t("details.type"), doc.mimeType],
+    [t("details.size"), formatBytes(doc.size)],
   ];
-  if (doc.width && doc.height) rows.push(["Abmessungen", `${doc.width} × ${doc.height} px`]);
-  if (doc.pageCount) rows.push(["Seiten", String(doc.pageCount)]);
-  rows.push(["Hochgeladen", formatDateTime(doc.createdAt)], ["Geändert", formatDateTime(doc.updatedAt)]);
+  if (doc.width && doc.height) rows.push([t("details.dimensions"), t("details.dimensionsValue", { width: doc.width, height: doc.height })]);
+  if (doc.pageCount) rows.push([t("details.pages"), String(doc.pageCount)]);
+  rows.push([t("details.uploaded"), formatDateTime(doc.createdAt)], [t("details.modified"), formatDateTime(doc.updatedAt)]);
 
   const exportPdf = async (quality?: PdfQuality) => {
     setExporting(true);
@@ -861,7 +856,7 @@ export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach }: De
       <div className="button-row">
         <a href={assetUrl(doc, "file")} download={doc.originalName} className="btn btn--sm">
           <Download size={16} />
-          Original
+          {t("details.original")}
         </a>
         {doc.kind === "image" && (
           <PdfButton
@@ -869,7 +864,7 @@ export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach }: De
             onExport={(quality) => void exportPdf(quality)}
             busy={exporting}
             disabled={exporting || isOcrBusy(doc)}
-            title="Bild mit dem gespeicherten Text als durchsuchbares PDF herunterladen"
+            title={t("details.pdfTitle")}
           />
         )}
         <button
@@ -877,10 +872,10 @@ export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach }: De
           className="btn btn--sm"
           onClick={() => void run(onDuplicate)}
           disabled={busy}
-          title="Kopie mit denselben Bearbeitungen anlegen, die dieselbe Originaldatei verwendet"
+          title={t("details.duplicateTitle")}
         >
           <Copy size={16} />
-          Duplizieren
+          {t("details.duplicate")}
         </button>
         {doc.copyOf && (
           <button
@@ -888,10 +883,10 @@ export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach }: De
             className="btn btn--sm"
             onClick={() => void run(onDetach)}
             disabled={busy}
-            title="Die Originaldatei kopieren und die Verknüpfung zum Original aufheben"
+            title={t("details.detachTitle")}
           >
             <Unlink size={16} />
-            Eigenständig machen
+            {t("details.detach")}
           </button>
         )}
       </div>
@@ -899,18 +894,18 @@ export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach }: De
       <dl className="details">
         {doc.copyOf && (
           <div className="details__row">
-            <dt>Duplikat von</dt>
+            <dt>{t("details.copyOf")}</dt>
             <dd>
               <Link to={`/documents/${doc.copyOf.id}`} className="underline">
                 {doc.copyOf.title}
               </Link>
-              <span className="muted"> (verwendet dessen Originaldatei)</span>
+              <span className="muted">{t("details.usesOriginal")}</span>
             </dd>
           </div>
         )}
         {doc.copies.length > 0 && (
           <div className="details__row">
-            <dt>Duplikate</dt>
+            <dt>{t("details.copies")}</dt>
             <dd>
               <ul className="details__links">
                 {doc.copies.map((copy) => (

@@ -3,7 +3,7 @@ import { OCR_LANGUAGES } from "../../shared/languages";
 
 // franc names Norwegian (Bokmål) "nob", Tesseract "nor".
 const FRANC_TO_TESSERACT: Record<string, string> = { nob: "nor" };
-const CANDIDATES = OCR_LANGUAGES.map(({ code }) => (code === "nor" ? "nob" : code));
+const CANDIDATES = OCR_LANGUAGES.map((code) => (code === "nor" ? "nob" : code));
 // Shorter texts (a few misread words) give random results.
 const MIN_LENGTH = 20;
 

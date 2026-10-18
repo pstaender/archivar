@@ -1,7 +1,7 @@
 import { Loader } from "../icons";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import {
-  DENOISE_LABELS,
+  DENOISE_LEVELS,
   describeStep,
   formatPercent,
   formatSigned,
@@ -14,6 +14,8 @@ import { GRAY_MIX_PRESETS, grayMixPresetId } from "../../shared/image/grayMix";
 import type { ColorMode, Rotation } from "../../shared/types";
 import { Slider } from "../editor/EditControls";
 import { Dialog } from "./Dialog";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 
 interface PresetDialogProps {
   open: boolean;
@@ -28,28 +30,29 @@ interface PresetDialogProps {
   onClose: () => void;
 }
 
-const SLIDERS: Partial<Record<PresetStep, { min: number; max: number; step: number; defaultValue?: number; format?: (v: number) => string }>> = {
+const sliders = (t: TFunction): Partial<Record<PresetStep, { min: number; max: number; step: number; defaultValue?: number; format?: (v: number) => string }>> => ({
   brightness: { min: -1, max: 1, step: 0.01, format: formatPercent },
   contrast: { min: -1, max: 1, step: 0.01, format: formatPercent },
   saturation: { min: -100, max: 100, step: 1, format: formatSigned },
   hue: { min: -180, max: 180, step: 1, format: (v) => `${formatSigned(v)}°` },
   grayThreshold: { min: 0, max: 255, step: 1, defaultValue: 128 },
   bwThreshold: { min: 0, max: 255, step: 1, defaultValue: 128 },
-  denoise: { min: 0, max: 3, step: 1, format: (v) => DENOISE_LABELS[v] ?? String(v) },
-};
+  denoise: { min: 0, max: 3, step: 1, format: (v) => (DENOISE_LEVELS[v] ? t(`denoise.${DENOISE_LEVELS[v]}`) : String(v)) },
+});
 
 const SLIDER_LABELS: Partial<Record<PresetStep, string>> = {
-  brightness: "Helligkeit",
-  contrast: "Kontrast",
-  saturation: "Sättigung",
-  hue: "Farbton",
-  grayThreshold: "Schwelle",
-  bwThreshold: "Schwelle",
-  denoise: "Entrauschen",
+  brightness: "presetDialog.brightness",
+  contrast: "presetDialog.contrast",
+  saturation: "presetDialog.saturation",
+  hue: "presetDialog.hue",
+  grayThreshold: "presetDialog.threshold",
+  bwThreshold: "presetDialog.threshold",
+  denoise: "presetDialog.denoise",
 };
 
 export function PresetDialog({ open, title, initialName, steps, editValues, submitLabel, onSubmit, onClose }: PresetDialogProps) {
   const nameId = useId();
+  const { t } = useTranslation();
   const [name, setName] = useState(initialName);
   const [values, setValues] = useState<PresetSteps>(steps);
   const [chosen, setChosen] = useState<PresetStep[]>(presetStepList(steps));
@@ -90,7 +93,7 @@ export function PresetDialog({ open, title, initialName, steps, editValues, subm
       footer={
         <>
           <button type="button" className="btn" onClick={onClose} disabled={saving}>
-            Abbrechen
+            {t("common.cancel")}
           </button>
           <button type="button" className="btn btn--primary" onClick={() => submit()} disabled={!canSubmit}>
             {saving && <Loader size={16} className="spin" />}
@@ -102,41 +105,41 @@ export function PresetDialog({ open, title, initialName, steps, editValues, subm
       <form className="preset-form" onSubmit={submit}>
         <div>
           <label htmlFor={nameId} className="field__label">
-            Name
+            {t("common.name")}
           </label>
           <input id={nameId} className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={100} />
         </div>
         <fieldset className="preset-steps">
-          <legend className="field__label">Einstellungen</legend>
-          {offered.length === 0 && <p className="muted small">Das Bild hat keine Bearbeitungen, die sich speichern lassen.</p>}
+          <legend className="field__label">{t("presetDialog.settings")}</legend>
+          {offered.length === 0 && <p className="muted small">{t("presetDialog.nothing")}</p>}
           {offered.map((step) => {
             const on = chosen.includes(step);
-            const slider = SLIDERS[step];
+            const slider = sliders(t)[step];
             return (
               <div key={step} className="preset-step">
                 <label className="preset-step__toggle">
                   <input type="checkbox" checked={on} onChange={(e) => toggle(step, e.target.checked)} />
-                  <span>{describeStep(values, step)}</span>
+                  <span>{describeStep(t, values, step)}</span>
                 </label>
                 {editValues && on && slider && (
                   <Slider
-                    label={SLIDER_LABELS[step]!}
+                    label={t(SLIDER_LABELS[step]!)}
                     value={values[step] as number}
                     {...slider}
                     onChange={(value) => setValue(step, value as never)}
                   />
                 )}
                 {editValues && on && step === "colorMode" && (
-                  <select className="input input--sm" aria-label="Farbmodus" value={values.colorMode} onChange={(e) => setValue("colorMode", e.target.value as ColorMode)}>
-                    <option value="color">Farbe</option>
-                    <option value="grayscale">Graustufen</option>
-                    <option value="bw">S/W</option>
+                  <select className="input input--sm" aria-label={t("presetDialog.colorMode")} value={values.colorMode} onChange={(e) => setValue("colorMode", e.target.value as ColorMode)}>
+                    <option value="color">{t("colorModes.color")}</option>
+                    <option value="grayscale">{t("colorModes.grayscale")}</option>
+                    <option value="bw">{t("colorModes.bw")}</option>
                   </select>
                 )}
                 {editValues && on && step === "grayMix" && (
                   <select
                     className="input input--sm"
-                    aria-label="Graustufen-Kanäle"
+                    aria-label={t("presetDialog.grayMix")}
                     value={grayMixPresetId(values.grayMix ?? null) ?? "custom"}
                     onChange={(e) => {
                       const preset = GRAY_MIX_PRESETS.find((p) => p.id === e.target.value);
@@ -145,17 +148,17 @@ export function PresetDialog({ open, title, initialName, steps, editValues, subm
                   >
                     {GRAY_MIX_PRESETS.map((preset) => (
                       <option key={preset.id} value={preset.id}>
-                        {preset.label}
+                        {t(`grayMix.presets.${preset.id}`)}
                       </option>
                     ))}
-                    {grayMixPresetId(values.grayMix ?? null) === null && <option value="custom">Eigene Werte</option>}
+                    {grayMixPresetId(values.grayMix ?? null) === null && <option value="custom">{t("presetDialog.customValues")}</option>}
                   </select>
                 )}
                 {on && step === "shapes" && (
-                  <p className="muted small">Liegen relativ zur Bildgröße an derselben Stelle – passend für gleich aufgebaute Scans. Ersetzen vorhandene Formen.</p>
+                  <p className="muted small">{t("presetDialog.shapesHint")}</p>
                 )}
                 {editValues && on && step === "rotation" && (
-                  <select className="input input--sm" aria-label="Drehung" value={values.rotation} onChange={(e) => setValue("rotation", Number(e.target.value) as Rotation)}>
+                  <select className="input input--sm" aria-label={t("presetDialog.rotation")} value={values.rotation} onChange={(e) => setValue("rotation", Number(e.target.value) as Rotation)}>
                     {[0, 90, 180, 270].map((r) => (
                       <option key={r} value={r}>
                         {r}°
@@ -167,7 +170,7 @@ export function PresetDialog({ open, title, initialName, steps, editValues, subm
             );
           })}
         </fieldset>
-        <p className="muted small">Automatische Schritte werden für jedes Bild neu ermittelt. Nicht gewählte Einstellungen bleiben unverändert.</p>
+        <p className="muted small">{t("presetDialog.autoHint")}</p>
       </form>
     </Dialog>
   );

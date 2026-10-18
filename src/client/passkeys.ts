@@ -1,6 +1,7 @@
 import { browserSupportsWebAuthn, startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import type { Passkey } from "../shared/auth";
 import { api } from "./api";
+import { t } from "./i18n";
 
 /** Passkeys need a secure context (HTTPS or localhost). */
 export function passkeysSupported(): boolean {
@@ -36,7 +37,7 @@ export function deviceName(userAgent: string): string {
         : /Safari\//.test(userAgent)
           ? "Safari"
           : null;
-  if (browser && system) return `${browser} auf ${system}`;
+  if (browser && system) return t("passkeys.deviceName", { browser, system });
   return browser ?? system ?? "Passkey";
 }
 

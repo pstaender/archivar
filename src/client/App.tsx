@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { RouteObject } from "react-router";
+import "./i18n";
 import { AppShell } from "./components/AppShell";
 import { AuthGate } from "./hooks/auth";
 import { ConfigProvider } from "./hooks/config";

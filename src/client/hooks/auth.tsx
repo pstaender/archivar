@@ -3,6 +3,7 @@ import type { AuthStatus } from "../../shared/auth";
 import { api, LOGGED_OUT_EVENT } from "../api";
 import { Loader } from "../icons";
 import { LoginPage } from "../pages/LoginPage";
+import { useTranslation } from "react-i18next";
 
 interface AuthApi {
   status: AuthStatus;
@@ -15,6 +16,7 @@ const AuthContext = createContext<AuthApi | null>(null);
 export function AuthGate({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus | null>(null);
   const [failed, setFailed] = useState(false);
+  const { t } = useTranslation();
 
   const refresh = useCallback(async () => {
     try {
@@ -37,13 +39,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
       <div className="empty-state">
         {failed ? (
           <>
-            <p>Der Server ist nicht erreichbar.</p>
+            <p>{t("auth.serverUnreachable")}</p>
             <button type="button" className="btn" onClick={refresh}>
-              Erneut versuchen
+              {t("common.retry")}
             </button>
           </>
         ) : (
-          <Loader size={24} className="spin" aria-label="Wird geladen" />
+          <Loader size={24} className="spin" aria-label={t("auth.loading")} />
         )}
       </div>
     );

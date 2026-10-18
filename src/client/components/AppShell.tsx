@@ -7,20 +7,22 @@ import { FolderTree } from "./FolderTree";
 import { SettingsDialog } from "./SettingsDialog";
 import { UploadButtons } from "./UploadButtons";
 import { UploadProgress } from "./UploadProgress";
+import { useTranslation } from "react-i18next";
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { t } = useTranslation();
 
   useEffect(() => setSidebarOpen(false), [location.pathname, location.search]);
 
   return (
     <div className="shell" data-sidebar-open={sidebarOpen || undefined}>
       <header className="topbar">
-        <button type="button" className="btn btn--ghost btn--icon menu-button" onClick={() => setSidebarOpen((v) => !v)} aria-label="Menü">
+        <button type="button" className="btn btn--ghost btn--icon menu-button" onClick={() => setSidebarOpen((v) => !v)} aria-label={t("shell.menu")}>
           {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
-        <Link to="/" className="logo" aria-label="archivar Startseite">
+        <Link to="/" className="logo" aria-label={t("shell.home")}>
           <span className="logo__mark" aria-hidden />
           archivar
         </Link>
@@ -46,6 +48,7 @@ function SearchField() {
   const navigate = useNavigate();
   const location = useLocation();
   const [value, setValue] = useState(params.get("q") ?? "");
+  const { t } = useTranslation();
 
   useEffect(() => setValue(params.get("q") ?? ""), [params]);
 
@@ -77,10 +80,10 @@ function SearchField() {
       <input
         type="search"
         className="search__input"
-        placeholder="Suchen …"
+        placeholder={t("shell.searchPlaceholder")}
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        aria-label="Suche"
+        aria-label={t("shell.search")}
       />
     </form>
   );
@@ -88,11 +91,12 @@ function SearchField() {
 
 function SidebarFooter() {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const { t } = useTranslation();
   return (
     <div className="sidebar__footer">
       <button type="button" className="btn btn--ghost btn--sm sidebar__settings" onClick={() => setSettingsOpen(true)}>
         <Settings size={16} />
-        Einstellungen
+        {t("shell.settings")}
       </button>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>

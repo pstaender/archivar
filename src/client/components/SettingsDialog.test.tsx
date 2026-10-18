@@ -31,7 +31,7 @@ describe("SettingsDialog", () => {
     const onClose = mock();
     await renderApp(<SettingsDialog open onClose={onClose} />);
 
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import", "API", "Zugriff"]);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import", "Sprache", "API", "Zugriff"]);
     expect(radio(/^Original.*Volle Auflösung/).checked).toBe(true);
     expect(screen.getByText("Standard")).toBeTruthy();
     fireEvent.click(radio(/^Niedrig.*150 DPI/));
@@ -148,7 +148,7 @@ describe("SettingsDialog", () => {
     };
     try {
       await renderApp(<SettingsDialog open onClose={() => {}} />);
-      expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import", "API", "Zugriff", "Export"]);
+      expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import", "Sprache", "API", "Zugriff", "Export"]);
       tab("Export");
       fireEvent.click(screen.getByRole("button", { name: "Archiv exportieren" }));
       await waitFor(() => expect(screen.getByText("Möchtest du wirklich 25 MB herunterladen?")).toBeTruthy());
@@ -165,6 +165,22 @@ describe("SettingsDialog", () => {
       "GET /api/auth/status": () => ({ user: { id: 2, name: "anna", admin: false }, passwordSet: true, usernameRequired: true, passkeyLogin: false }),
     });
     await renderApp(<SettingsDialog open onClose={() => {}} />);
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import", "API", "Zugriff"]);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import", "Sprache", "API", "Zugriff"]);
+  });
+
+  test("switches the interface language at once and remembers it in this browser", async () => {
+    fetchMock = mockSettings();
+    await renderApp(<SettingsDialog open onClose={() => {}} />);
+
+    tab("Sprache");
+    const select = screen.getByRole("combobox", { name: "Sprache der Oberfläche" }) as HTMLSelectElement;
+    expect(select.value).toBe("de");
+    fireEvent.change(select, { target: { value: "fr" } });
+
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Langue" }).getAttribute("aria-selected")).toBe("true"));
+    expect(screen.getByRole("button", { name: "Enregistrer" })).toBeTruthy();
+    expect(localStorage.getItem("archivar.language")).toBe("fr");
+    expect(document.documentElement.lang).toBe("fr");
+    expect(fetchMock.calls.some((call) => call.method === "PATCH")).toBe(false);
   });
 });

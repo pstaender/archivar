@@ -6,6 +6,7 @@ import { type GeometryMode, moveCorner, quadOrFull, translateQuad } from "./geom
 import { type LensPointer, Magnifier } from "./Magnifier";
 import { PreviewBar } from "./PreviewBar";
 import { PreviewRenderer, type RenderedPreview, RendererDisposedError } from "./previewRenderer";
+import { useTranslation } from "react-i18next";
 
 // Filters behave differently on a downscaled image (thin strokes turn gray and fall below the threshold), so the
 // preview is rendered from the full base image in a worker. Slow settings (colors, denoise) additionally get a small
@@ -41,6 +42,7 @@ interface ImageEditorProps {
 }
 
 export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc, processing = false, onPreview, onLive, shapes = [] }: ImageEditorProps) {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const processedRef = useRef<HTMLImageElement>(null);
   const [pointer, setPointer] = useState<LensPointer | null>(null);
@@ -115,7 +117,7 @@ export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc
     if (!showProcessed) setPointer(null);
   }, [showProcessed]);
 
-  if (error) return <div className="alert alert--error">Vorschau konnte nicht geladen werden: {error}</div>;
+  if (error) return <div className="alert alert--error">{t("preview.loadFailed", { error })}</div>;
 
   return (
     <div className="editor-canvas">
@@ -125,7 +127,7 @@ export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc
           <img
             ref={processedRef}
             src={processedSrc!}
-            alt="Vorschau in voller Auflösung"
+            alt={t("preview.fullResolution")}
             className="editor-canvas__image is-inspecting"
             onPointerMove={(e) => e.pointerType === "mouse" && setPointer({ clientX: e.clientX, clientY: e.clientY })}
             onPointerLeave={() => setPointer(null)}
@@ -156,7 +158,7 @@ export function ImageEditor({ src, settings, mode, onCornersChange, processedSrc
         <PreviewBar processing={processing} showing={showProcessed} onPreview={onPreview} onLive={onLive} />
       )}
       {(!renderers || rendering || processing) && (
-        <span className="editor-canvas__spinner" aria-label="Vorschau wird berechnet">
+        <span className="editor-canvas__spinner" aria-label={t("preview.renderingLabel")}>
           <Loader size={18} className="spin" />
         </span>
       )}
@@ -173,6 +175,7 @@ interface QuadOverlayProps {
 type Drag = { kind: "corner"; index: number } | { kind: "move"; start: Point; quad: Quad };
 
 export function QuadOverlay({ quad, mode, onChange }: QuadOverlayProps) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
 
@@ -232,7 +235,7 @@ export function QuadOverlay({ quad, mode, onChange }: QuadOverlayProps) {
             e.preventDefault();
             onChange(moveCorner(quad, index, { x: p.x + delta[0]!, y: p.y + delta[1]! }, mode));
           }}
-          aria-label={`Ecke ${index + 1} verschieben`}
+          aria-label={t("preview.moveCorner", { number: index + 1 })}
         />
       ))}
     </div>

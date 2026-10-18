@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { formatBytes, formatDateTime, formatDuration, formatRelativeTime, isOcrBusy } from "./format";
+import { formatBytes, formatDateTime, formatDuration, formatRelativeTime, isOcrBusy, ocrLanguageName } from "./format";
+import { i18n } from "./i18n";
 
 test("formatBytes", () => {
   expect(formatBytes(512)).toBe("512 B");
@@ -34,4 +35,13 @@ test("formatDuration shows seconds, minutes and hours", () => {
   expect(formatDuration(14 * 60_000 + 40_000)).toBe("15 Minuten");
   expect(formatDuration(80 * 60_000)).toBe("1 Stunde 20 Minuten");
   expect(formatDuration(2 * 3_600_000)).toBe("2 Stunden");
+});
+
+test("formats in the interface language", async () => {
+  await i18n.changeLanguage("en");
+  expect(formatDuration(125_000)).toBe("2 minutes 5 seconds");
+  expect(formatBytes(1536)).toBe("1.5 KB");
+  const now = new Date(2026, 5, 10, 12, 0);
+  expect(formatRelativeTime(new Date(2026, 5, 9, 9, 5).toISOString(), now)).toBe("Yesterday, 09:05 AM");
+  expect(ocrLanguageName("fra")).toBe("French");
 });

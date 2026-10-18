@@ -19,6 +19,7 @@ import { useScrollToHashItem } from "../hooks/scrollToItem";
 import { itemFromHash, itemHash, libraryLocation } from "../documentOrder";
 import { useResource } from "../hooks/useResource";
 import { documentLabel, formatDate, isOcrBusy } from "../format";
+import { useTranslation } from "react-i18next";
 
 const OCR_POLL_INTERVAL = 2500;
 
@@ -26,6 +27,7 @@ export function StackPage() {
   const id = Number(useParams().id);
   const navigate = useNavigate();
   const toast = useToast();
+  const { t } = useTranslation();
   const { reload: reloadFolders } = useFolders();
   const { convertibleImageTypes } = useConfig();
   const { upload } = useUpload();
@@ -48,19 +50,19 @@ export function StackPage() {
       <div className="page">
         <div className="alert alert--error">{stack.error.message}</div>
         <Link to="/" className="btn">
-          Zur Übersicht
+          {t("notFound.home")}
         </Link>
       </div>
     );
   }
-  if (!stack.data) return <div className="page-loading">Lade …</div>;
+  if (!stack.data) return <div className="page-loading">{t("stack.loading")}</div>;
   const data = stack.data;
 
   const update = async (change: Parameters<typeof api.updateStack>[1]) => {
     try {
       const updated = await api.updateStack(id, change);
       if (!updated) {
-        toast.show("Stapel ist leer und wurde aufgelöst");
+        toast.show(t("stack.emptyDissolved"));
         navigate("/");
         return;
       }
@@ -83,7 +85,7 @@ export function StackPage() {
   const dissolve = async () => {
     try {
       await api.deleteStack(id);
-      toast.success("Stapel aufgelöst");
+      toast.success(t("stack.dissolved"));
       navigate("/");
     } catch (error) {
       toast.error(error);
@@ -93,7 +95,7 @@ export function StackPage() {
   const deleteAll = async () => {
     try {
       for (const doc of data.documents) await api.deleteDocument(doc.id);
-      toast.success("Stapel gelöscht");
+      toast.success(t("stack.deleted"));
       void reloadFolders();
       navigate("/");
     } catch (error) {
@@ -104,13 +106,13 @@ export function StackPage() {
   return (
     <div className="page">
       <header className="page__header page__header--detail">
-        <Link to={libraryLocation() + itemHash({ type: "stack", id })} className="btn btn--ghost btn--icon" aria-label="Zurück">
+        <Link to={libraryLocation() + itemHash({ type: "stack", id })} className="btn btn--ghost btn--icon" aria-label={t("common.back")}>
           <ArrowLeft size={18} />
         </Link>
         <div className="page__title">
           <EditableTitle value={data.title} onSave={(title) => update({ title })} />
           <p className="muted small">
-            Stapel · {data.documents.length} {data.documents.length === 1 ? "Seite" : "Seiten"} · zuletzt geändert {formatDate(data.updatedAt)}
+            {t("stack.meta", { count: data.documents.length, date: formatDate(data.updatedAt) })}
           </p>
         </div>
         <div className="page__actions">
@@ -128,12 +130,12 @@ export function StackPage() {
           />
           <button type="button" className="btn" onClick={() => fileInput.current?.click()}>
             <ImagePlus size={16} />
-            <span className="hide-mobile">Seiten hinzufügen</span>
+            <span className="hide-mobile">{t("stack.addPages")}</span>
           </button>
-          <button type="button" className="btn btn--ghost btn--icon" onClick={() => setConfirm("dissolve")} aria-label="Stapel auflösen" title="Stapel auflösen">
+          <button type="button" className="btn btn--ghost btn--icon" onClick={() => setConfirm("dissolve")} aria-label={t("stack.dissolve")} title={t("stack.dissolve")}>
             <Unlink size={16} />
           </button>
-          <button type="button" className="btn btn--ghost btn--icon btn--danger-ghost" onClick={() => setConfirm("delete")} aria-label="Stapel löschen" title="Stapel löschen">
+          <button type="button" className="btn btn--ghost btn--icon btn--danger-ghost" onClick={() => setConfirm("delete")} aria-label={t("stack.delete")} title={t("stack.delete")}>
             <Trash size={16} />
           </button>
         </div>
@@ -155,7 +157,7 @@ export function StackPage() {
                 {documentLabel(doc)}
               </span>
               <div className="page-card__actions">
-                <button type="button" className="btn btn--ghost btn--icon btn--xs" onClick={() => move(index, -1)} disabled={index === 0} aria-label="Nach vorne">
+                <button type="button" className="btn btn--ghost btn--icon btn--xs" onClick={() => move(index, -1)} disabled={index === 0} aria-label={t("stack.forward")}>
                   <ChevronLeft size={14} />
                 </button>
                 <button
@@ -163,7 +165,7 @@ export function StackPage() {
                   className="btn btn--ghost btn--icon btn--xs"
                   onClick={() => move(index, 1)}
                   disabled={index === data.documents.length - 1}
-                  aria-label="Nach hinten"
+                  aria-label={t("stack.backward")}
                 >
                   <ChevronRight size={14} />
                 </button>
@@ -171,8 +173,8 @@ export function StackPage() {
                   type="button"
                   className="btn btn--ghost btn--icon btn--xs"
                   onClick={() => update({ documentIds: data.documentIds.filter((docId) => docId !== doc.id) })}
-                  aria-label="Aus Stapel entfernen"
-                  title="Aus Stapel entfernen"
+                  aria-label={t("stack.removeFromStack")}
+                  title={t("stack.removeFromStack")}
                 >
                   <CircleMinus size={14} />
                 </button>
@@ -184,17 +186,17 @@ export function StackPage() {
 
       <ConfirmDialog
         open={confirm === "dissolve"}
-        title="Stapel auflösen"
-        message="Der Stapel wird entfernt, die Dokumente bleiben einzeln erhalten."
-        confirmLabel="Auflösen"
+        title={t("stack.dissolve")}
+        message={t("stack.dissolveText")}
+        confirmLabel={t("stack.dissolveConfirm")}
         onConfirm={dissolve}
         onClose={() => setConfirm(null)}
       />
       <ConfirmDialog
         open={confirm === "delete"}
-        title="Stapel löschen"
-        message={`Den Stapel und alle ${data.documents.length} Dokumente endgültig löschen?`}
-        confirmLabel="Löschen"
+        title={t("stack.delete")}
+        message={t("stack.deleteText", { count: data.documents.length })}
+        confirmLabel={t("common.delete")}
         danger
         onConfirm={deleteAll}
         onClose={() => setConfirm(null)}

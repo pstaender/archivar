@@ -3,8 +3,9 @@ import { type MouseEvent, useState } from "react";
 import { Link } from "react-router";
 import type { ArchiveDocument, LibraryItem } from "../../shared/types";
 import { assetUrl } from "../api";
-import { documentLabel, formatDate, isOcrBusy, OCR_STATUS_LABEL } from "../format";
+import { documentLabel, formatDate, isOcrBusy, ocrStatusLabel } from "../format";
 import type { SmartStack } from "../smartStacks";
+import { useTranslation } from "react-i18next";
 
 interface ItemCardProps {
   item: LibraryItem;
@@ -45,6 +46,7 @@ export function documentThumbnail(doc: ArchiveDocument): ThumbnailProps {
 
 export function ItemCard({ item, selected, selectionMode, onToggle }: ItemCardProps) {
   const isStack = item.type === "stack";
+  const { t } = useTranslation();
   const thumbnail: ThumbnailProps = isStack
     ? {
         src: item.stack.coverDocumentId
@@ -83,8 +85,8 @@ export function ItemCard({ item, selected, selectionMode, onToggle }: ItemCardPr
           </h2>
           <p className="card__meta">
             {formatDate(date)}
-            {!isStack && item.document.pageCount ? ` · ${item.document.pageCount} S.` : ""}
-            {isStack ? " · Stapel" : ""}
+            {!isStack && item.document.pageCount ? ` · ${t("card.pages", { count: item.document.pageCount })}` : ""}
+            {isStack ? ` · ${t("card.stack")}` : ""}
           </p>
         </div>
       </Link>
@@ -93,18 +95,13 @@ export function ItemCard({ item, selected, selectionMode, onToggle }: ItemCardPr
         className="card__check"
         onClick={onToggle}
         aria-pressed={selected}
-        aria-label={selected ? `${title} abwählen` : `${title} auswählen`}
+        aria-label={selected ? t("card.deselect", { title }) : t("card.select", { title })}
       >
         <Check size={14} strokeWidth={3} />
       </button>
     </article>
   );
 }
-
-const SMART_REASONS: Record<SmartStack["reason"], string> = {
-  name: "Namensfolge",
-  similar: "Ähnliche Namen",
-};
 
 interface SmartStackCardProps {
   stack: SmartStack;
@@ -118,6 +115,7 @@ interface SmartStackCardProps {
 /** A group of documents that seem to belong together; it only exists in this view. */
 export function SmartStackCard({ stack, href, selected, selectionMode, onToggle }: SmartStackCardProps) {
   const [cover] = stack.documents;
+  const { t } = useTranslation();
   const onClick = (e: MouseEvent) => {
     if (selectionMode || e.metaKey || e.ctrlKey || e.shiftKey) {
       e.preventDefault();
@@ -130,7 +128,7 @@ export function SmartStackCard({ stack, href, selected, selectionMode, onToggle 
         <div className="card__media">
           <div className="card__layers" aria-hidden />
           {cover && <Thumbnail {...documentThumbnail(cover)} alt={stack.title} />}
-          <span className="card__badge" title="Smarter Stapel">
+          <span className="card__badge" title={t("card.smartStack")}>
             <SmartStackIcon size={12} aria-hidden />
             {stack.documents.length}
           </span>
@@ -139,7 +137,7 @@ export function SmartStackCard({ stack, href, selected, selectionMode, onToggle 
           <h2 className="card__title" title={stack.title}>
             {stack.title}
           </h2>
-          <p className="card__meta">{SMART_REASONS[stack.reason]} · Smarter Stapel</p>
+          <p className="card__meta">{t(`card.smartReasons.${stack.reason}`)} · {t("card.smartStack")}</p>
         </div>
       </Link>
       <button
@@ -147,7 +145,7 @@ export function SmartStackCard({ stack, href, selected, selectionMode, onToggle 
         className="card__check"
         onClick={onToggle}
         aria-pressed={selected}
-        aria-label={selected ? `${stack.title} abwählen` : `${stack.title} auswählen`}
+        aria-label={selected ? t("card.deselect", { title: stack.title }) : t("card.select", { title: stack.title })}
       >
         <Check size={14} strokeWidth={3} />
       </button>
@@ -158,21 +156,21 @@ export function SmartStackCard({ stack, href, selected, selectionMode, onToggle 
 function OcrIndicator({ doc }: { doc: ArchiveDocument }) {
   if (isOcrBusy(doc)) {
     return (
-      <span className="card__status" title={OCR_STATUS_LABEL[doc.ocrStatus]}>
-        <Loader size={12} className="spin" aria-label={OCR_STATUS_LABEL[doc.ocrStatus]} />
+      <span className="card__status" title={ocrStatusLabel(doc.ocrStatus)}>
+        <Loader size={12} className="spin" aria-label={ocrStatusLabel(doc.ocrStatus)} />
       </span>
     );
   }
   if (doc.ocrStatus === "done" && doc.ocrText) {
     return (
-      <span className="card__status" title={OCR_STATUS_LABEL.done}>
-        <ScanText size={12} aria-label={OCR_STATUS_LABEL.done} />
+      <span className="card__status" title={ocrStatusLabel("done")}>
+        <ScanText size={12} aria-label={ocrStatusLabel("done")} />
       </span>
     );
   }
   if (doc.ocrStatus === "failed") {
     return (
-      <span className="card__status card__status--error" title={doc.ocrError ?? OCR_STATUS_LABEL.failed}>
+      <span className="card__status card__status--error" title={doc.ocrError ?? ocrStatusLabel("failed")}>
         !
       </span>
     );

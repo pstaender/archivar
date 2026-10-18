@@ -8,9 +8,10 @@ import {
   grayMixPresetId,
   LUMA_GRAY_MIX,
 } from "../../shared/image/grayMix";
-import { DENOISE_LABELS, formatPercent as percent, formatSigned as signed } from "../../shared/presets";
+import { DENOISE_LEVELS, formatPercent as percent, formatSigned as signed } from "../../shared/presets";
 import type { ColorMode, EditSettings } from "../../shared/types";
 import { boundingRect, type GeometryMode, rotateSettings } from "./geometry";
+import { useTranslation } from "react-i18next";
 
 interface EditControlsProps {
   settings: EditSettings;
@@ -35,17 +36,7 @@ export interface AutoBwState {
   shade: "best" | "darker" | "lighter";
 }
 
-const SHADE_LABELS: Record<AutoBwState["shade"], string> = {
-  best: "beste Schätzung",
-  darker: "dunkler",
-  lighter: "heller",
-};
-
-const COLOR_MODES: { value: ColorMode; label: string }[] = [
-  { value: "color", label: "Farbe" },
-  { value: "grayscale", label: "Graustufen" },
-  { value: "bw", label: "S/W" },
-];
+const COLOR_MODES: ColorMode[] = ["color", "grayscale", "bw"];
 
 export function EditControls({
   settings,
@@ -63,6 +54,7 @@ export function EditControls({
   cropping,
   onAutoCrop,
 }: EditControlsProps) {
+  const { t } = useTranslation();
   const set = <K extends keyof EditSettings>(key: K, value: EditSettings[K]) => onChange({ ...settings, [key]: value });
 
   useEffect(() => {
@@ -89,12 +81,12 @@ export function EditControls({
     <div className="edit-controls">
       <section className="control-group">
         <div className="control-group__header">
-          <h3>Ausrichtung</h3>
+          <h3>{t("editControls.orientation")}</h3>
           <div className="button-row">
-            <button type="button" className="btn btn--sm btn--icon" onClick={() => rotate(-90)} aria-label="Nach links drehen" title="Nach links drehen">
+            <button type="button" className="btn btn--sm btn--icon" onClick={() => rotate(-90)} aria-label={t("editControls.rotateLeft")} title={t("editControls.rotateLeft")}>
               <RotateCcw size={16} />
             </button>
-            <button type="button" className="btn btn--sm btn--icon" onClick={() => rotate(90)} aria-label="Nach rechts drehen" title="Nach rechts drehen">
+            <button type="button" className="btn btn--sm btn--icon" onClick={() => rotate(90)} aria-label={t("editControls.rotateRight")} title={t("editControls.rotateRight")}>
               <RotateCw size={16} />
             </button>
           </div>
@@ -102,7 +94,7 @@ export function EditControls({
         <div className="tool-grid">
           <button type="button" className={`btn btn--sm ${mode === "crop" ? "is-active" : ""}`} aria-pressed={mode === "crop"} onClick={() => toggleMode("crop")}>
             <Crop size={16} />
-            Zuschneiden
+            {t("editControls.crop")}
           </button>
           <button
             type="button"
@@ -111,24 +103,24 @@ export function EditControls({
             onClick={() => toggleMode("perspective")}
           >
             <Scan size={16} />
-            Entzerren
+            {t("editControls.perspective")}
           </button>
           {onAutoRotate && (
-            <button type="button" className="btn btn--sm" onClick={onAutoRotate} disabled={rotating} title="Dreht das Bild so, dass der Text aufrecht steht">
+            <button type="button" className="btn btn--sm" onClick={onAutoRotate} disabled={rotating} title={t("editControls.autoRotateTitle")}>
               {rotating ? <Loader size={16} className="spin" /> : <AutoRotate size={16} />}
-              Auto-Drehen
+              {t("editControls.autoRotate")}
             </button>
           )}
           {onAutoCrop && (
-            <button type="button" className="btn btn--sm" onClick={onAutoCrop} disabled={cropping} title="Sucht den Rand von Seite oder Foto und schneidet den Hintergrund ab">
+            <button type="button" className="btn btn--sm" onClick={onAutoCrop} disabled={cropping} title={t("editControls.autoCropTitle")}>
               {cropping ? <Loader size={16} className="spin" /> : <AutoCrop size={16} />}
-              Auto-Zuschnitt
+              {t("editControls.autoCrop")}
             </button>
           )}
         </div>
         {(rotating || cropping) && (
           <p className="muted small" aria-live="polite">
-            {rotating ? "Textausrichtung wird erkannt …" : "Seitenrand wird gesucht …"}
+            {rotating ? t("editControls.detectingOrientation") : t("editControls.findingEdges")}
           </p>
         )}
         {dewarpAvailable && (
@@ -141,23 +133,23 @@ export function EditControls({
               disabled={dewarping}
             >
               {dewarping ? <Loader size={16} className="spin" /> : <WandSparkles size={16} />}
-              Automatisch entzerren
+              {t("editControls.autoDewarp")}
             </button>
             <span className="muted small">
-              {dewarping ? "Seite wird erkannt …" : settings.dewarp ? "Gewölbte Seite geglättet." : null}
+              {dewarping ? t("editControls.detectingPage") : settings.dewarp ? t("editControls.dewarped") : null}
             </span>
           </div>
         )}
         {mode !== "none" && (
           <p className="muted small">
             {mode === "crop"
-              ? "Ecken ziehen, um den Ausschnitt festzulegen, Enter übernimmt."
-              : "Ecken auf die Ecken des Dokuments ziehen – es wird gerade gerückt. Enter übernimmt."}
+              ? t("editControls.cropHint")
+              : t("editControls.perspectiveHint")}
             {settings.corners && (
               <>
                 {" "}
                 <button type="button" className="link-button" onClick={() => set("corners", null)}>
-                  Zurücksetzen
+                  {t("editControls.reset")}
                 </button>
               </>
             )}
@@ -165,60 +157,60 @@ export function EditControls({
         )}
         {mode === "none" && settings.corners && (
           <p className="muted small">
-            Ausschnitt aktiv.{" "}
+            {t("editControls.cropActive")}{" "}
             <button type="button" className="link-button" onClick={() => set("corners", null)}>
-              Entfernen
+              {t("editControls.remove")}
             </button>
           </p>
         )}
       </section>
 
       <section className="control-group">
-        <h3>Licht</h3>
-        <Slider label="Helligkeit" value={settings.brightness} min={-1} max={1} step={0.01} format={percent} onChange={(v) => set("brightness", v)} />
-        <Slider label="Kontrast" value={settings.contrast} min={-1} max={1} step={0.01} format={percent} onChange={(v) => set("contrast", v)} />
+        <h3>{t("editControls.light")}</h3>
+        <Slider label={t("editControls.brightness")} value={settings.brightness} min={-1} max={1} step={0.01} format={percent} onChange={(v) => set("brightness", v)} />
+        <Slider label={t("editControls.contrast")} value={settings.contrast} min={-1} max={1} step={0.01} format={percent} onChange={(v) => set("contrast", v)} />
         <label className="switch">
           <input type="checkbox" checked={settings.autoLevels} onChange={(e) => set("autoLevels", e.target.checked)} />
           <span className="switch__track" aria-hidden />
-          <span>Tonwerte automatisch</span>
+          <span>{t("editControls.autoLevels")}</span>
         </label>
       </section>
 
       <section className="control-group">
-        <h3>Farbe</h3>
+        <h3>{t("editControls.color")}</h3>
         {onAutoBw && (
           <div className="dewarp-row">
             <button type="button" className={`btn btn--sm ${autoBw ? "is-active" : ""}`} aria-pressed={Boolean(autoBw)} onClick={onAutoBw} disabled={bwLoading}>
               {bwLoading ? <Loader size={16} className="spin" /> : <Contrast size={16} />}
-              Automatisch SW
+              {t("editControls.autoBw")}
             </button>
             <span className="muted small" aria-live="polite">
               {bwLoading
-                ? "Werte werden ermittelt …"
+                ? t("editControls.autoBwLoading")
                 : autoBw
-                  ? `Variante ${autoBw.index + 1} von ${autoBw.count} · ${SHADE_LABELS[autoBw.shade]}${autoBw.count > 1 ? " – erneut klicken für die nächste." : "."}`
-                  : "Ermittelt Helligkeit, Kontrast und Schwelle."}
+                  ? `${t("editControls.autoBwVariant", { index: autoBw.index + 1, count: autoBw.count, shade: t(`editControls.shades.${autoBw.shade}`) })}${autoBw.count > 1 ? t("editControls.autoBwNext") : "."}`
+                  : t("editControls.autoBwHint")}
             </span>
           </div>
         )}
-        <div className="segmented" role="radiogroup" aria-label="Farbmodus">
-          {COLOR_MODES.map((option) => (
+        <div className="segmented" role="radiogroup" aria-label={t("editControls.colorMode")}>
+          {COLOR_MODES.map((value) => (
             <button
-              key={option.value}
+              key={value}
               type="button"
               role="radio"
-              aria-checked={settings.colorMode === option.value}
-              className={settings.colorMode === option.value ? "is-active" : ""}
-              onClick={() => set("colorMode", option.value)}
+              aria-checked={settings.colorMode === value}
+              className={settings.colorMode === value ? "is-active" : ""}
+              onClick={() => set("colorMode", value)}
             >
-              {option.label}
+              {t(`colorModes.${value}`)}
             </button>
           ))}
         </div>
         {settings.colorMode === "color" && (
           <>
-            <Slider label="Sättigung" value={settings.saturation} min={-100} max={100} step={1} format={signed} onChange={(v) => set("saturation", v)} />
-            <Slider label="Farbton" value={settings.hue} min={-180} max={180} step={1} format={(v) => `${signed(v)}°`} onChange={(v) => set("hue", v)} />
+            <Slider label={t("editControls.saturation")} value={settings.saturation} min={-100} max={100} step={1} format={signed} onChange={(v) => set("saturation", v)} />
+            <Slider label={t("editControls.hue")} value={settings.hue} min={-180} max={180} step={1} format={(v) => `${signed(v)}°`} onChange={(v) => set("hue", v)} />
           </>
         )}
         {settings.colorMode === "grayscale" && (
@@ -231,34 +223,37 @@ export function EditControls({
                 onChange={(e) => set("grayThreshold", e.target.checked ? settings.bwThreshold : null)}
               />
               <span className="switch__track" aria-hidden />
-              <span>Schwellenwert</span>
+              <span>{t("editControls.threshold")}</span>
             </label>
             {settings.grayThreshold !== null && (
-              <Slider label="Schwelle" value={settings.grayThreshold} min={0} max={255} step={1} defaultValue={128} onChange={(v) => set("grayThreshold", v)} />
+              <Slider label={t("editControls.thresholdSlider")} value={settings.grayThreshold} min={0} max={255} step={1} defaultValue={128} onChange={(v) => set("grayThreshold", v)} />
             )}
           </>
         )}
         {settings.colorMode === "bw" && (
-          <Slider label="Schwelle" value={settings.bwThreshold} min={0} max={255} step={1} defaultValue={128} onChange={(v) => set("bwThreshold", v)} />
+          <Slider label={t("editControls.thresholdSlider")} value={settings.bwThreshold} min={0} max={255} step={1} defaultValue={128} onChange={(v) => set("bwThreshold", v)} />
         )}
       </section>
 
       <section className="control-group">
-        <h3>Störungen entfernen</h3>
+        <h3>{t("editControls.noise")}</h3>
         <div className="dewarp-row">
           <button
             type="button"
             className={`btn btn--sm ${settings.denoise > 0 ? "is-active" : ""}`}
             aria-pressed={settings.denoise > 0}
-            onClick={() => set("denoise", (settings.denoise + 1) % DENOISE_LABELS.length)}
+            onClick={() => set("denoise", (settings.denoise + 1) % DENOISE_LEVELS.length)}
           >
             <Eraser size={16} />
-            Entrauschen
+            {t("editControls.denoise")}
           </button>
           <span className="muted small" aria-live="polite">
             {settings.denoise > 0
-              ? `Stärke: ${DENOISE_LABELS[settings.denoise]} – ${settings.denoise < DENOISE_LABELS.length - 1 ? "erneut klicken für stärker." : "erneut klicken zum Ausschalten."}`
-              : "Glättet Rauschen und entfernt im S/W-Modus einzelne Punkte."}
+              ? t("editControls.denoiseStrength", {
+                  level: t(`denoise.${DENOISE_LEVELS[settings.denoise]}`),
+                  next: settings.denoise < DENOISE_LEVELS.length - 1 ? t("editControls.denoiseStronger") : t("editControls.denoiseOff"),
+                })
+              : t("editControls.denoiseHint")}
           </span>
         </div>
       </section>
@@ -271,6 +266,7 @@ const CUSTOM = "custom";
 /** Sliders per hue like Photoshop's „Schwarzweiß“; they start at the weights of the plain conversion (stored as null). */
 function GrayMixControls({ value, onChange }: { value: EditSettings["grayMix"]; onChange: (mix: EditSettings["grayMix"]) => void }) {
   const id = useId();
+  const { t } = useTranslation();
   const presetId = grayMixPresetId(value) ?? CUSTOM;
   const mix = value ?? LUMA_GRAY_MIX;
   const choose = (next: string) => {
@@ -282,22 +278,22 @@ function GrayMixControls({ value, onChange }: { value: EditSettings["grayMix"]; 
     <>
       <div className="slider">
         <label htmlFor={id} className="slider__header">
-          Kanäle
+          {t("editControls.channels")}
         </label>
         <select id={id} className="input input--sm" value={presetId} onChange={(e) => choose(e.target.value)}>
-          <option value="luma">Standard</option>
+          <option value="luma">{t("grayMix.presets.luma")}</option>
           {GRAY_MIX_PRESETS.map((preset) => (
             <option key={preset.id} value={preset.id}>
-              {preset.label}
+              {t(`grayMix.presets.${preset.id}`)}
             </option>
           ))}
-          {presetId === CUSTOM && <option value={CUSTOM}>Eigene Werte</option>}
+          {presetId === CUSTOM && <option value={CUSTOM}>{t("editControls.customValues")}</option>}
         </select>
       </div>
-      {GRAY_MIX_CHANNELS.map(({ key, label }) => (
+      {GRAY_MIX_CHANNELS.map(({ key }) => (
         <Slider
           key={key}
-          label={label}
+          label={t(`grayMix.channels.${key}`)}
           value={mix[key]}
           min={GRAY_MIX_MIN}
           max={GRAY_MIX_MAX}
@@ -313,7 +309,7 @@ function GrayMixControls({ value, onChange }: { value: EditSettings["grayMix"]; 
       <div className="button-row">
         <button type="button" className="btn btn--sm" onClick={() => onChange(null)} disabled={presetId === "luma"}>
           <RotateCcw size={16} />
-          Alle zurücksetzen
+          {t("editControls.resetAll")}
         </button>
       </div>
     </>

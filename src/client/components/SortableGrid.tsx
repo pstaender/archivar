@@ -12,6 +12,7 @@ import {
 import { arrayMove, rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { type KeyboardEventHandler, type ReactNode, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 interface SortableGridProps<T> {
   items: T[];
@@ -26,8 +27,6 @@ interface SortableGridProps<T> {
 // Same distance as the mouse sensor's activation: moving further is a drag, not a click.
 const DRAG_DISTANCE = 8;
 
-const INSTRUCTIONS = "Leertaste drücken, um die Karte aufzunehmen, mit den Pfeiltasten verschieben und mit Leertaste ablegen. Escape bricht ab.";
-
 /** The library grid; with `onReorder`, cards can be dragged (mouse, touch after a short press, keyboard via the grip). */
 export function SortableGrid<T>({ items, itemKey, itemLabel, renderItem, onReorder, busy }: SortableGridProps<T>) {
   const sensors = useSensors(
@@ -36,6 +35,7 @@ export function SortableGrid<T>({ items, itemKey, itemLabel, renderItem, onReord
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const grid = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
   const sortable = Boolean(onReorder);
 
   // Releasing a dragged card clicks its link, which must not open the document. dnd-kit stops that click's
@@ -84,7 +84,7 @@ export function SortableGrid<T>({ items, itemKey, itemLabel, renderItem, onReord
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragEnd={onDragEnd}
-      accessibility={{ screenReaderInstructions: { draggable: INSTRUCTIONS } }}
+      accessibility={{ screenReaderInstructions: { draggable: t("grid.instructions") } }}
     >
       <SortableContext items={keys} strategy={rectSortingStrategy}>
         <div ref={grid} className="grid grid--sortable" aria-busy={busy}>
@@ -101,6 +101,7 @@ export function SortableGrid<T>({ items, itemKey, itemLabel, renderItem, onReord
 
 function SortableItem({ id, label, children }: { id: string; label: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const { t } = useTranslation();
   // Enter on the card's link has to open it, so only the grip starts a keyboard drag.
   const { onKeyDown, ...pointerListeners } = listeners ?? {};
   return (
@@ -118,8 +119,8 @@ function SortableItem({ id, label, children }: { id: string; label: string; chil
         className="grid__grip"
         {...attributes}
         onKeyDown={onKeyDown as KeyboardEventHandler | undefined}
-        aria-label={`${label} verschieben`}
-        title="Ziehen, um die Reihenfolge zu ändern"
+        aria-label={t("grid.move", { label })}
+        title={t("grid.dragTitle")}
       >
         <GripVertical size={14} />
       </button>

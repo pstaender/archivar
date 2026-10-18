@@ -3,6 +3,7 @@ import { api } from "../api";
 import { formatBytes } from "../format";
 import { useToast } from "../hooks/toast";
 import { Download, Loader } from "../icons";
+import { Trans, useTranslation } from "react-i18next";
 
 export const ARCHIVE_EXPORT_URL = "/api/export/archive";
 
@@ -18,6 +19,7 @@ function startDownload(): void {
 
 export function ArchiveExport() {
   const toast = useToast();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [size, setSize] = useState<number | null>(null);
 
@@ -35,32 +37,31 @@ export function ArchiveExport() {
   const download = () => {
     startDownload();
     setSize(null);
-    toast.success("Export gestartet");
+    toast.success(t("archiveExport.started"));
   };
 
   return (
     <>
       <p className="muted small">
-        Lädt das komplette Archiv als ZIP herunter: die SQLite-Datenbank (<code>archivar.sqlite</code>, mit den Daten aller Benutzer) und alle Bilder und Dateien
-        (<code>files/</code>). In das Datenverzeichnis entpackt stellt es das Archiv wieder her. Auf dem Server geht das auch mit <code>bun run export</code>.
+        <Trans i18nKey="archiveExport.description" components={{ code: <code /> }} />
       </p>
       {size === null ? (
         <div>
           <button type="button" className="btn" onClick={ask} disabled={loading}>
             {loading ? <Loader size={16} className="spin" /> : <Download size={16} />}
-            Archiv exportieren
+            {t("archiveExport.export")}
           </button>
         </div>
       ) : (
-        <div className="settings__field" role="alertdialog" aria-label="Archiv exportieren">
-          <p>Möchtest du wirklich {formatBytes(size)} herunterladen?</p>
+        <div className="settings__field" role="alertdialog" aria-label={t("archiveExport.export")}>
+          <p>{t("archiveExport.confirm", { size: formatBytes(size) })}</p>
           <div className="access__actions">
             <button type="button" className="btn" onClick={() => setSize(null)}>
-              Abbrechen
+              {t("common.cancel")}
             </button>
             <button type="button" className="btn btn--primary" onClick={download}>
               <Download size={16} />
-              Herunterladen
+              {t("archiveExport.download")}
             </button>
           </div>
         </div>

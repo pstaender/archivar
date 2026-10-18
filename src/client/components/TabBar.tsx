@@ -1,5 +1,6 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { ChevronDown } from "../icons";
+import { useTranslation } from "react-i18next";
 
 export interface TabItem<T extends string> {
   id: T;
@@ -16,6 +17,7 @@ interface TabBarProps<T extends string> {
 
 export function TabBar<T extends string>({ tabs, more, current, onSelect }: TabBarProps<T>) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
   const [menuRight, setMenuRight] = useState(0);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -78,13 +80,13 @@ export function TabBar<T extends string>({ tabs, more, current, onSelect }: TabB
               setOpen(!open);
             }}
           >
-            {active?.label ?? "Mehr"}
+            {active?.label ?? t("tabs.more")}
             <ChevronDown size={14} />
           </button>
         )}
       </div>
       {open && (
-        <div ref={menu} className="menu tabs__menu" style={{ right: menuRight }} role="menu" aria-label="Weitere Bereiche" onKeyDown={menuKeyDown}>
+        <div ref={menu} className="menu tabs__menu" style={{ right: menuRight }} role="menu" aria-label={t("tabs.moreLabel")} onKeyDown={menuKeyDown}>
           {more.map(({ id, label }) => (
             <button key={id} type="button" role="menuitemradio" aria-checked={id === current} onClick={() => choose(id)}>
               {label}

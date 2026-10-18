@@ -2,6 +2,7 @@ import { Folder as FolderIcon, X } from "../icons";
 import { type KeyboardEvent, useId, useState } from "react";
 import { normalizeFolderPath } from "../../shared/folders";
 import { useFolders } from "../hooks/folders";
+import { useTranslation } from "react-i18next";
 
 interface FolderPickerProps {
   value: string[];
@@ -9,7 +10,8 @@ interface FolderPickerProps {
   label?: string;
 }
 
-export function FolderPicker({ value, onChange, label = "Ordner" }: FolderPickerProps) {
+export function FolderPicker({ value, onChange, label }: FolderPickerProps) {
+  const { t } = useTranslation();
   const { folders } = useFolders();
   const [input, setInput] = useState("");
   const listId = useId();
@@ -33,7 +35,7 @@ export function FolderPicker({ value, onChange, label = "Ordner" }: FolderPicker
   return (
     <div className="folder-picker">
       <label htmlFor={inputId} className="field__label">
-        {label}
+        {label ?? t("folderPicker.label")}
       </label>
       <div className="folder-picker__box">
         {value.map((path) => (
@@ -44,7 +46,7 @@ export function FolderPicker({ value, onChange, label = "Ordner" }: FolderPicker
               type="button"
               className="chip__remove"
               onClick={() => onChange(value.filter((p) => p !== path))}
-              aria-label={`${path} entfernen`}
+              aria-label={t("folderPicker.remove", { path })}
             >
               <X size={12} />
             </button>
@@ -55,7 +57,7 @@ export function FolderPicker({ value, onChange, label = "Ordner" }: FolderPicker
           className="folder-picker__input"
           list={listId}
           value={input}
-          placeholder={value.length ? "" : "z.B. wichtig/2026"}
+          placeholder={value.length ? "" : t("folderPicker.placeholder")}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
           onBlur={add}

@@ -1,0 +1,713 @@
+common:
+  cancel: Cancelar
+  close: Cerrar
+  delete: Eliminar
+  save: Guardar
+  retry: Reintentar
+  apply: Aplicar
+  back: Volver
+  name: Nombre
+
+format:
+  yesterday: "Ayer, {{time}}"
+  weekdayTime: "{{weekday}}, {{time}}"
+  seconds_one: "{{count}} segundo"
+  seconds_other: "{{count}} segundos"
+  seconds_many: "{{count}} segundos"
+  minutes_one: "{{count}} minuto"
+  minutes_other: "{{count}} minutos"
+  minutes_many: "{{count}} minutos"
+  hours_one: "{{count}} hora"
+  hours_other: "{{count}} horas"
+  hours_many: "{{count}} horas"
+
+ocrStatus:
+  none: Ningún texto reconocido
+  pending: Reconocimiento de texto en espera
+  running: Reconociendo texto
+  done: Texto reconocido
+  failed: Error en el reconocimiento de texto
+
+notFound:
+  title: No encontrado
+  text: Esta página no existe.
+  home: Volver al resumen
+
+shell:
+  menu: Menú
+  home: Inicio de archivar
+  searchPlaceholder: Buscar …
+  search: Búsqueda
+  settings: Ajustes
+
+auth:
+  serverUnreachable: No se puede acceder al servidor.
+  loading: Cargando
+
+api:
+  uploadFailed: Error al subir
+  uploadAborted: Subida cancelada
+  uploadTimeout: Tiempo de subida agotado
+  documentFileName: "documento-{{id}}.pdf"
+  documentsFileName: Documentos.pdf
+
+passkeys:
+  deviceName: "{{browser}} en {{system}}"
+
+smartStacks:
+  series: Serie numerada
+
+login:
+  wrongCredentials: El nombre de usuario o la contraseña no son correctos.
+  wrongPassword: La contraseña no es correcta.
+  passkeyCreated: Llave de acceso creada
+  passkeyFailed: "No se pudo crear la llave de acceso: {{message}}"
+  passkeyLoginFailed: El inicio de sesión con la llave de acceso ha fallado.
+  username: Nombre de usuario
+  password: Contraseña
+  addPasskey: Crear una llave de acceso para este dispositivo para iniciar sesión sin contraseña a partir de ahora
+  submit: Iniciar sesión
+  withPasskey: Iniciar sesión con llave de acceso
+
+unsaved:
+  title: Cambios sin guardar
+  discard: Descartar
+  text: Los cambios de esta imagen aún no se han guardado.
+
+editableTitle:
+  untitled: Sin título
+  label: Título
+
+upload:
+  file: el archivo
+  fileOf: "el archivo {{current}} de {{total}}"
+  processing: "Procesando {{label}} …"
+  uploading: "Subiendo {{label}} …"
+  progress: Progreso de la subida
+  takePhoto: Hacer una foto
+  upload: Subir
+  dropHere: Suelta los archivos aquí
+  skipped_one: 1 archivo no es compatible y se ha omitido
+  skipped_other: "{{count}} archivos no son compatibles y se han omitido"
+  skipped_many: "{{count}} archivos no son compatibles y se han omitido"
+  uploaded_one: 1 archivo subido
+  uploaded_other: "{{count}} archivos subidos"
+  uploaded_many: "{{count}} archivos subidos"
+  duplicate: "«{{name}}» ya existe ({{titles}}) y se ha subido de todos modos"
+  duplicates: "{{count}} archivos ya existían y se han subido de todos modos"
+  failed: "No se pudieron subir {{count}} archivos"
+
+quoted: "«{{text}}»"
+
+tabs:
+  more: Más
+  moreLabel: Más secciones
+
+zoom:
+  label: Zoom
+  out: Alejar
+  level: Nivel de zoom
+  in: Acercar
+  fitTitle: Mostrar la imagen completa
+  fit: Ajustar
+  original: Tamaño original
+  openInTab: Abrir en una pestaña nueva
+
+archiveExport:
+  started: Exportación iniciada
+  description: "Descarga todo el archivo como ZIP: la base de datos SQLite (<code>archivar.sqlite</code>, con los datos de todos los usuarios) y todas las imágenes y archivos (<code>files/</code>). Descomprimido en el directorio de datos, restaura el archivo. En el servidor, <code>bun run export</code> hace lo mismo."
+  export: Exportar archivo
+  confirm: "¿Seguro que quieres descargar {{size}}?"
+  download: Descargar
+
+folderPicker:
+  label: Carpetas
+  remove: "Quitar {{path}}"
+  placeholder: p. ej. importante/2026
+
+tokens:
+  deleted: "Token «{{name}}» eliminado"
+  copied: Token copiado
+  description: "Con un token, los scripts y otros programas pueden usar la API, p. ej. <code>scripts/upload.sh</code>. Se envía en la cabecera <code>Authorization: Bearer …</code>."
+  new: Nuevo token
+  namePlaceholder: Nombre, p. ej. Escáner
+  create: Crear
+  token: "Token «{{name}}»"
+  copy: Copiar
+  shownOnce: El token solo se muestra ahora. Guárdalo en un lugar seguro.
+  loading: Cargando tokens …
+  none: Aún no hay tokens.
+  list: Tokens de API
+  created: "creado el {{date}}"
+  lastUsed: "usado por última vez el {{date}}"
+  neverUsed: aún no usado
+  delete: "Eliminar el token «{{name}}»"
+
+access:
+  wrongCurrent: La contraseña actual no es correcta.
+  minLength: "Al menos {{count}} caracteres."
+  mismatch: Las contraseñas no coinciden.
+  changed: Contraseña cambiada
+  set: Contraseña establecida
+  removed: Contraseña eliminada
+  passkeyDeleted: "Llave de acceso «{{name}}» eliminada"
+  protected: "Archivar está protegido con una contraseña. ¿La has olvidado? En el servidor, <code>bun run password</code> establece una nueva."
+  unprotected: "Sin contraseña, cualquiera que llegue a la dirección puede usar Archivar. Con contraseña, cada navegador debe iniciar sesión; los tokens de API siguen funcionando."
+  current: Contraseña actual
+  newPassword: Nueva contraseña
+  repeat: Repetir contraseña
+  change: Cambiar contraseña
+  setPassword: Establecer contraseña
+  removeTitle: También elimina todas las llaves de acceso
+  remove: Eliminar contraseña
+  passkeys: Llaves de acceso
+  passkeysLoading: Cargando llaves de acceso …
+  noPasskeys: Aún no hay llaves de acceso. Puedes crear una para el dispositivo al iniciar sesión.
+  deletePasskey: "Eliminar la llave de acceso «{{name}}»"
+  addPasskey: Llave de acceso para este dispositivo
+  logout: Cerrar sesión
+
+ocrLanguages:
+  deu: Alemán
+  eng: Inglés
+  fra: Francés
+  ita: Italiano
+  spa: Español
+  por: Portugués
+  nld: Neerlandés
+  dan: Danés
+  swe: Sueco
+  nor: Noruego
+  fin: Finés
+  pol: Polaco
+  ces: Checo
+  slk: Eslovaco
+  hun: Húngaro
+  ron: Rumano
+  hrv: Croata
+  tur: Turco
+  ell: Griego
+  rus: Ruso
+  ukr: Ucraniano
+
+pdf:
+  qualities:
+    low: Baja
+    medium: Media
+    high: Alta
+    original: Original
+  qualityHints:
+    low: 150 DPI, archivos pequeños para pantalla y correo
+    medium: 300 DPI, bueno para imprimir
+    high: Hasta 600 DPI, apenas comprimido
+    original: Resolución completa, sin pérdida (PNG)
+  choose: Elegir la calidad del PDF
+  quality: Calidad del PDF
+  default: Predeterminada
+  custom: Personalizada …
+  customHint: 300 DPI, elige tú la compresión
+  customQuality: Calidad
+  customQualityHint: cuanto más alto, mejor la calidad
+  download: Descargar
+
+settings:
+  tabs:
+    sizes: Tamaños de imagen
+    import: Importación
+    api: API
+    access: Acceso
+    language: Idioma
+    export: Exportación
+  mediumPageSize: "{{description}}. Una página en blanco y negro ocupa unos 150–200 KB."
+  saved: Ajustes guardados
+  title: Ajustes
+  loading: Cargando ajustes …
+  pdfQualityLegend: Calidad de imagen de la exportación a PDF (al pulsar «PDF»; la flecha de al lado ofrece las demás)
+  autoOcr: Reconocer el texto tras subir
+  autoOcrHint: Reconoce el texto de imágenes y PDF en cuanto se suben.
+  allText: Reconocer todo el texto
+  allTextHint: También conserva partes de texto dudosas, probablemente erróneas.
+  ocrLanguage: Idioma del reconocimiento de texto
+  automatic: Automático
+  ocrLanguageFixed: Se aplica a todas las imágenes y PDF subidos; cada documento puede reconocerse de nuevo en la pestaña «Texto».
+  ocrLanguageAuto: "Reconoce primero con {{languages}}. Si el texto está en otro idioma, se reconoce de nuevo en ese idioma."
+  and: " y "
+  applyPreset: Aplicar un ajuste de imagen
+  noPreset: Ninguno – las imágenes no cambian
+  presetHint: Se aplica a cada imagen subida antes del reconocimiento de texto. Los ajustes de imagen se guardan en la pestaña «Editar» de una imagen.
+  importFolders: Añadir a carpetas
+  importFoldersHint: Cada subida se añade también a estas carpetas.
+  uiLanguage: Idioma de la interfaz
+  uiLanguageHint: Se aplica a este navegador de inmediato, sin «Guardar».
+
+colorModes:
+  color: Color
+  grayscale: Escala de grises
+  bw: B/N
+
+denoise:
+  off: Desactivado
+  light: Suave
+  medium: Medio
+  strong: Fuerte
+
+presetSteps:
+  autoRotate: Girar automáticamente
+  rotation: "Giro {{value}}°"
+  autoDewarp: Enderezar automáticamente
+  autoCrop: Recorte automático
+  cropRect: Recorte fijo
+  cropQuad: Enderezado fijo
+  autoBw: B/N automático
+  grayMix: "Canales de gris: {{value}}"
+  grayThreshold: "Umbral de gris {{value}}"
+  brightness: "Brillo {{value}}"
+  contrast: "Contraste {{value}}"
+  saturation: "Saturación {{value}}"
+  hue: "Tono {{value}}°"
+  bwThreshold: "Umbral {{value}}"
+  autoLevels: Niveles automáticos
+  manualLevels: Niveles manuales
+  denoise: "Reducción de ruido: {{value}}"
+  shapes_one: "Formas: 1 rectángulo"
+  shapes_other: "Formas: {{count}} rectángulos"
+  shapes_many: "Formas: {{count}} rectángulos"
+
+grayMix:
+  channels:
+    reds: Rojos
+    yellows: Amarillos
+    greens: Verdes
+    cyans: Cianes
+    blues: Azules
+    magentas: Magentas
+  channelsShort:
+    reds: Ro
+    yellows: Am
+    greens: Ve
+    cyans: Ci
+    blues: Az
+    magentas: Ma
+  presets:
+    luma: Estándar
+    balanced: Equilibrado
+    red: Filtro rojo
+    yellow: Filtro amarillo
+    green: Filtro verde
+    blue: Filtro azul
+
+shapeColors:
+  black: Negro
+  white: Blanco
+
+presetDialog:
+  brightness: Brillo
+  contrast: Contraste
+  saturation: Saturación
+  hue: Tono
+  threshold: Umbral
+  denoise: Reducción de ruido
+  settings: Ajustes
+  nothing: La imagen no tiene ediciones que se puedan guardar.
+  colorMode: Modo de color
+  grayMix: Canales de gris
+  customValues: Valores propios
+  shapesHint: Quedan en el mismo lugar respecto al tamaño de la imagen – adecuado para escaneos con la misma estructura. Sustituyen las formas existentes.
+  rotation: Giro
+  autoHint: Los pasos automáticos se calculan de nuevo para cada imagen. Los ajustes no elegidos no cambian.
+
+batch:
+  started_one: Procesamiento por lotes iniciado para 1 documento
+  started_other: "Procesamiento por lotes iniciado para {{count}} documentos"
+  started_many: "Procesamiento por lotes iniciado para {{count}} documentos"
+  title: Procesamiento por lotes
+  preset: Ajuste de imagen
+  presetHint: Solo para imágenes, aplicado sobre su edición actual.
+  rename: Renombrar
+  renamePlaceholder: "p. ej. Escaneos {n}/{m}"
+  renamePreview: "Pasa a ser «{{first}}»."
+  renamePreviewRange: "Pasa a ser «{{first}}» … «{{last}}»."
+  renameHint: "{n} es el número correlativo desde 1 (con ceros a la izquierda a partir de 10 documentos), {m} el total. Vacío deja los nombres sin cambios."
+  ocr: Reconocer texto
+  ocrHint: Reconoce de nuevo el texto de las imágenes y PDF.
+  language: Idioma
+  automaticLanguages: "Automático ({{languages}})"
+  background: Sigue en segundo plano; «Procesamiento por lotes» en la barra lateral muestra el progreso.
+
+presets:
+  saved: Ajuste de imagen guardado
+  deleted: "«{{name}}» eliminado"
+  title: Ajustes de imagen
+  intro: "Pasos de edición guardados para imágenes: se aplican en la pestaña «Editar», al importar (Ajustes → Importación) y en el procesamiento por lotes."
+  empty: Aún no hay ajustes de imagen. Guarda la edición de una imagen como ajuste de imagen en la pestaña «Editar» o «Formas».
+  onImport: Al importar
+  editLabel: "Editar {{name}}"
+  edit: Editar
+  deleteLabel: "Eliminar {{name}}"
+  steps: "Pasos de {{name}}"
+  editTitle: Editar ajuste de imagen
+  deleteTitle: Eliminar ajuste de imagen
+  deleteImportPreset: "¿Eliminar «{{name}}»? Se aplica al importar – después, al importar se usará de nuevo la edición de imagen de los ajustes."
+  deleteConfirm: "¿Eliminar «{{name}}»? Las imágenes ya editadas no cambian."
+
+jobs:
+  states:
+    pending: En espera
+    running: Procesando
+    ocr: Reconociendo texto
+    done: Terminado
+    skipped: Omitido
+    failed: Error
+  importStates:
+    pending: Esperando la subida
+    running: Procesando
+  files_one: 1 archivo
+  files_other: "{{count}} archivos"
+  files_many: "{{count}} archivos"
+  rename: "Renombrar «{{scheme}}»"
+  preset: "Ajuste de imagen «{{name}}»"
+  allText: todo el texto
+  ocrWith: "Reconocimiento de texto ({{details}})"
+  ocr: Reconocimiento de texto
+  title: Procesamiento por lotes
+  intro: Procesamientos por lotes e importaciones, los más recientes primero.
+  removeFinished: Quitar los terminados
+  empty: Aún no hay trabajos. Selecciona documentos en el resumen e inicia el procesamiento por lotes – las subidas también aparecen aquí.
+  import: Importación
+  jobLabel: "{{title}} del {{date}}"
+  duration: "Duración: {{duration}}"
+  doneOf: "{{done}} de {{total}} terminados"
+  failed: "{{count}} con error"
+  remove: Quitar trabajo
+  removeTitle: Quitar de la lista
+  progress: Progreso
+  documents: Documentos
+  showDocuments: Mostrar documentos
+
+folderTarget:
+  title: Archivar en carpetas
+  add: Añadir
+  move: Mover
+  folders: Carpetas
+  new: nueva
+  none: Aún no hay carpetas.
+  newFolder: Nueva carpeta
+  newPlaceholder: Nueva carpeta, p. ej. importante/2026
+  create: Crear
+  moveFromHint: "«Mover» saca la selección de «{{folder}}», «Añadir» conserva sus carpetas actuales."
+  moveHint: "«Mover» sustituye las carpetas actuales de la selección, «Añadir» las conserva."
+
+folderTree:
+  folders: Carpetas
+  allDocuments: Todos los documentos
+  jobs: Procesamiento por lotes
+  running_one: 1 trabajo en curso
+  running_other: "{{count}} trabajos en curso"
+  running_many: "{{count}} trabajos en curso"
+  presets: Ajustes de imagen
+  newFolder: Nueva carpeta
+  newFolderName: Nombre de la nueva carpeta
+  empty: Aún no hay carpetas
+  renameFolder: Renombrar carpeta
+  collapse: Contraer
+  expand: Expandir
+  rename: "Renombrar {{path}}"
+  delete: "Eliminar {{path}}"
+  deleteTitle: Eliminar carpeta
+  deleteConfirm: "¿Quitar la carpeta <strong>{{path}}</strong> y todas sus subcarpetas? Los documentos se conservan."
+
+grid:
+  instructions: Pulsa Espacio para coger la tarjeta, muévela con las flechas y pulsa Espacio para soltarla. Escape cancela.
+  move: "Mover {{label}}"
+  dragTitle: Arrastra para cambiar el orden
+
+card:
+  pages: "{{count}} pág."
+  stack: Pila
+  deselect: "Deseleccionar {{title}}"
+  select: "Seleccionar {{title}}"
+  smartStack: Pila inteligente
+  smartReasons:
+    name: Serie de nombres
+    similar: Nombres parecidos
+
+stack:
+  loading: Cargando …
+  emptyDissolved: La pila está vacía y se ha deshecho
+  dissolved: Pila deshecha
+  deleted: Pila eliminada
+  meta_one: "Pila · 1 página · modificada el {{date}}"
+  meta_other: "Pila · {{count}} páginas · modificada el {{date}}"
+  meta_many: "Pila · {{count}} páginas · modificada el {{date}}"
+  addPages: Añadir páginas
+  dissolve: Deshacer pila
+  delete: Eliminar pila
+  forward: Mover adelante
+  backward: Mover atrás
+  removeFromStack: Quitar de la pila
+  dissolveText: La pila se quita, los documentos se conservan por separado.
+  dissolveConfirm: Deshacer
+  deleteText: "¿Eliminar definitivamente la pila y sus {{count}} documentos?"
+
+library:
+  sorts:
+    updated: Última modificación
+    created-desc: Subida, más recientes primero
+    created-asc: Subida, más antiguos primero
+    title-asc: Nombre A–Z
+    title-desc: Nombre Z–A
+    custom: Orden propio
+  cardShapes:
+    portrait: Vertical
+    landscape: Horizontal
+    square: Cuadrado
+  search: "Búsqueda «{{q}}»"
+  allDocuments: Todos los documentos
+  smartStack: Pila inteligente
+  documents_one: 1 documento
+  documents_other: "{{count}} documentos"
+  documents_many: "{{count}} documentos"
+  backTo: "Volver a «{{title}}»"
+  entries_one: 1 elemento
+  entries_other: "{{count}} elementos"
+  entries_many: "{{count}} elementos"
+  hiddenInFolders: "{{count}} ocultos en carpetas"
+  dragToArrange: arrastra las tarjetas para ordenarlas
+  showFiled: Mostrar documentos en carpetas
+  showingFiled: Muestra todos los documentos, también los de carpetas
+  hidingFiled: Muestra solo documentos sin carpeta – haz clic para mostrar también los de carpetas
+  smartStacks: Pilas inteligentes
+  smartStacksCustom: No con un orden propio
+  smartStacksHint: "Pilas inteligentes: agrupa los archivos que van juntos por nombre u hora de subida – solo en la vista, no se guarda nada"
+  cardShape: Formato de tarjeta
+  sort: Orden
+  allFiled: Todos los documentos están archivados en carpetas.
+  noMatches: No se encontraron documentos.
+  emptyTitle: Aún no hay nada archivado
+  emptyText: Arrastra fotos, escaneos y PDF aquí o selecciónalos.
+  chooseFiles: Elegir archivos
+
+selection:
+  stackCreated: "Pila «{{title}}» creada"
+  folderCount: "{{count}} carpetas"
+  movedTo: "Movido a {{where}}"
+  addedTo: "Añadido a {{where}}"
+  removedFrom: "Quitado de «{{folder}}»"
+  deleted_one: 1 documento eliminado
+  deleted_other: "{{count}} documentos eliminados"
+  deleted_many: "{{count}} documentos eliminados"
+  label: Selección
+  clear: Quitar selección
+  count: "{{count}} seleccionados"
+  selectAll: Seleccionar todo
+  batchTitle: Aplicar un ajuste de imagen y el reconocimiento de texto a la selección
+  batch: Procesamiento por lotes
+  stack: Apilar
+  folderTitle: Archivar en carpetas
+  folder: Carpetas
+  removeFrom: "Quitar de «{{folder}}»"
+  pdfTitle: Descargar las imágenes y PDF de la selección como un solo PDF
+  deleteTitle: Eliminar definitivamente
+  deleteText_one: ¿Eliminar 1 documento con todas sus ediciones y su texto reconocido?
+  deleteText_other: "¿Eliminar {{count}} documentos con todas sus ediciones y su texto reconocido?"
+  deleteText_many: "¿Eliminar {{count}} documentos con todas sus ediciones y su texto reconocido?"
+
+editControls:
+  shades:
+    best: mejor estimación
+    darker: más oscuro
+    lighter: más claro
+  orientation: Orientación
+  rotateLeft: Girar a la izquierda
+  rotateRight: Girar a la derecha
+  crop: Recortar
+  perspective: Enderezar
+  autoRotateTitle: Gira la imagen para que el texto quede recto
+  autoRotate: Giro automático
+  autoCropTitle: Busca el borde de la página o la foto y recorta el fondo
+  autoCrop: Recorte automático
+  detectingOrientation: Detectando la orientación del texto …
+  findingEdges: Buscando el borde de la página …
+  autoDewarp: Enderezar automáticamente
+  detectingPage: Detectando la página …
+  dewarped: Página curvada aplanada.
+  cropHint: Arrastra las esquinas para fijar el recorte, Intro lo aplica.
+  perspectiveHint: Arrastra las esquinas a las del documento – se endereza. Intro lo aplica.
+  reset: Restablecer
+  cropActive: Recorte activo.
+  remove: Quitar
+  light: Luz
+  brightness: Brillo
+  contrast: Contraste
+  autoLevels: Niveles automáticos
+  color: Color
+  autoBw: B/N automático
+  autoBwLoading: Calculando los valores …
+  autoBwVariant: "Variante {{index}} de {{count}} · {{shade}}"
+  autoBwNext: " – vuelve a hacer clic para la siguiente."
+  autoBwHint: Calcula brillo, contraste y umbral.
+  colorMode: Modo de color
+  saturation: Saturación
+  hue: Tono
+  threshold: Umbral
+  thresholdSlider: Umbral
+  noise: Quitar imperfecciones
+  denoise: Reducir ruido
+  denoiseStrength: "Intensidad: {{level}} – {{next}}"
+  denoiseStronger: vuelve a hacer clic para más fuerte.
+  denoiseOff: vuelve a hacer clic para desactivarlo.
+  denoiseHint: Suaviza el ruido y elimina puntos sueltos en el modo B/N.
+  channels: Canales
+  customValues: Valores propios
+  resetAll: Restablecer todo
+
+shapes:
+  rectangle: "Rectángulo {{number}}"
+  outdated: El recorte, el giro o el enderezado se cambiaron después de dibujar. Comprueba si las formas siguen en el lugar correcto.
+  title: Rectángulos
+  intro: Arrastra sobre la imagen para dibujar un rectángulo, p. ej. para tachar texto o tapar manchas en blanco. Los rectángulos se pueden mover, cambiar de tamaño con sus tiradores y eliminar con Supr.
+  delete: Eliminar rectángulo
+  savePresetTitle: Guardar como ajuste de imagen para aplicar los rectángulos a otras imágenes al importar o en el procesamiento por lotes
+  savePreset: Como ajuste de imagen
+  removeAll: Quitar todo
+  none: Aún no hay rectángulos.
+  count_one: 1 rectángulo
+  count_other: "{{count}} rectángulos"
+  count_many: "{{count}} rectángulos"
+  colorSelected: Color del rectángulo
+  colorNew: Color de los nuevos rectángulos
+  color: Color
+  customColor: Color propio
+  ocrHint: Tras guardar, el texto se reconoce de nuevo para que el texto tapado desaparezca también del texto, la búsqueda y el PDF.
+  saving: Guardando …
+
+vector:
+  details:
+    "1": Muy basto
+    "2": Basto
+    "3": Medio
+    "4": Fino
+    "5": Muy fino
+  area: "Zona vectorial {{number}}"
+  outdated: El recorte, el giro o el enderezado se cambiaron después de vectorizar. Comprueba si las zonas siguen en el lugar correcto.
+  title: Zonas
+  intro: "Marca una zona en la imagen: se vectoriza con ajustes adecuados y sustituye los píxeles de la imagen al guardar. Las zonas se pueden mover, cambiar de tamaño con sus tiradores y eliminar con Supr."
+  delete: Eliminar zona
+  showVectors: Mostrar vectores
+  showOriginal: Mostrar original
+  none: Aún no hay zonas.
+  areas_one: "1 zona, {{vectorized}} vectorizada(s)"
+  areas_other: "{{count}} zonas, {{vectorized}} vectorizada(s)"
+  areas_many: "{{count}} zonas, {{vectorized}} vectorizada(s)"
+  vectorization: Vectorización
+  colors: Colores
+  bw: Blanco y negro
+  detail: Detalle
+  threshold: Umbral
+  edges: Bordes
+  smooth: Suaves
+  sharp: Angulosos
+  auto: Ajustar automáticamente
+  suggesting: Calculando los ajustes …
+  vectorizing: Vectorizando …
+  failed: No vectorizado – cambia los ajustes para volver a intentarlo.
+  paths_one: 1 forma
+  paths_other: "{{count}} formas"
+  paths_many: "{{count}} formas"
+  seconds: "{{value}} s"
+  ocrHint: Tras guardar, el texto se reconoce de nuevo.
+  pending: Vectorizando …
+
+preview:
+  label: Vista previa
+  finalHint: Resultado final · pasa el ratón por la imagen para verla al 100 %
+  live: Vista en directo
+  rendering: Calculando la vista previa …
+  show: Vista previa
+  loadFailed: "No se pudo cargar la vista previa: {{error}}"
+  fullResolution: Vista previa a resolución completa
+  renderingLabel: Calculando la vista previa
+  renderFailed: No se pudo calcular la vista previa
+  moveCorner: "Mover la esquina {{number}}"
+
+document:
+  tabs:
+    edit: Editar
+    text: Texto
+    details: Archivo
+    vectors: Vector
+    shapes: Formas
+  editSaved: "Edición de «{{title}}» guardada"
+  shapesSavedOcr: Formas guardadas – el texto se reconoce de nuevo
+  shapesSaved: Formas guardadas
+  vectorsSavedOcr: Vectores guardados – el texto se reconoce de nuevo
+  vectorsSaved: Vectores guardados
+  noOrientation: Orientación no detectada – hay muy poco texto en la imagen.
+  alreadyUpright: La imagen ya está bien orientada.
+  noEdges: No se encontró el borde de la página.
+  presetShapes: Las formas del ajuste de imagen se han aplicado y se guardan en la pestaña «Formas».
+  presetSaved: "Ajuste de imagen «{{name}}» guardado"
+  deleted: Documento eliminado
+  duplicated: Duplicado creado
+  detached: El documento tiene ahora su propio archivo original
+  deleteText: "¿Eliminar definitivamente «{{title}}» con sus ediciones y su texto reconocido?"
+  deleteHeir_one: " El archivo original se conserva para el duplicado, «{{heir}}» pasa a ser el nuevo original."
+  deleteHeir_other: " El archivo original se conserva para los {{count}} duplicados, «{{heir}}» pasa a ser el nuevo original."
+  deleteHeir_many: " El archivo original se conserva para los {{count}} duplicados, «{{heir}}» pasa a ser el nuevo original."
+  pageOf: "Página {{page}} de {{count}}"
+  previousPage: Página anterior
+  previousDocument: Documento anterior
+  nextPage: Página siguiente
+  nextDocument: Documento siguiente
+  downloadOriginal: Descargar original
+  delete: Eliminar documento
+  applyPreset: Aplicar un ajuste de imagen
+  applyPresetOption: Aplicar un ajuste de imagen …
+  noPresets: No hay ajustes de imagen guardados
+  applying: Aplicando
+  savePreset: Guardar como ajuste de imagen
+  savePresetTitle: Guardar como ajuste de imagen para aplicar esta edición a otras imágenes
+  savePresetDialog: Guardar ajuste de imagen
+  openPdf: Abrir PDF
+  noPreview: No hay vista previa para este tipo de archivo.
+  download: Descargar
+
+textPanel:
+  copied: Texto copiado
+  confidence: "{{value}} % de confianza"
+  fromPdf: tomado del PDF
+  copy: Copiar texto
+  recognizeIn: "Reconocer en {{language}}"
+  recognize: Reconocer texto
+  recognizeAgain: Reconocer de nuevo
+  language: "Idioma: {{language}}"
+  languageUnknown: Idioma no detectado
+  languageSelect: Idioma del reconocimiento de texto
+  removed_one: 1 parte de texto dudosa se ocultó por ser probablemente errónea.
+  removed_other: "{{count}} partes de texto dudosas se ocultaron por ser probablemente erróneas."
+  removed_many: "{{count}} partes de texto dudosas se ocultaron por ser probablemente erróneas."
+  allTextKept: Se conservó todo el texto, también las partes dudosas.
+  hideUncertain: Ocultar las partes dudosas
+  recognizing: Reconociendo texto …
+  noText: Aún no hay texto.
+  recognized: Texto reconocido
+  save: Guardar texto
+
+details:
+  fileName: Nombre del archivo
+  type: Tipo
+  size: Tamaño
+  dimensions: Dimensiones
+  dimensionsValue: "{{width}} × {{height}} px"
+  pages: Páginas
+  uploaded: Subido
+  modified: Modificado
+  original: Original
+  pdfTitle: Descargar la imagen con el texto guardado como PDF con búsqueda
+  duplicateTitle: Crear una copia con la misma edición que usa el mismo archivo original
+  duplicate: Duplicar
+  detachTitle: Copiar el archivo original y quitar el vínculo con el original
+  detach: Independizar
+  copyOf: Duplicado de
+  usesOriginal: " (usa su archivo original)"
+  copies: Duplicados

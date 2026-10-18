@@ -1,4 +1,5 @@
 import { Dialog } from "./Dialog";
+import { useTranslation } from "react-i18next";
 
 interface UnsavedChangesDialogProps {
   open: boolean;
@@ -8,27 +9,28 @@ interface UnsavedChangesDialogProps {
 }
 
 export function UnsavedChangesDialog({ open, onSave, onDiscard, onStay }: UnsavedChangesDialogProps) {
+  const { t } = useTranslation();
   return (
     <Dialog
       open={open}
-      title="Bearbeitung nicht gespeichert"
+      title={t("unsaved.title")}
       onClose={onStay}
       footer={
         <>
           <button type="button" className="btn" onClick={onStay}>
-            Abbrechen
+            {t("common.cancel")}
           </button>
           <span className="spacer" />
           <button type="button" className="btn" onClick={onDiscard}>
-            Verwerfen
+            {t("unsaved.discard")}
           </button>
           <button type="button" className="btn btn--primary" onClick={onSave}>
-            Speichern
+            {t("common.save")}
           </button>
         </>
       }
     >
-      <p>Die Änderungen an diesem Bild sind noch nicht gespeichert.</p>
+      <p>{t("unsaved.text")}</p>
     </Dialog>
   );
 }

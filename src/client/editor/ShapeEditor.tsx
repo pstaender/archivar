@@ -2,6 +2,7 @@ import { Loader, Plus, SavePlus, Trash } from "../icons";
 import { type KeyboardEvent, type PointerEvent, useRef } from "react";
 import { MIN_SHAPE_SIZE, SHAPE_COLORS, type Shape } from "../../shared/shapes";
 import { fromEdges, HANDLES, type Handle, moveBy, nudge, type Point, pointIn, resize } from "./rects";
+import { useTranslation } from "react-i18next";
 
 type Drag =
   | { kind: "create"; id: string; anchor: Point }
@@ -28,6 +29,7 @@ interface ShapeCanvasProps {
 export function ShapeCanvas({ src, alt, shapes, selected, color, onChange, onSelect }: ShapeCanvasProps) {
   const overlay = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
+  const { t } = useTranslation();
 
   const toPoint = (e: PointerEvent): Point => pointIn(overlay.current!, e);
 
@@ -114,7 +116,7 @@ export function ShapeCanvas({ src, alt, shapes, selected, color, onChange, onSel
                 height: `${shape.height * 100}%`,
                 background: shape.color,
               }}
-              aria-label={`Rechteck ${index + 1}`}
+              aria-label={t("shapes.rectangle", { number: index + 1 })}
               aria-pressed={shape.id === selected}
               onFocus={() => onSelect(shape.id)}
               onKeyDown={(e) => keyDown(e, shape)}
@@ -161,6 +163,7 @@ export function ShapeControls({
   onDiscard,
   onSavePreset,
 }: ShapeControlsProps) {
+  const { t } = useTranslation();
   const selectedShape = shapes.find((s) => s.id === selected) ?? null;
   const current = selectedShape?.color ?? color;
   const custom = !SHAPE_COLORS.some((c) => c.color === current);
@@ -175,14 +178,13 @@ export function ShapeControls({
       <div className="edit-controls">
         {outdated && (
           <div className="alert alert--warning small">
-            Zuschnitt, Drehung oder Entzerrung wurden nach dem Zeichnen geändert. Prüfe, ob die Formen noch an der richtigen Stelle liegen.
+            {t("shapes.outdated")}
           </div>
         )}
         <section className="control-group">
-          <h3>Rechtecke</h3>
+          <h3>{t("shapes.title")}</h3>
           <p className="muted small">
-            Auf dem Bild ziehen, um ein Rechteck zu zeichnen, z. B. zum Schwärzen oder um Flecken weiß zu übermalen. Rechtecke lassen sich verschieben, an den Griffen in der
-            Größe ändern und mit Entf löschen.
+            {t("shapes.intro")}
           </p>
           <div className="button-row">
             {selectedShape && (
@@ -195,7 +197,7 @@ export function ShapeControls({
                 }}
               >
                 <Trash size={16} />
-                Rechteck löschen
+                {t("shapes.delete")}
               </button>
             )}
             {shapes.length > 0 && onSavePreset && (
@@ -203,10 +205,10 @@ export function ShapeControls({
                 type="button"
                 className="btn btn--sm"
                 onClick={onSavePreset}
-                title="Als Bildeinstellung speichern, um die Rechtecke beim Import oder in der Stapelverarbeitung auf andere Bilder anzuwenden"
+                title={t("shapes.savePresetTitle")}
               >
                 <SavePlus size={16} />
-                Als Bildeinstellung
+                {t("shapes.savePreset")}
               </button>
             )}
             {shapes.length > 0 && (
@@ -218,25 +220,25 @@ export function ShapeControls({
                   onSelect(null);
                 }}
               >
-                Alle entfernen
+                {t("shapes.removeAll")}
               </button>
             )}
           </div>
           <p className="muted small" aria-live="polite">
-            {shapes.length === 0 ? "Noch keine Rechtecke." : shapes.length === 1 ? "1 Rechteck" : `${shapes.length} Rechtecke`}
+            {shapes.length === 0 ? t("shapes.none") : t("shapes.count", { count: shapes.length })}
           </p>
         </section>
         <section className="control-group">
-          <h3>{selectedShape ? "Farbe des Rechtecks" : "Farbe für neue Rechtecke"}</h3>
-          <div className="swatches" role="radiogroup" aria-label="Farbe">
-            {SHAPE_COLORS.map(({ color: value, label }) => (
+          <h3>{selectedShape ? t("shapes.colorSelected") : t("shapes.colorNew")}</h3>
+          <div className="swatches" role="radiogroup" aria-label={t("shapes.color")}>
+            {SHAPE_COLORS.map(({ color: value, name }) => (
               <button
                 key={value}
                 type="button"
                 role="radio"
                 aria-checked={current === value}
-                aria-label={label}
-                title={label}
+                aria-label={t(`shapeColors.${name}`)}
+                title={t(`shapeColors.${name}`)}
                 className={`swatch ${current === value ? "is-active" : ""}`}
                 style={{ background: value }}
                 onClick={() => setColor(value)}
@@ -244,29 +246,29 @@ export function ShapeControls({
             ))}
             <label
               className={`swatch swatch--custom ${custom ? "is-active" : ""}`}
-              title="Eigene Farbe"
+              title={t("shapes.customColor")}
               style={custom ? { background: current } : undefined}
             >
               {!custom && <Plus size={16} aria-hidden />}
-              <input type="color" value={current} onChange={(e) => setColor(e.target.value)} aria-label="Eigene Farbe" />
+              <input type="color" value={current} onChange={(e) => setColor(e.target.value)} aria-label={t("shapes.customColor")} />
             </label>
           </div>
         </section>
-        {hasText && <p className="muted small">Nach dem Speichern wird der Text neu erkannt, damit übermalter Text auch aus Text, Suche und PDF verschwindet.</p>}
+        {hasText && <p className="muted small">{t("shapes.ocrHint")}</p>}
       </div>
       <div className="panel__footer">
         <span className="spacer saving-hint">
           {saving && (
             <span className="muted small" role="status">
-              <Loader size={14} className="spin" /> Speichert …
+              <Loader size={14} className="spin" /> {t("shapes.saving")}
             </span>
           )}
         </span>
         <button type="button" className="btn btn--sm" onClick={onDiscard} disabled={!dirty || saving}>
-          Verwerfen
+          {t("unsaved.discard")}
         </button>
         <button type="button" className="btn btn--sm btn--primary" onClick={onSave} disabled={!dirty || saving}>
-          Speichern
+          {t("common.save")}
         </button>
       </div>
     </>

@@ -1,5 +1,6 @@
 import { distance } from "fastest-levenshtein";
 import type { ArchiveDocument, LibraryItem } from "../shared/types";
+import { t } from "./i18n";
 
 /** Documents that seem to belong together; only shown, never stored. */
 export interface SmartStack {
@@ -138,7 +139,7 @@ export function groupSmartStacks(items: LibraryItem[]): DisplayItem[] {
     const grouped = new Set<number>();
     for (const group of nameGroups(chain)) {
       const label = seriesName(baseName(group[0]!))!.label;
-      stacks.push({ type: "smart", reason: "name", title: label ? `${label} …` : "Nummernfolge", documents: group });
+      stacks.push({ type: "smart", reason: "name", title: label ? `${label} …` : t("smartStacks.series"), documents: group });
       for (const doc of group) grouped.add(doc.id);
     }
     for (const group of similarGroups(chain.filter((doc) => !grouped.has(doc.id)))) {

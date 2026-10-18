@@ -7,10 +7,12 @@ import { useSettings } from "../hooks/settings";
 import { useToast } from "../hooks/toast";
 import { ConfirmDialog } from "../components/Dialog";
 import { PresetDialog } from "../components/PresetDialog";
+import { useTranslation } from "react-i18next";
 
 /** The saved image presets, to edit and delete them. */
 export function PresetsPage() {
   const { presets, reload } = usePresets();
+  const { t } = useTranslation();
   const { settings, save: saveSettings } = useSettings();
   const toast = useToast();
   const [editing, setEditing] = useState<ImagePreset | null>(null);
@@ -20,7 +22,7 @@ export function PresetsPage() {
     try {
       await api.updatePreset(editing!.id, { name, steps });
       await reload();
-      toast.success("Bildeinstellung gespeichert");
+      toast.success(t("presets.saved"));
     } catch (error) {
       toast.error(error);
       throw error;
@@ -33,7 +35,7 @@ export function PresetsPage() {
       // The server turns the import preset off too; this keeps the loaded settings in step.
       if (settings.importPresetId === preset.id) await saveSettings({ importPresetId: null });
       await reload();
-      toast.success(`„${preset.name}“ gelöscht`);
+      toast.success(t("presets.deleted", { name: preset.name }));
     } catch (error) {
       toast.error(error);
     }
@@ -43,45 +45,45 @@ export function PresetsPage() {
     <div className="page">
       <header className="page__header">
         <div>
-          <h1>Bildeinstellungen</h1>
+          <h1>{t("presets.title")}</h1>
           <p className="muted small">
-            Gespeicherte Bearbeitungsschritte für Bilder: im Tab „Bearbeiten“ anwenden, beim Import (Einstellungen → Import) und in der Stapelverarbeitung.
+            {t("presets.intro")}
           </p>
         </div>
       </header>
 
       {presets.length === 0 && (
         <div className="empty-state">
-          <p className="muted">Noch keine Bildeinstellungen. Speichere die Bearbeitung eines Bildes im Tab „Bearbeiten“ oder „Formen“ als Bildeinstellung.</p>
+          <p className="muted">{t("presets.empty")}</p>
         </div>
       )}
 
-      <ul className="presets" aria-label="Bildeinstellungen">
+      <ul className="presets" aria-label={t("presets.title")}>
         {presets.map((preset) => (
           <li key={preset.id} className="preset-card">
             <div className="preset-card__header">
               <h2>
                 {preset.name}
-                {settings.importPresetId === preset.id && <span className="preset-card__badge">Beim Import</span>}
+                {settings.importPresetId === preset.id && <span className="preset-card__badge">{t("presets.onImport")}</span>}
               </h2>
-              <button type="button" className="btn btn--sm" onClick={() => setEditing(preset)} aria-label={`${preset.name} bearbeiten`}>
+              <button type="button" className="btn btn--sm" onClick={() => setEditing(preset)} aria-label={t("presets.editLabel", { name: preset.name })}>
                 <Pencil size={16} />
-                Bearbeiten
+                {t("presets.edit")}
               </button>
               <button
                 type="button"
                 className="btn btn--ghost btn--icon btn--sm"
                 onClick={() => setDeleting(preset)}
-                aria-label={`${preset.name} löschen`}
-                title="Löschen"
+                aria-label={t("presets.deleteLabel", { name: preset.name })}
+                title={t("common.delete")}
               >
                 <Trash size={16} />
               </button>
             </div>
-            <ul className="preset-card__steps" aria-label={`Schritte von ${preset.name}`}>
+            <ul className="preset-card__steps" aria-label={t("presets.steps", { name: preset.name })}>
               {presetStepList(preset.steps).map((step) => (
                 <li key={step} className="chip">
-                  {describeStep(preset.steps, step)}
+                  {describeStep(t, preset.steps, step)}
                 </li>
               ))}
             </ul>
@@ -90,23 +92,23 @@ export function PresetsPage() {
       </ul>
       <PresetDialog
         open={editing !== null}
-        title="Bildeinstellung bearbeiten"
+        title={t("presets.editTitle")}
         initialName={editing?.name ?? ""}
         steps={editing?.steps ?? {}}
         editValues
-        submitLabel="Speichern"
+        submitLabel={t("common.save")}
         onSubmit={update}
         onClose={() => setEditing(null)}
       />
       <ConfirmDialog
         open={deleting !== null}
-        title="Bildeinstellung löschen"
+        title={t("presets.deleteTitle")}
         message={
           deleting && settings.importPresetId === deleting.id
-            ? `„${deleting.name}“ löschen? Sie wird bei Imports angewendet – danach gilt dort wieder die Bildbearbeitung aus den Einstellungen.`
-            : `„${deleting?.name}“ löschen? Bereits bearbeitete Bilder bleiben unverändert.`
+            ? t("presets.deleteImportPreset", { name: deleting.name })
+            : t("presets.deleteConfirm", { name: deleting?.name })
         }
-        confirmLabel="Löschen"
+        confirmLabel={t("common.delete")}
         danger
         onConfirm={() => deleting && remove(deleting)}
         onClose={() => setDeleting(null)}

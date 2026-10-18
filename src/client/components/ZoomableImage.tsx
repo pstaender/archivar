@@ -1,6 +1,7 @@
 import { type MouseEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ExternalLink, Maximize, ZoomIn, ZoomOut } from "../icons";
 import { fitScale, formatZoom, type Zoom, zoomIn, zoomOut } from "../zoom";
+import { useTranslation } from "react-i18next";
 
 interface ZoomableImageProps {
   src: string;
@@ -9,6 +10,7 @@ interface ZoomableImageProps {
 
 export function ZoomableImage({ src, alt }: ZoomableImageProps) {
   const scroller = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
   const [zoom, setZoom] = useState<Zoom>("fit");
   const [natural, setNatural] = useState({ width: 0, height: 0 });
   const [available, setAvailable] = useState({ width: 0, height: 0 });
@@ -72,25 +74,25 @@ export function ZoomableImage({ src, alt }: ZoomableImageProps) {
           data-zoomable={zoom === "fit" && fit < 1 ? "in" : "out"}
         />
       </div>
-      <div className="zoom-bar" role="toolbar" aria-label="Zoom">
-        <button type="button" className="btn btn--ghost btn--icon btn--sm" onClick={() => changeZoom(zoomOut(scale, fit))} disabled={zoom === "fit"} aria-label="Verkleinern" title="Verkleinern">
+      <div className="zoom-bar" role="toolbar" aria-label={t("zoom.label")}>
+        <button type="button" className="btn btn--ghost btn--icon btn--sm" onClick={() => changeZoom(zoomOut(scale, fit))} disabled={zoom === "fit"} aria-label={t("zoom.out")} title={t("zoom.out")}>
           <ZoomOut size={16} />
         </button>
-        <span className="zoom-bar__value" aria-live="polite" aria-label="Zoomstufe">
+        <span className="zoom-bar__value" aria-live="polite" aria-label={t("zoom.level")}>
           {formatZoom(scale)}
         </span>
-        <button type="button" className="btn btn--ghost btn--icon btn--sm" onClick={() => changeZoom(zoomIn(scale))} disabled={scale >= 4} aria-label="Vergrößern" title="Vergrößern">
+        <button type="button" className="btn btn--ghost btn--icon btn--sm" onClick={() => changeZoom(zoomIn(scale))} disabled={scale >= 4} aria-label={t("zoom.in")} title={t("zoom.in")}>
           <ZoomIn size={16} />
         </button>
         <span className="zoom-bar__divider" aria-hidden />
-        <button type="button" className={`btn btn--ghost btn--sm${zoom === "fit" ? " is-active" : ""}`} onClick={() => changeZoom("fit")} aria-pressed={zoom === "fit"} title="Ganzes Bild anzeigen">
+        <button type="button" className={`btn btn--ghost btn--sm${zoom === "fit" ? " is-active" : ""}`} onClick={() => changeZoom("fit")} aria-pressed={zoom === "fit"} title={t("zoom.fitTitle")}>
           <Maximize size={16} />
-          Einpassen
+          {t("zoom.fit")}
         </button>
-        <button type="button" className={`btn btn--ghost btn--sm${zoom === 1 ? " is-active" : ""}`} onClick={() => changeZoom(1)} aria-pressed={zoom === 1} title="Originalgröße">
+        <button type="button" className={`btn btn--ghost btn--sm${zoom === 1 ? " is-active" : ""}`} onClick={() => changeZoom(1)} aria-pressed={zoom === 1} title={t("zoom.original")}>
           100 %
         </button>
-        <a href={src} target="_blank" rel="noreferrer" className="btn btn--ghost btn--icon btn--sm" aria-label="In neuem Tab öffnen" title="In neuem Tab öffnen">
+        <a href={src} target="_blank" rel="noreferrer" className="btn btn--ghost btn--icon btn--sm" aria-label={t("zoom.openInTab")} title={t("zoom.openInTab")}>
           <ExternalLink size={16} />
         </a>
       </div>

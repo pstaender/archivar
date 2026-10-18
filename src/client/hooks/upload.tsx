@@ -9,6 +9,7 @@ import { useFolders } from "./folders";
 import { useJobs } from "./jobs";
 import { useSettings } from "./settings";
 import { useToast } from "./toast";
+import { useTranslation } from "react-i18next";
 
 export interface UploadProgress {
   done: number;
@@ -38,6 +39,7 @@ const UploadContext = createContext<UploadApi | null>(null);
 
 export function UploadProvider({ children }: { children: ReactNode }) {
   const toast = useToast();
+  const { t } = useTranslation();
   const { convertibleImageTypes } = useConfig();
   const { reload: reloadFolders } = useFolders();
   const { reload: reloadJobs } = useJobs();
@@ -65,7 +67,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       const skipped = files.length - supported.length;
       if (skipped > 0) {
         toast.show(
-          skipped === 1 ? "1 Datei wird nicht unterstützt und wurde übersprungen" : `${skipped} Dateien werden nicht unterstützt und wurden übersprungen`,
+          t("upload.skipped", { count: skipped }),
           "warning",
         );
       }
@@ -115,20 +117,20 @@ export function UploadProvider({ children }: { children: ReactNode }) {
 
         if (job) void reloadJobs();
         if (docs.length > 0) {
-          toast.success(docs.length === 1 ? "1 Datei hochgeladen" : `${docs.length} Dateien hochgeladen`);
+          toast.success(t("upload.uploaded", { count: docs.length }));
           if (options.folders?.length) void reloadFolders();
         }
         const [duplicate] = duplicates;
         if (duplicates.length === 1 && duplicate) {
-          toast.show(`„${duplicate.file.name}“ ist bereits vorhanden (${duplicate.titles.map((t) => `„${t}“`).join(", ")}) und wurde trotzdem hochgeladen`, "warning");
+          toast.show(t("upload.duplicate", { name: duplicate.file.name, titles: duplicate.titles.map((title) => t("quoted", { text: title })).join(", ") }), "warning");
         } else if (duplicates.length > 1) {
-          toast.show(`${duplicates.length} Dateien waren bereits vorhanden und wurden trotzdem hochgeladen`, "warning");
+          toast.show(t("upload.duplicates", { count: duplicates.length }), "warning");
         }
         const [first] = failures;
         if (failures.length === 1 && first) {
           toast.error(`${first.file.name}: ${first.error instanceof Error ? first.error.message : String(first.error)}`);
         } else if (failures.length > 1) {
-          toast.error(`${failures.length} Dateien konnten nicht hochgeladen werden`);
+          toast.error(t("upload.failed", { count: failures.length }));
         }
         return docs;
       };
@@ -137,7 +139,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       queue.current = result.catch(() => undefined);
       return result;
     },
-    [autoOcr, ocrAllText, convertibleImageTypes, toast, reloadFolders, reloadJobs, publish],
+    [autoOcr, ocrAllText, convertibleImageTypes, toast, reloadFolders, reloadJobs, publish, t],
   );
 
   const stackMatch = matchPath("/stacks/:id", location.pathname);

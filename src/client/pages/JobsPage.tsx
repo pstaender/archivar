@@ -2,36 +2,25 @@ import { CircleAlert, CircleCheck, Loader, Trash } from "../icons";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { FINISHED_STATES, type Job, type JobItem, type JobItemState } from "../../shared/jobs";
-import { languageName } from "../../shared/languages";
 import { api, assetUrl } from "../api";
 import { useJobs } from "../hooks/jobs";
 import { useToast } from "../hooks/toast";
-import { formatDateTime, formatDuration, formatRelativeTime } from "../format";
+import { formatDateTime, formatDuration, formatRelativeTime, ocrLanguageName } from "../format";
+import { t } from "../i18n";
+import { useTranslation } from "react-i18next";
 
-const STATE_LABELS: Record<JobItemState, string> = {
-  pending: "Wartet",
-  running: "Wird bearbeitet",
-  ocr: "Text wird erkannt",
-  done: "Fertig",
-  skipped: "Übersprungen",
-  failed: "Fehler",
-};
-
-const IMPORT_STATE_LABELS: Partial<Record<JobItemState, string>> = {
-  pending: "Wartet auf Upload",
-  running: "Wird verarbeitet",
-};
+const IMPORT_STATES: JobItemState[] = ["pending", "running"];
 
 export function jobDescription(job: Job): string {
-  if (job.kind === "import") return job.items.length === 1 ? "1 Datei" : `${job.items.length} Dateien`;
+  if (job.kind === "import") return t("jobs.files", { count: job.items.length });
   const options = job.options;
   if (!options) return "";
   const parts: string[] = [];
-  if (options.rename) parts.push(`Umbenennen „${options.rename}“`);
-  if (options.preset) parts.push(`Bildeinstellung „${options.preset.name}“`);
+  if (options.rename) parts.push(t("jobs.rename", { scheme: options.rename }));
+  if (options.preset) parts.push(t("jobs.preset", { name: options.preset.name }));
   if (options.ocr) {
-    const details = [options.languages ? options.languages.map(languageName).join(" + ") : null, options.allText ? "alle Textteile" : null].filter(Boolean);
-    parts.push(details.length ? `Texterkennung (${details.join(", ")})` : "Texterkennung");
+    const details = [options.languages ? options.languages.map(ocrLanguageName).join(" + ") : null, options.allText ? t("jobs.allText") : null].filter(Boolean);
+    parts.push(details.length ? t("jobs.ocrWith", { details: details.join(", ") }) : t("jobs.ocr"));
   }
   return parts.join(" · ");
 }
@@ -49,6 +38,7 @@ function useNow(newest: string | undefined): Date {
 
 export function JobsPage() {
   const { jobs, reload } = useJobs();
+  const { t } = useTranslation();
   const now = useNow(jobs[0]?.createdAt);
   const toast = useToast();
   const [removing, setRemoving] = useState(false);
@@ -70,13 +60,13 @@ export function JobsPage() {
     <div className="page">
       <header className="page__header">
         <div>
-          <h1>Stapelverarbeitung</h1>
-          <p className="muted small">Stapelverarbeitungen und Importe, die neuesten zuerst.</p>
+          <h1>{t("jobs.title")}</h1>
+          <p className="muted small">{t("jobs.intro")}</p>
         </div>
         {finished.length > 0 && (
           <button type="button" className="btn btn--sm" onClick={() => remove(finished)} disabled={removing}>
             <Trash size={16} />
-            Erledigte entfernen
+            {t("jobs.removeFinished")}
           </button>
         )}
       </header>
@@ -84,7 +74,7 @@ export function JobsPage() {
       {jobs.length === 0 && (
         <div className="empty-state">
           <p className="muted">
-            Noch keine Aufträge. Wähle in der Übersicht Dokumente aus und starte die Stapelverarbeitung – auch Uploads erscheinen hier.
+            {t("jobs.empty")}
           </p>
         </div>
       )}
@@ -99,13 +89,14 @@ export function JobsPage() {
 }
 
 function JobCard({ job, now, removing, onRemove }: { job: Job; now: Date; removing: boolean; onRemove: () => void }) {
+  const { t } = useTranslation();
   const total = job.items.length;
   const done = job.items.filter((item) => FINISHED_STATES.includes(item.state)).length;
   const failed = job.items.filter((item) => item.state === "failed").length;
-  const title = job.kind === "import" ? "Import" : "Stapelverarbeitung";
+  const title = job.kind === "import" ? t("jobs.import") : t("jobs.title");
 
   return (
-    <section className="job" aria-label={`${title} vom ${formatDateTime(job.createdAt)}`}>
+    <section className="job" aria-label={t("jobs.jobLabel", { title, date: formatDateTime(job.createdAt) })}>
       <header className="job__header">
         <div className="job__title">
           <h2>
@@ -116,24 +107,25 @@ function JobCard({ job, now, removing, onRemove }: { job: Job; now: Date; removi
             <time dateTime={job.createdAt} title={formatDateTime(job.createdAt)}>
               {formatRelativeTime(job.createdAt, now)}
             </time>
-            {job.finishedAt && ` · Dauer: ${formatDuration(new Date(job.finishedAt).getTime() - new Date(job.createdAt).getTime())}`}
+            {job.finishedAt && ` · ${t("jobs.duration", { duration: formatDuration(new Date(job.finishedAt).getTime() - new Date(job.createdAt).getTime()) })}`}
             {jobDescription(job) && ` · ${jobDescription(job)}`}
           </p>
         </div>
         <span className="job__summary small">
-          {done} von {total} fertig{failed > 0 && <span className="job__failed"> · {failed} fehlgeschlagen</span>}
+          {t("jobs.doneOf", { done, total })}
+          {failed > 0 && <span className="job__failed"> · {t("jobs.failed", { count: failed })}</span>}
         </span>
         {!job.active && (
-          <button type="button" className="btn btn--ghost btn--icon btn--sm" onClick={onRemove} disabled={removing} aria-label="Auftrag entfernen" title="Aus der Liste entfernen">
+          <button type="button" className="btn btn--ghost btn--icon btn--sm" onClick={onRemove} disabled={removing} aria-label={t("jobs.remove")} title={t("jobs.removeTitle")}>
             <Trash size={16} />
           </button>
         )}
       </header>
-      <div className="job__progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} aria-label="Fortschritt">
+      <div className="job__progress" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} aria-label={t("jobs.progress")}>
         <span style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
       </div>
       <details className="job__details" open={job.active}>
-        <summary>{job.active ? "Dokumente" : "Dokumente anzeigen"}</summary>
+        <summary>{job.active ? t("jobs.documents") : t("jobs.showDocuments")}</summary>
         <ul className="job__items">
           {job.items.map((item) => (
             <JobItemRow key={item.id} item={item} kind={job.kind} />
@@ -145,8 +137,9 @@ function JobCard({ job, now, removing, onRemove }: { job: Job; now: Date; removi
 }
 
 function JobItemRow({ item, kind }: { item: JobItem; kind: Job["kind"] }) {
+  const { t } = useTranslation();
   const doc = item.document;
-  const label = (kind === "import" && IMPORT_STATE_LABELS[item.state]) || STATE_LABELS[item.state];
+  const label = kind === "import" && IMPORT_STATES.includes(item.state) ? t(`jobs.importStates.${item.state}`) : t(`jobs.states.${item.state}`);
   const name = doc ? doc.title.trim() || doc.originalName : item.name;
   return (
     <li className={`job-item job-item--${item.state}`}>

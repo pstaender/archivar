@@ -3,6 +3,9 @@ import { DEFAULT_EDIT_SETTINGS } from "./editSettings";
 import { GRAY_MIX_PRESETS } from "./image/grayMix";
 import { applyFixedSteps, describePreset, normalizePresetSteps, pickSteps, presetStepsFromSettings } from "./presets";
 import type { DewarpGrid, EditSettings, Quad } from "./types";
+import { createI18n } from "./i18n";
+
+const { t } = createI18n({ lng: "de" });
 
 const settings = (overrides: Partial<EditSettings>): EditSettings => ({ ...DEFAULT_EDIT_SETTINGS, ...overrides });
 const grid = { rotation: 0, columns: 31, rows: 45, points: [] } as DewarpGrid;
@@ -46,17 +49,17 @@ describe("image presets", () => {
     expect(normalizePresetSteps({ grayThreshold: 300 })).toEqual({ grayThreshold: 255 });
     expect(normalizePresetSteps({ autoBw: true, grayThreshold: 90 })).toEqual({ autoBw: true });
     expect(applyFixedSteps(settings({}), { colorMode: "grayscale", grayThreshold: 90 })).toEqual(settings({ colorMode: "grayscale", grayThreshold: 90 }));
-    expect(describePreset({ colorMode: "grayscale", grayThreshold: 90 })).toBe("Graustufen, Graustufen-Schwelle 90");
+    expect(describePreset(t, { colorMode: "grayscale", grayThreshold: 90 })).toBe("Graustufen, Graustufen-Schwelle 90");
   });
 
   test("describe fixed crops and grayscale channels", () => {
-    expect(describePreset({ crop: rect, grayMix: red })).toBe("Fester Ausschnitt, Graustufen-Kanäle: Rotfilter");
-    expect(describePreset({ crop: [rect[0], { x: 0.95, y: 0.1 }, rect[2], rect[3]] })).toBe("Feste Entzerrung");
+    expect(describePreset(t, { crop: rect, grayMix: red })).toBe("Fester Ausschnitt, Graustufen-Kanäle: Rotfilter");
+    expect(describePreset(t, { crop: [rect[0], { x: 0.95, y: 0.1 }, rect[2], rect[3]] })).toBe("Feste Entzerrung");
   });
 
   test("describe their steps in the editor's words", () => {
-    expect(describePreset({ autoBw: true, autoDewarp: true })).toBe("Automatisch entzerren, Automatisch SW");
-    expect(describePreset({ brightness: -0.09, hue: 12, denoise: 1, rotation: 270 })).toBe("Drehung 270°, Helligkeit -9 %, Farbton +12°, Entrauschen: Leicht");
+    expect(describePreset(t, { autoBw: true, autoDewarp: true })).toBe("Automatisch entzerren, Automatisch SW");
+    expect(describePreset(t, { brightness: -0.09, hue: 12, denoise: 1, rotation: 270 })).toBe("Drehung 270°, Helligkeit -9 %, Farbton +12°, Entrauschen: Leicht");
   });
 
   test("drop unknown values and the values an automatic step replaces", () => {
@@ -71,7 +74,7 @@ describe("image presets", () => {
     const shape = { id: "a", type: "rect" as const, x: 0.1, y: 0.1, width: 0.2, height: 0.2, color: "#000000" };
     expect(normalizePresetSteps({ shapes: [shape, { ...shape, color: "x" }] })).toEqual({ shapes: [shape] });
     expect(normalizePresetSteps({ shapes: [], brightness: 0.1 })).toEqual({ brightness: 0.1 });
-    expect(describePreset({ autoBw: true, shapes: [shape, shape] })).toBe("Automatisch SW, Formen: 2 Rechtecke");
+    expect(describePreset(t, { autoBw: true, shapes: [shape, shape] })).toBe("Automatisch SW, Formen: 2 Rechtecke");
   });
 
   test("pick the chosen steps and write fixed values onto settings", () => {

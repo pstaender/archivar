@@ -38,6 +38,7 @@ import { type DisplayItem, groupSmartStacks, type SmartStack, smartStackKey } fr
 import { saveBlob } from "../download";
 import { documentLabel, isOcrBusy } from "../format";
 import { folderHref, useCurrentFolder } from "../routes";
+import { useTranslation } from "react-i18next";
 
 const POLL_INTERVAL = 2500;
 // Folders and the overview keep separate choices, so folders open in their own arrangement by default.
@@ -45,15 +46,6 @@ const SORT_KEYS = { overview: "archivar.librarySort", folder: "archivar.folderSo
 const DEFAULT_SORTS: Record<keyof typeof SORT_KEYS, LibrarySort> = { overview: "updated", folder: "custom" };
 const FOLDER_SORTS: LibrarySort[] = ["custom", ...LIBRARY_SORTS.filter((value) => value !== "custom")];
 const OVERVIEW_SORTS = LIBRARY_SORTS.filter((value) => value !== "custom");
-
-const SORT_LABELS: Record<LibrarySort, string> = {
-  updated: "Zuletzt geändert",
-  "created-desc": "Hochgeladen, neueste zuerst",
-  "created-asc": "Hochgeladen, älteste zuerst",
-  "title-asc": "Name A–Z",
-  "title-desc": "Name Z–A",
-  custom: "Eigene Reihenfolge",
-};
 
 function readSort(scope: keyof typeof SORT_KEYS): LibrarySort {
   const allowed = scope === "folder" ? FOLDER_SORTS : OVERVIEW_SORTS;
@@ -80,10 +72,10 @@ export type CardShape = "portrait" | "landscape" | "square";
 
 const CARD_SHAPE_KEY = "archivar.cardShape";
 
-const CARD_SHAPES: { value: CardShape; label: string; Icon: typeof RatioPortrait }[] = [
-  { value: "portrait", label: "Hochformat", Icon: RatioPortrait },
-  { value: "landscape", label: "Querformat", Icon: RatioLandscape },
-  { value: "square", label: "Quadratisch", Icon: RatioSquare },
+const CARD_SHAPES: { value: CardShape; Icon: typeof RatioPortrait }[] = [
+  { value: "portrait", Icon: RatioPortrait },
+  { value: "landscape", Icon: RatioLandscape },
+  { value: "square", Icon: RatioSquare },
 ];
 
 /** The shape of the cards' thumbnails, the same for the overview and all folders. */
@@ -139,6 +131,7 @@ export function LibraryPage() {
   const q = params.get("q") ?? undefined;
   const legacyFolder = params.get("folder");
   const toast = useToast();
+  const { t } = useTranslation();
   const [sort, setSort] = useStoredSort(folder ? "folder" : "overview");
   const [cardShape, setCardShape] = useCardShape();
   const [smartStacks, setSmartStacks] = useStoredFlag(SMART_STACKS_KEY);
@@ -225,8 +218,8 @@ export function LibraryPage() {
     return <Navigate to={folderHref(legacyFolder, rest.toString())} replace />;
   }
 
-  const listTitle = q ? `Suche „${q}“` : folder ? folder.split("/").join(" / ") : "Alle Dokumente";
-  const title = smartIds ? (openedSmartStack?.title ?? "Smarter Stapel") : listTitle;
+  const listTitle = q ? t("library.search", { q }) : folder ? folder.split("/").join(" / ") : t("library.allDocuments");
+  const title = smartIds ? (openedSmartStack?.title ?? t("library.smartStack")) : listTitle;
 
   return (
     <div className="page">
@@ -235,17 +228,17 @@ export function LibraryPage() {
           <h1>{title}</h1>
           {!library.loading && smartIds && (
             <p className="muted small">
-              Smarter Stapel · {items.length === 1 ? "1 Dokument" : `${items.length} Dokumente`} ·{" "}
+              {t("library.smartStack")} · {t("library.documents", { count: items.length })} ·{" "}
               <Link to={withoutSmart()} className="underline">
-                Zurück zu „{listTitle}“
+                {t("library.backTo", { title: listTitle })}
               </Link>
             </p>
           )}
           {!library.loading && !smartIds && (
             <p className="muted small">
-              {displayItems.length === 1 ? "1 Eintrag" : `${displayItems.length} Einträge`}
-              {hiddenCount > 0 && ` · ${hiddenCount} in Ordnern ausgeblendet`}
-              {sort === "custom" && items.length > 1 && " · Karten ziehen, um sie anzuordnen"}
+              {t("library.entries", { count: displayItems.length })}
+              {hiddenCount > 0 && ` · ${t("library.hiddenInFolders", { count: hiddenCount })}`}
+              {sort === "custom" && items.length > 1 && ` · ${t("library.dragToArrange")}`}
             </p>
           )}
         </div>
@@ -255,9 +248,9 @@ export function LibraryPage() {
               type="button"
               className={`btn btn--sm btn--icon ${showFiled ? "is-active" : ""}`}
               aria-pressed={showFiled}
-              aria-label="Dokumente in Ordnern zeigen"
+              aria-label={t("library.showFiled")}
               onClick={() => setShowFiled(!showFiled)}
-              title={showFiled ? "Zeigt alle Dokumente, auch die in Ordnern" : "Zeigt nur Dokumente ohne Ordner – klicken, um auch die in Ordnern zu zeigen"}
+              title={showFiled ? t("library.showingFiled") : t("library.hidingFiled")}
             >
               <Folder size={18} />
             </button>
@@ -267,27 +260,27 @@ export function LibraryPage() {
               type="button"
               className={`btn btn--sm btn--icon ${grouping ? "is-active" : ""}`}
               aria-pressed={grouping}
-              aria-label="Smarte Stapel"
+              aria-label={t("library.smartStacks")}
               disabled={sort === "custom"}
               onClick={() => setSmartStacks(!smartStacks)}
               title={
                 sort === "custom"
-                  ? "Nicht bei eigener Reihenfolge"
-                  : "Smarte Stapel: fasst Dateien zusammen, die nach Name oder Uploadzeit zusammengehören – nur in der Ansicht, nichts wird gespeichert"
+                  ? t("library.smartStacksCustom")
+                  : t("library.smartStacksHint")
               }
             >
               <SmartStackIcon size={18} />
             </button>
           )}
-          <div className="segmented segmented--icons" role="radiogroup" aria-label="Kartenformat">
-            {CARD_SHAPES.map(({ value, label, Icon }) => (
+          <div className="segmented segmented--icons" role="radiogroup" aria-label={t("library.cardShape")}>
+            {CARD_SHAPES.map(({ value, Icon }) => (
               <button
                 key={value}
                 type="button"
                 role="radio"
                 aria-checked={cardShape === value}
-                aria-label={label}
-                title={label}
+                aria-label={t(`library.cardShapes.${value}`)}
+                title={t(`library.cardShapes.${value}`)}
                 className={cardShape === value ? "is-active" : ""}
                 onClick={() => setCardShape(value)}
               >
@@ -299,12 +292,12 @@ export function LibraryPage() {
             className="input input--sm library-sort"
             value={sort}
             onChange={(e) => setSort(e.target.value as LibrarySort)}
-            aria-label="Sortierung"
-            title="Sortierung"
+            aria-label={t("library.sort")}
+            title={t("library.sort")}
           >
             {(folder ? FOLDER_SORTS : OVERVIEW_SORTS).map((value) => (
               <option key={value} value={value}>
-                {SORT_LABELS[value]}
+                {t(`library.sorts.${value}`)}
               </option>
             ))}
           </select>
@@ -361,26 +354,27 @@ export function LibraryPage() {
 
 function EmptyLibrary({ filtered, allFiled }: { filtered: boolean; allFiled: boolean }) {
   const { uploadToCurrentTarget } = useUpload();
+  const { t } = useTranslation();
   if (allFiled) {
     return (
       <div className="empty-state">
-        <p className="muted">Alle Dokumente sind in Ordnern einsortiert.</p>
+        <p className="muted">{t("library.allFiled")}</p>
       </div>
     );
   }
   if (filtered) {
     return (
       <div className="empty-state">
-        <p className="muted">Keine passenden Dokumente gefunden.</p>
+        <p className="muted">{t("library.noMatches")}</p>
       </div>
     );
   }
   return (
     <label className="empty-state empty-state--upload">
       <Upload size={28} strokeWidth={1.5} />
-      <h2>Noch nichts archiviert</h2>
-      <p className="muted">Fotos, Scans und PDFs hierher ziehen oder auswählen.</p>
-      <span className="btn btn--primary">Dateien auswählen</span>
+      <h2>{t("library.emptyTitle")}</h2>
+      <p className="muted">{t("library.emptyText")}</p>
+      <span className="btn btn--primary">{t("library.chooseFiles")}</span>
       <input
         type="file"
         multiple
@@ -405,6 +399,7 @@ interface SelectionBarProps {
 
 export function SelectionBar({ items, allSelected, onSelectAll, onClear, onDone }: SelectionBarProps) {
   const toast = useToast();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { reload: reloadFolders } = useFolders();
   const from = useCurrentFolder();
@@ -435,7 +430,7 @@ export function SelectionBar({ items, allSelected, onSelectAll, onClear, onDone 
   const stack = () =>
     run(async () => {
       const created = await api.createStack({ documentIds });
-      toast.success(`Stapel „${created.title}“ erstellt`);
+      toast.success(t("selection.stackCreated", { title: created.title }));
       onDone();
       navigate(`/stacks/${created.id}`);
     });
@@ -448,8 +443,8 @@ export function SelectionBar({ items, allSelected, onSelectAll, onClear, onDone 
         else await api.updateStack(item.stack.id, { folders: next(item.stack.folders) });
       }
       await reloadFolders();
-      const where = targets.length === 1 ? `„${targets[0]}“` : `${targets.length} Ordner`;
-      toast.success(move ? `In ${where} verschoben` : `Zu ${where} hinzugefügt`);
+      const where = targets.length === 1 ? t("quoted", { text: targets[0] }) : t("selection.folderCount", { count: targets.length });
+      toast.success(move ? t("selection.movedTo", { where }) : t("selection.addedTo", { where }));
       setFolderDialog(false);
       onDone();
     });
@@ -464,7 +459,7 @@ export function SelectionBar({ items, allSelected, onSelectAll, onClear, onDone 
         else await api.updateStack(item.stack.id, { folders: next });
       }
       await reloadFolders();
-      toast.success(`Aus „${folder}“ entfernt`);
+      toast.success(t("selection.removedFrom", { folder }));
       onDone();
     });
 
@@ -485,32 +480,32 @@ export function SelectionBar({ items, allSelected, onSelectAll, onClear, onDone 
     run(async () => {
       for (const id of documentIds) await api.deleteDocument(id);
       await reloadFolders();
-      toast.success(documentIds.length === 1 ? "1 Dokument gelöscht" : `${documentIds.length} Dokumente gelöscht`);
+      toast.success(t("selection.deleted", { count: documentIds.length }));
       onDone();
     });
 
   return (
-    <div className="selection-bar" role="toolbar" aria-label="Auswahl">
-      <button type="button" className="btn btn--ghost btn--icon" onClick={onClear} aria-label="Auswahl aufheben">
+    <div className="selection-bar" role="toolbar" aria-label={t("selection.label")}>
+      <button type="button" className="btn btn--ghost btn--icon" onClick={onClear} aria-label={t("selection.clear")}>
         <X size={18} />
       </button>
-      <span className="selection-bar__count">{items.length} ausgewählt</span>
+      <span className="selection-bar__count">{t("selection.count", { count: items.length })}</span>
       <div className="selection-bar__actions">
-        <button type="button" className="btn" onClick={onSelectAll} disabled={working || allSelected} title="Alle markieren">
+        <button type="button" className="btn" onClick={onSelectAll} disabled={working || allSelected} title={t("selection.selectAll")}>
           <SquareCheck size={16} />
-          <span className="hide-mobile">Alle markieren</span>
+          <span className="hide-mobile">{t("selection.selectAll")}</span>
         </button>
-        <button type="button" className="btn" onClick={() => setBatchDialog(true)} disabled={working} title="Bildeinstellung und Texterkennung auf die Auswahl anwenden">
+        <button type="button" className="btn" onClick={() => setBatchDialog(true)} disabled={working} title={t("selection.batchTitle")}>
           <Wand size={16} />
-          <span className="hide-mobile">Stapelverarbeitung</span>
+          <span className="hide-mobile">{t("selection.batch")}</span>
         </button>
         <button type="button" className="btn" onClick={stack} disabled={working || documentIds.length === 0}>
           <Layers size={16} />
-          <span className="hide-mobile">Stapeln</span>
+          <span className="hide-mobile">{t("selection.stack")}</span>
         </button>
-        <button type="button" className="btn" onClick={() => setFolderDialog(true)} disabled={working} title="In Ordner ablegen">
+        <button type="button" className="btn" onClick={() => setFolderDialog(true)} disabled={working} title={t("selection.folderTitle")}>
           <FolderPlus size={16} />
-          <span className="hide-mobile">Ordner</span>
+          <span className="hide-mobile">{t("selection.folder")}</span>
         </button>
         {from && (
           <button
@@ -518,12 +513,12 @@ export function SelectionBar({ items, allSelected, onSelectAll, onClear, onDone 
             className="btn"
             onClick={() => removeFromFolder(from)}
             disabled={working}
-            aria-label={`Aus „${from}“ entfernen`}
-            title={`Aus „${from}“ entfernen`}
+            aria-label={t("selection.removeFrom", { folder: from })}
+            title={t("selection.removeFrom", { folder: from })}
           >
             <FolderMinus size={16} />
             <span className="hide-mobile" aria-hidden>
-              Ordner
+              {t("selection.folder")}
             </span>
           </button>
         )}
@@ -532,12 +527,12 @@ export function SelectionBar({ items, allSelected, onSelectAll, onClear, onDone 
           onExport={exportPdf}
           busy={exporting}
           disabled={working || !exportable}
-          title="Bilder und PDFs der Auswahl als ein PDF herunterladen"
+          title={t("selection.pdfTitle")}
           labelClassName="hide-mobile"
         />
         <button type="button" className="btn btn--danger-ghost" onClick={() => setConfirmDelete(true)} disabled={working}>
           <Trash size={16} />
-          <span className="hide-mobile">Löschen</span>
+          <span className="hide-mobile">{t("common.delete")}</span>
         </button>
       </div>
 
@@ -554,9 +549,9 @@ export function SelectionBar({ items, allSelected, onSelectAll, onClear, onDone 
 
       <ConfirmDialog
         open={confirmDelete}
-        title="Endgültig löschen"
-        message={`${documentIds.length === 1 ? "1 Dokument" : `${documentIds.length} Dokumente`} inklusive aller Bearbeitungen und erkannter Texte löschen?`}
-        confirmLabel="Löschen"
+        title={t("selection.deleteTitle")}
+        message={t("selection.deleteText", { count: documentIds.length })}
+        confirmLabel={t("common.delete")}
         danger
         onConfirm={remove}
         onClose={() => setConfirmDelete(false)}

@@ -1,0 +1,694 @@
+common:
+  cancel: Cancel
+  close: Close
+  delete: Delete
+  save: Save
+  retry: Try again
+  apply: Apply
+  back: Back
+  name: Name
+
+format:
+  yesterday: "Yesterday, {{time}}"
+  weekdayTime: "{{weekday}}, {{time}}"
+  seconds_one: "{{count}} second"
+  seconds_other: "{{count}} seconds"
+  minutes_one: "{{count}} minute"
+  minutes_other: "{{count}} minutes"
+  hours_one: "{{count}} hour"
+  hours_other: "{{count}} hours"
+
+ocrStatus:
+  none: No text recognized
+  pending: Text recognition waiting
+  running: Recognizing text
+  done: Text recognized
+  failed: Text recognition failed
+
+notFound:
+  title: Not found
+  text: This page does not exist.
+  home: Back to overview
+
+shell:
+  menu: Menu
+  home: archivar home
+  searchPlaceholder: Search …
+  search: Search
+  settings: Settings
+
+auth:
+  serverUnreachable: The server cannot be reached.
+  loading: Loading
+
+api:
+  uploadFailed: Upload failed
+  uploadAborted: Upload cancelled
+  uploadTimeout: Upload timed out
+  documentFileName: "document-{{id}}.pdf"
+  documentsFileName: Documents.pdf
+
+passkeys:
+  deviceName: "{{browser}} on {{system}}"
+
+smartStacks:
+  series: Numbered series
+
+login:
+  wrongCredentials: The user name or password is wrong.
+  wrongPassword: The password is wrong.
+  passkeyCreated: Passkey created
+  passkeyFailed: "The passkey could not be created: {{message}}"
+  passkeyLoginFailed: Logging in with the passkey failed.
+  username: User name
+  password: Password
+  addPasskey: Create a passkey for this device to log in without a password from now on
+  submit: Log in
+  withPasskey: Log in with a passkey
+
+unsaved:
+  title: Edits not saved
+  discard: Discard
+  text: The changes to this image have not been saved yet.
+
+editableTitle:
+  untitled: Untitled
+  label: Title
+
+upload:
+  file: file
+  fileOf: "file {{current}} of {{total}}"
+  processing: "Processing {{label}} …"
+  uploading: "Uploading {{label}} …"
+  progress: Upload progress
+  takePhoto: Take a photo
+  upload: Upload
+  dropHere: Drop files here
+  skipped_one: 1 file is not supported and was skipped
+  skipped_other: "{{count}} files are not supported and were skipped"
+  uploaded_one: 1 file uploaded
+  uploaded_other: "{{count}} files uploaded"
+  duplicate: "“{{name}}” already exists ({{titles}}) and was uploaded anyway"
+  duplicates: "{{count}} files already existed and were uploaded anyway"
+  failed: "{{count}} files could not be uploaded"
+
+quoted: "“{{text}}”"
+
+tabs:
+  more: More
+  moreLabel: More sections
+
+zoom:
+  label: Zoom
+  out: Zoom out
+  level: Zoom level
+  in: Zoom in
+  fitTitle: Show the whole image
+  fit: Fit
+  original: Original size
+  openInTab: Open in a new tab
+
+archiveExport:
+  started: Export started
+  description: "Downloads the whole archive as a ZIP: the SQLite database (<code>archivar.sqlite</code>, with the data of all users) and all images and files (<code>files/</code>). Unzipped into the data directory, it restores the archive. On the server, <code>bun run export</code> does the same."
+  export: Export archive
+  confirm: "Do you really want to download {{size}}?"
+  download: Download
+
+folderPicker:
+  label: Folders
+  remove: "Remove {{path}}"
+  placeholder: e.g. important/2026
+
+tokens:
+  deleted: "Token “{{name}}” deleted"
+  copied: Token copied
+  description: "With a token, scripts and other programs can use the API, e.g. <code>scripts/upload.sh</code>. It is sent as the header <code>Authorization: Bearer …</code>."
+  new: New token
+  namePlaceholder: Name, e.g. Scanner
+  create: Create
+  token: "Token “{{name}}”"
+  copy: Copy
+  shownOnce: The token is only shown now. Keep it somewhere safe.
+  loading: Loading tokens …
+  none: No tokens yet.
+  list: API tokens
+  created: "created {{date}}"
+  lastUsed: "last used {{date}}"
+  neverUsed: not used yet
+  delete: "Delete token “{{name}}”"
+
+access:
+  wrongCurrent: The current password is wrong.
+  minLength: "At least {{count}} characters."
+  mismatch: The passwords do not match.
+  changed: Password changed
+  set: Password set
+  removed: Password removed
+  passkeyDeleted: "Passkey “{{name}}” deleted"
+  protected: "Archivar is protected by a password. Forgot it? On the server, <code>bun run password</code> sets a new one."
+  unprotected: "Without a password, anyone who can reach the address can use Archivar. With a password, every browser has to log in; API tokens keep working."
+  current: Current password
+  newPassword: New password
+  repeat: Repeat password
+  change: Change password
+  setPassword: Set password
+  removeTitle: Also deletes all passkeys
+  remove: Remove password
+  passkeys: Passkeys
+  passkeysLoading: Loading passkeys …
+  noPasskeys: No passkeys yet. You can create one for your device when logging in.
+  deletePasskey: "Delete passkey “{{name}}”"
+  addPasskey: Passkey for this device
+  logout: Log out
+
+ocrLanguages:
+  deu: German
+  eng: English
+  fra: French
+  ita: Italian
+  spa: Spanish
+  por: Portuguese
+  nld: Dutch
+  dan: Danish
+  swe: Swedish
+  nor: Norwegian
+  fin: Finnish
+  pol: Polish
+  ces: Czech
+  slk: Slovak
+  hun: Hungarian
+  ron: Romanian
+  hrv: Croatian
+  tur: Turkish
+  ell: Greek
+  rus: Russian
+  ukr: Ukrainian
+
+pdf:
+  qualities:
+    low: Low
+    medium: Medium
+    high: High
+    original: Original
+  qualityHints:
+    low: 150 DPI, small files for screen and email
+    medium: 300 DPI, good for printing
+    high: Up to 600 DPI, barely compressed
+    original: Full resolution, lossless (PNG)
+  choose: Choose PDF quality
+  quality: PDF quality
+  default: Default
+  custom: Custom …
+  customHint: 300 DPI, choose the compression yourself
+  customQuality: Quality
+  customQualityHint: the higher, the better the quality
+  download: Download
+
+settings:
+  tabs:
+    sizes: Image sizes
+    import: Import
+    api: API
+    access: Access
+    language: Language
+    export: Export
+  mediumPageSize: "{{description}}. A black-and-white page is about 150–200 KB."
+  saved: Settings saved
+  title: Settings
+  loading: Loading settings …
+  pdfQualityLegend: Image quality of the PDF export (clicking “PDF”; the arrow next to it offers the others)
+  autoOcr: Recognize text after uploading
+  autoOcrHint: Recognizes the text of images and PDFs right when they are uploaded.
+  allText: Recognize all text
+  allTextHint: Also keeps uncertain text that is probably wrong.
+  ocrLanguage: Text recognition language
+  automatic: Automatic
+  ocrLanguageFixed: Applies to all uploaded images and PDFs; single documents can be recognized again in the “Text” tab.
+  ocrLanguageAuto: "Recognizes with {{languages}} first. If the text is in another language, it is recognized again in that language."
+  and: " and "
+  applyPreset: Apply image preset
+  noPreset: None – images stay unchanged
+  presetHint: Applied to every uploaded image before text recognition. Image presets are saved in an image's “Edit” tab.
+  importFolders: Add to folders
+  importFoldersHint: Every upload is also put into these folders.
+  uiLanguage: Interface language
+  uiLanguageHint: Applies to this browser right away, without “Save”.
+
+colorModes:
+  color: Color
+  grayscale: Grayscale
+  bw: B/W
+
+denoise:
+  off: "Off"
+  light: Light
+  medium: Medium
+  strong: Strong
+
+presetSteps:
+  autoRotate: Rotate automatically
+  rotation: "Rotation {{value}}°"
+  autoDewarp: Dewarp automatically
+  autoCrop: Auto crop
+  cropRect: Fixed crop
+  cropQuad: Fixed perspective
+  autoBw: Automatic B/W
+  grayMix: "Grayscale channels: {{value}}"
+  grayThreshold: "Grayscale threshold {{value}}"
+  brightness: "Brightness {{value}}"
+  contrast: "Contrast {{value}}"
+  saturation: "Saturation {{value}}"
+  hue: "Hue {{value}}°"
+  bwThreshold: "Threshold {{value}}"
+  autoLevels: Auto levels
+  manualLevels: Manual levels
+  denoise: "Denoise: {{value}}"
+  shapes_one: "Shapes: 1 rectangle"
+  shapes_other: "Shapes: {{count}} rectangles"
+
+grayMix:
+  channels:
+    reds: Reds
+    yellows: Yellows
+    greens: Greens
+    cyans: Cyans
+    blues: Blues
+    magentas: Magentas
+  channelsShort:
+    reds: Re
+    yellows: Ye
+    greens: Gr
+    cyans: Cy
+    blues: Bl
+    magentas: Ma
+  presets:
+    luma: Default
+    balanced: Balanced
+    red: Red filter
+    yellow: Yellow filter
+    green: Green filter
+    blue: Blue filter
+
+shapeColors:
+  black: Black
+  white: White
+
+presetDialog:
+  brightness: Brightness
+  contrast: Contrast
+  saturation: Saturation
+  hue: Hue
+  threshold: Threshold
+  denoise: Denoise
+  settings: Settings
+  nothing: The image has no edits that can be saved.
+  colorMode: Color mode
+  grayMix: Grayscale channels
+  customValues: Custom values
+  shapesHint: Kept at the same place relative to the image size – suited to scans with the same layout. They replace existing shapes.
+  rotation: Rotation
+  autoHint: Automatic steps are worked out again for every image. Settings not chosen stay unchanged.
+
+batch:
+  started_one: Batch processing started for 1 document
+  started_other: "Batch processing started for {{count}} documents"
+  title: Batch processing
+  preset: Image preset
+  presetHint: Only for images, applied on top of their current edits.
+  rename: Rename
+  renamePlaceholder: "e.g. Scans {n}/{m}"
+  renamePreview: "Becomes “{{first}}”."
+  renamePreviewRange: "Becomes “{{first}}” … “{{last}}”."
+  renameHint: "{n} stands for the running number from 1 (padded with zeros from 10 documents), {m} for the count. Leave empty to keep the names."
+  ocr: Recognize text
+  ocrHint: Recognizes the text of the images and PDFs again.
+  language: Language
+  automaticLanguages: "Automatic ({{languages}})"
+  background: Keeps running in the background; “Batch processing” in the sidebar shows the progress.
+
+presets:
+  saved: Image preset saved
+  deleted: "“{{name}}” deleted"
+  title: Image presets
+  intro: "Saved editing steps for images: apply them in the “Edit” tab, on import (Settings → Import) and in batch processing."
+  empty: No image presets yet. Save the edits of an image as an image preset in the “Edit” or “Shapes” tab.
+  onImport: On import
+  editLabel: "Edit {{name}}"
+  edit: Edit
+  deleteLabel: "Delete {{name}}"
+  steps: "Steps of {{name}}"
+  editTitle: Edit image preset
+  deleteTitle: Delete image preset
+  deleteImportPreset: "Delete “{{name}}”? It is applied on import – afterwards imports use the image editing from the settings again."
+  deleteConfirm: "Delete “{{name}}”? Images edited with it stay unchanged."
+
+jobs:
+  states:
+    pending: Waiting
+    running: Processing
+    ocr: Recognizing text
+    done: Done
+    skipped: Skipped
+    failed: Error
+  importStates:
+    pending: Waiting for upload
+    running: Processing
+  files_one: 1 file
+  files_other: "{{count}} files"
+  rename: "Rename “{{scheme}}”"
+  preset: "Image preset “{{name}}”"
+  allText: all text
+  ocrWith: "Text recognition ({{details}})"
+  ocr: Text recognition
+  title: Batch processing
+  intro: Batch jobs and imports, newest first.
+  removeFinished: Remove finished
+  empty: No jobs yet. Select documents in the overview and start batch processing – uploads show up here too.
+  import: Import
+  jobLabel: "{{title}} from {{date}}"
+  duration: "Duration: {{duration}}"
+  doneOf: "{{done}} of {{total}} done"
+  failed: "{{count}} failed"
+  remove: Remove job
+  removeTitle: Remove from the list
+  progress: Progress
+  documents: Documents
+  showDocuments: Show documents
+
+folderTarget:
+  title: File in folders
+  add: Add
+  move: Move
+  folders: Folders
+  new: new
+  none: No folders yet.
+  newFolder: New folder
+  newPlaceholder: New folder, e.g. important/2026
+  create: Create
+  moveFromHint: "“Move” takes the selection out of “{{folder}}”, “Add” keeps its current folders."
+  moveHint: "“Move” replaces the selection's current folders, “Add” keeps them."
+
+folderTree:
+  folders: Folders
+  allDocuments: All documents
+  jobs: Batch processing
+  running_one: 1 job running
+  running_other: "{{count}} jobs running"
+  presets: Image presets
+  newFolder: New folder
+  newFolderName: Name of the new folder
+  empty: No folders yet
+  renameFolder: Rename folder
+  collapse: Collapse
+  expand: Expand
+  rename: "Rename {{path}}"
+  delete: "Delete {{path}}"
+  deleteTitle: Delete folder
+  deleteConfirm: "Remove the folder <strong>{{path}}</strong> and all its subfolders? The documents themselves are kept."
+
+grid:
+  instructions: Press space to pick up the card, move it with the arrow keys and press space to drop it. Escape cancels.
+  move: "Move {{label}}"
+  dragTitle: Drag to change the order
+
+card:
+  pages: "{{count}} p."
+  stack: Stack
+  deselect: "Deselect {{title}}"
+  select: "Select {{title}}"
+  smartStack: Smart stack
+  smartReasons:
+    name: Name series
+    similar: Similar names
+
+stack:
+  loading: Loading …
+  emptyDissolved: The stack is empty and was dissolved
+  dissolved: Stack dissolved
+  deleted: Stack deleted
+  meta_one: "Stack · 1 page · last changed {{date}}"
+  meta_other: "Stack · {{count}} pages · last changed {{date}}"
+  addPages: Add pages
+  dissolve: Dissolve stack
+  delete: Delete stack
+  forward: Move forward
+  backward: Move back
+  removeFromStack: Remove from stack
+  dissolveText: The stack is removed, the documents are kept on their own.
+  dissolveConfirm: Dissolve
+  deleteText: "Permanently delete the stack and all {{count}} documents?"
+
+library:
+  sorts:
+    updated: Last changed
+    created-desc: Uploaded, newest first
+    created-asc: Uploaded, oldest first
+    title-asc: Name A–Z
+    title-desc: Name Z–A
+    custom: Custom order
+  cardShapes:
+    portrait: Portrait
+    landscape: Landscape
+    square: Square
+  search: "Search “{{q}}”"
+  allDocuments: All documents
+  smartStack: Smart stack
+  documents_one: 1 document
+  documents_other: "{{count}} documents"
+  backTo: "Back to “{{title}}”"
+  entries_one: 1 item
+  entries_other: "{{count}} items"
+  hiddenInFolders: "{{count}} in folders hidden"
+  dragToArrange: drag cards to arrange them
+  showFiled: Show documents in folders
+  showingFiled: Shows all documents, including those in folders
+  hidingFiled: Shows only documents without a folder – click to show those in folders too
+  smartStacks: Smart stacks
+  smartStacksCustom: Not with a custom order
+  smartStacksHint: "Smart stacks: groups files that belong together by name or upload time – only in the view, nothing is saved"
+  cardShape: Card shape
+  sort: Sort order
+  allFiled: All documents are filed in folders.
+  noMatches: No matching documents found.
+  emptyTitle: Nothing archived yet
+  emptyText: Drag photos, scans and PDFs here or choose them.
+  chooseFiles: Choose files
+
+selection:
+  stackCreated: "Stack “{{title}}” created"
+  folderCount: "{{count}} folders"
+  movedTo: "Moved to {{where}}"
+  addedTo: "Added to {{where}}"
+  removedFrom: "Removed from “{{folder}}”"
+  deleted_one: 1 document deleted
+  deleted_other: "{{count}} documents deleted"
+  label: Selection
+  clear: Clear selection
+  count: "{{count}} selected"
+  selectAll: Select all
+  batchTitle: Apply an image preset and text recognition to the selection
+  batch: Batch processing
+  stack: Stack
+  folderTitle: File in folders
+  folder: Folders
+  removeFrom: "Remove from “{{folder}}”"
+  pdfTitle: Download the selection's images and PDFs as one PDF
+  deleteTitle: Delete permanently
+  deleteText_one: Delete 1 document including all edits and recognized text?
+  deleteText_other: "Delete {{count}} documents including all edits and recognized text?"
+
+editControls:
+  shades:
+    best: best guess
+    darker: darker
+    lighter: lighter
+  orientation: Orientation
+  rotateLeft: Rotate left
+  rotateRight: Rotate right
+  crop: Crop
+  perspective: Straighten
+  autoRotateTitle: Rotates the image so that the text is upright
+  autoRotate: Auto rotate
+  autoCropTitle: Finds the edge of the page or photo and cuts off the background
+  autoCrop: Auto crop
+  detectingOrientation: Detecting the text orientation …
+  findingEdges: Looking for the page edge …
+  autoDewarp: Dewarp automatically
+  detectingPage: Detecting the page …
+  dewarped: Curved page flattened.
+  cropHint: Drag the corners to set the crop, Enter applies it.
+  perspectiveHint: Drag the corners onto the document's corners – it gets straightened. Enter applies it.
+  reset: Reset
+  cropActive: Crop active.
+  remove: Remove
+  light: Light
+  brightness: Brightness
+  contrast: Contrast
+  autoLevels: Automatic levels
+  color: Color
+  autoBw: Automatic B/W
+  autoBwLoading: Working out the values …
+  autoBwVariant: "Variant {{index}} of {{count}} · {{shade}}"
+  autoBwNext: " – click again for the next one."
+  autoBwHint: Works out brightness, contrast and threshold.
+  colorMode: Color mode
+  saturation: Saturation
+  hue: Hue
+  threshold: Threshold
+  thresholdSlider: Threshold
+  noise: Remove noise
+  denoise: Denoise
+  denoiseStrength: "Strength: {{level}} – {{next}}"
+  denoiseStronger: click again for stronger.
+  denoiseOff: click again to turn it off.
+  denoiseHint: Smooths noise and removes single specks in B/W mode.
+  channels: Channels
+  customValues: Custom values
+  resetAll: Reset all
+
+shapes:
+  rectangle: "Rectangle {{number}}"
+  outdated: Crop, rotation or dewarping were changed after drawing. Check whether the shapes are still in the right place.
+  title: Rectangles
+  intro: Drag on the image to draw a rectangle, e.g. to black out text or paint over stains in white. Rectangles can be moved, resized with their handles and deleted with Delete.
+  delete: Delete rectangle
+  savePresetTitle: Save as an image preset to apply the rectangles to other images on import or in batch processing
+  savePreset: As image preset
+  removeAll: Remove all
+  none: No rectangles yet.
+  count_one: 1 rectangle
+  count_other: "{{count}} rectangles"
+  colorSelected: Rectangle color
+  colorNew: Color for new rectangles
+  color: Color
+  customColor: Custom color
+  ocrHint: After saving, the text is recognized again so that painted-over text also disappears from the text, search and PDF.
+  saving: Saving …
+
+vector:
+  details:
+    "1": Very coarse
+    "2": Coarse
+    "3": Medium
+    "4": Fine
+    "5": Very fine
+  area: "Vector area {{number}}"
+  outdated: Crop, rotation or dewarping were changed after vectorizing. Check whether the areas are still in the right place.
+  title: Areas
+  intro: "Drag an area on the image: it is vectorized with suitable settings and replaces the image's pixels when saved. Areas can be moved, resized with their handles and deleted with Delete."
+  delete: Delete area
+  showVectors: Show vectors
+  showOriginal: Show original
+  none: No areas yet.
+  areas_one: "1 area, {{vectorized}} vectorized"
+  areas_other: "{{count}} areas, {{vectorized}} vectorized"
+  vectorization: Vectorization
+  colors: Colors
+  bw: Black and white
+  detail: Detail
+  threshold: Threshold
+  edges: Edges
+  smooth: Smooth
+  sharp: Sharp
+  auto: Set automatically
+  suggesting: Working out the settings …
+  vectorizing: Vectorizing …
+  failed: Not vectorized – change the settings to try again.
+  paths_one: 1 shape
+  paths_other: "{{count}} shapes"
+  seconds: "{{value}} s"
+  ocrHint: After saving, the text is recognized again.
+  pending: Vectorizing …
+
+preview:
+  label: Preview
+  finalHint: Final result · hover over the image for 100 %
+  live: Live view
+  rendering: Rendering preview …
+  show: Preview
+  loadFailed: "The preview could not be loaded: {{error}}"
+  fullResolution: Full-resolution preview
+  renderingLabel: Rendering preview
+  renderFailed: The preview could not be rendered
+  moveCorner: "Move corner {{number}}"
+
+document:
+  tabs:
+    edit: Edit
+    text: Text
+    details: File
+    vectors: Vector
+    shapes: Shapes
+  editSaved: "Edits of “{{title}}” saved"
+  shapesSavedOcr: Shapes saved – recognizing the text again
+  shapesSaved: Shapes saved
+  vectorsSavedOcr: Vectors saved – recognizing the text again
+  vectorsSaved: Vectors saved
+  noOrientation: Orientation not detected – too little text in the image.
+  alreadyUpright: The image is already upright.
+  noEdges: No page edge found.
+  presetShapes: The image preset's shapes were taken over and are saved in the “Shapes” tab.
+  presetSaved: "Image preset “{{name}}” saved"
+  deleted: Document deleted
+  duplicated: Duplicate created
+  detached: The document now has its own original file
+  deleteText: "Permanently delete “{{title}}” including its edits and recognized text?"
+  deleteHeir_one: " The original file is kept for the duplicate, “{{heir}}” becomes the new original."
+  deleteHeir_other: " The original file is kept for the {{count}} duplicates, “{{heir}}” becomes the new original."
+  pageOf: "Page {{page}} of {{count}}"
+  previousPage: Previous page
+  previousDocument: Previous document
+  nextPage: Next page
+  nextDocument: Next document
+  downloadOriginal: Download original
+  delete: Delete document
+  applyPreset: Apply image preset
+  applyPresetOption: Apply image preset …
+  noPresets: No image presets saved
+  applying: Applying
+  savePreset: Save as image preset
+  savePresetTitle: Save as an image preset to apply these edits to other images
+  savePresetDialog: Save image preset
+  openPdf: Open PDF
+  noPreview: There is no preview for this file type.
+  download: Download
+
+textPanel:
+  copied: Text copied
+  confidence: "{{value}} % confidence"
+  fromPdf: taken from the PDF
+  copy: Copy text
+  recognizeIn: "Recognize in {{language}}"
+  recognize: Recognize text
+  recognizeAgain: Recognize again
+  language: "Language: {{language}}"
+  languageUnknown: Language not detected
+  languageSelect: Text recognition language
+  removed_one: 1 uncertain piece of text was hidden as probably wrong.
+  removed_other: "{{count}} uncertain pieces of text were hidden as probably wrong."
+  allTextKept: All text was kept, including uncertain text.
+  hideUncertain: Hide uncertain text
+  recognizing: Recognizing text …
+  noText: No text yet.
+  recognized: Recognized text
+  save: Save text
+
+details:
+  fileName: File name
+  type: Type
+  size: Size
+  dimensions: Dimensions
+  dimensionsValue: "{{width}} × {{height}} px"
+  pages: Pages
+  uploaded: Uploaded
+  modified: Changed
+  original: Original
+  pdfTitle: Download the image with the saved text as a searchable PDF
+  duplicateTitle: Create a copy with the same edits that uses the same original file
+  duplicate: Duplicate
+  detachTitle: Copy the original file and remove the link to the original
+  detach: Make independent
+  copyOf: Duplicate of
+  usesOriginal: " (uses its original file)"
+  copies: Duplicates

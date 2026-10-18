@@ -6,12 +6,15 @@ import { useAuth } from "../hooks/auth";
 import { useToast } from "../hooks/toast";
 import { Fingerprint, Loader, LogOut, Plus, Trash } from "../icons";
 import { createPasskey, passkeyCancelled, passkeysSupported } from "../passkeys";
+import { Trans, useTranslation } from "react-i18next";
+import { i18n } from "../i18n";
 
-const wrongPassword = (error: unknown) => (error instanceof ApiRequestError && error.status === 403 ? new Error("Das aktuelle Kennwort ist falsch.") : error);
+const wrongPassword = (error: unknown) => (error instanceof ApiRequestError && error.status === 403 ? new Error(i18n.t("access.wrongCurrent")) : error);
 
 /** Password and passkeys; changes take effect at once, not with the dialog's „Speichern“. */
 export function AccessSettings() {
   const toast = useToast();
+  const { t } = useTranslation();
   const { status, refresh } = useAuth();
   const currentId = useId();
   const newId = useId();
@@ -36,9 +39,9 @@ export function AccessSettings() {
 
   const problem =
     password.length > 0 && password.length < MIN_PASSWORD_LENGTH
-      ? `Mindestens ${MIN_PASSWORD_LENGTH} Zeichen.`
+      ? t("access.minLength", { count: MIN_PASSWORD_LENGTH })
       : repeat.length > 0 && repeat !== password
-        ? "Die Kennwörter stimmen nicht überein."
+        ? t("access.mismatch")
         : null;
   const canSet = password.length >= MIN_PASSWORD_LENGTH && repeat === password && (!passwordSet || current.length > 0);
 
@@ -55,7 +58,7 @@ export function AccessSettings() {
     try {
       await api.setPassword(password, passwordSet ? current : null);
       reset();
-      toast.success(passwordSet ? "Kennwort geändert" : "Kennwort festgelegt");
+      toast.success(passwordSet ? t("access.changed") : t("access.set"));
       await refresh();
     } catch (error) {
       toast.error(wrongPassword(error));
@@ -70,7 +73,7 @@ export function AccessSettings() {
     try {
       await api.removePassword(current);
       reset();
-      toast.success("Kennwort entfernt");
+      toast.success(t("access.removed"));
       await refresh();
     } catch (error) {
       toast.error(wrongPassword(error));
@@ -84,7 +87,7 @@ export function AccessSettings() {
     try {
       const passkey = await createPasskey();
       setPasskeys((list) => [...(list ?? []), passkey]);
-      toast.success("Passkey angelegt");
+      toast.success(t("login.passkeyCreated"));
     } catch (error) {
       if (!passkeyCancelled(error)) toast.error(error);
     } finally {
@@ -96,7 +99,7 @@ export function AccessSettings() {
     try {
       await api.deletePasskey(passkey.id);
       setPasskeys((list) => list?.filter((p) => p.id !== passkey.id) ?? null);
-      toast.success(`Passkey „${passkey.name}“ gelöscht`);
+      toast.success(t("access.passkeyDeleted", { name: passkey.name }));
     } catch (error) {
       toast.error(error);
     }
@@ -115,65 +118,63 @@ export function AccessSettings() {
     <>
       <p className="muted small">
         {passwordSet ? (
-          <>
-            Archivar ist mit einem Kennwort geschützt. Kennwort vergessen? Auf dem Server setzt <code>bun run password</code> ein neues.
-          </>
+          <Trans i18nKey="access.protected" components={{ code: <code /> }} />
         ) : (
-          "Ohne Kennwort kann jeder Archivar nutzen, der die Adresse erreicht. Mit Kennwort muss sich jeder Browser anmelden; API-Tokens gelten weiter."
+          t("access.unprotected")
         )}
       </p>
       <form className="settings__field" onSubmit={submit}>
         {passwordSet && (
           <>
             <label htmlFor={currentId} className="field__label">
-              Aktuelles Kennwort
+              {t("access.current")}
             </label>
             <input id={currentId} className="input" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
           </>
         )}
         <label htmlFor={newId} className="field__label">
-          {passwordSet ? "Neues Kennwort" : "Kennwort"}
+          {passwordSet ? t("access.newPassword") : t("login.password")}
         </label>
         <input id={newId} className="input" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         <label htmlFor={repeatId} className="field__label">
-          Kennwort wiederholen
+          {t("access.repeat")}
         </label>
         <input id={repeatId} className="input" type="password" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)} />
         {problem && <p className="muted small">{problem}</p>}
         <div className="access__actions">
           <button type="submit" className="btn" disabled={!canSet || busy !== null}>
             {busy === "set" && <Loader size={16} className="spin" />}
-            {passwordSet ? "Kennwort ändern" : "Kennwort festlegen"}
+            {passwordSet ? t("access.change") : t("access.setPassword")}
           </button>
           {passwordSet && (
-            <button type="button" className="btn btn--danger-ghost" onClick={remove} disabled={!current || busy !== null} title="Löscht auch alle Passkeys">
+            <button type="button" className="btn btn--danger-ghost" onClick={remove} disabled={!current || busy !== null} title={t("access.removeTitle")}>
               {busy === "remove" && <Loader size={16} className="spin" />}
-              Kennwort entfernen
+              {t("access.remove")}
             </button>
           )}
         </div>
       </form>
       {passwordSet && (
         <div className="settings__field">
-          <span className="field__label">Passkeys</span>
+          <span className="field__label">{t("access.passkeys")}</span>
           {passkeys === null ? (
             <p className="muted small">
-              <Loader size={16} className="spin" /> Passkeys werden geladen …
+              <Loader size={16} className="spin" /> {t("access.passkeysLoading")}
             </p>
           ) : passkeys.length === 0 ? (
-            <p className="muted small">Noch keine Passkeys. Beim Anmelden lässt sich einer für das Gerät anlegen.</p>
+            <p className="muted small">{t("access.noPasskeys")}</p>
           ) : (
-            <ul className="token-list" aria-label="Passkeys">
+            <ul className="token-list" aria-label={t("access.passkeys")}>
               {passkeys.map((passkey) => (
                 <li key={passkey.id} className="token-list__item">
                   <Fingerprint size={18} />
                   <div className="token-list__text">
                     <span>{passkey.name}</span>
                     <span className="muted small">
-                      erstellt {formatDateTime(passkey.createdAt)} · {passkey.lastUsedAt ? `zuletzt benutzt ${formatDateTime(passkey.lastUsedAt)}` : "noch nicht benutzt"}
+                      {t("tokens.created", { date: formatDateTime(passkey.createdAt) })} · {passkey.lastUsedAt ? t("tokens.lastUsed", { date: formatDateTime(passkey.lastUsedAt) }) : t("tokens.neverUsed")}
                     </span>
                   </div>
-                  <button type="button" className="btn btn--sm btn--icon" onClick={() => deletePasskey(passkey)} aria-label={`Passkey „${passkey.name}“ löschen`} title="Löschen">
+                  <button type="button" className="btn btn--sm btn--icon" onClick={() => deletePasskey(passkey)} aria-label={t("access.deletePasskey", { name: passkey.name })} title={t("common.delete")}>
                     <Trash size={16} />
                   </button>
                 </li>
@@ -184,12 +185,12 @@ export function AccessSettings() {
             {passkeysSupported() && (
               <button type="button" className="btn" onClick={addPasskey} disabled={busy !== null}>
                 {busy === "passkey" ? <Loader size={16} className="spin" /> : <Plus size={16} />}
-                Passkey für dieses Gerät
+                {t("access.addPasskey")}
               </button>
             )}
             <button type="button" className="btn" onClick={logout}>
               <LogOut size={16} />
-              Abmelden
+              {t("access.logout")}
             </button>
           </div>
         </div>

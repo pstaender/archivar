@@ -3,6 +3,7 @@ import { type CSSProperties, type FormEvent, useEffect, useId, useMemo, useState
 import { buildFolderTree, type FolderNode, normalizeFolderPath } from "../../shared/folders";
 import { useFolders } from "../hooks/folders";
 import { Dialog } from "./Dialog";
+import { useTranslation } from "react-i18next";
 
 interface FolderTargetDialogProps {
   open: boolean;
@@ -30,6 +31,7 @@ function flatten(nodes: FolderNode[], created: Set<string>, depth = 0): Row[] {
 
 export function FolderTargetDialog({ open, from, working, onMove, onAdd, onClose }: FolderTargetDialogProps) {
   const { folders } = useFolders();
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<string[]>([]);
   const [created, setCreated] = useState<string[]>([]);
   const [input, setInput] = useState("");
@@ -64,59 +66,59 @@ export function FolderTargetDialog({ open, from, working, onMove, onAdd, onClose
   return (
     <Dialog
       open={open}
-      title="In Ordner ablegen"
+      title={t("folderTarget.title")}
       onClose={onClose}
       footer={
         <>
           <button type="button" className="btn" onClick={onClose}>
-            Abbrechen
+            {t("common.cancel")}
           </button>
           <span className="spacer" />
           <button type="button" className="btn" onClick={() => onAdd(selected)} disabled={working || selected.length === 0}>
-            Hinzufügen
+            {t("folderTarget.add")}
           </button>
           <button type="button" className="btn btn--primary" onClick={() => onMove(selected)} disabled={working || selected.length === 0}>
-            Verschieben
+            {t("folderTarget.move")}
           </button>
         </>
       }
     >
       {rows.length > 0 ? (
-        <ul className="folder-choices" aria-label="Ordner">
+        <ul className="folder-choices" aria-label={t("folderTarget.folders")}>
           {rows.map((row) => (
             <li key={row.path}>
               <label className="folder-choice" style={{ "--depth": row.depth } as CSSProperties} title={row.path}>
                 <input type="checkbox" checked={selected.includes(row.path)} onChange={() => toggle(row.path)} aria-label={row.path} />
                 <FolderIcon size={15} aria-hidden />
                 <span className="folder-choice__name">{row.name}</span>
-                {row.isNew && <span className="folder-choice__badge">neu</span>}
+                {row.isNew && <span className="folder-choice__badge">{t("folderTarget.new")}</span>}
               </label>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="muted small">Noch keine Ordner vorhanden.</p>
+        <p className="muted small">{t("folderTarget.none")}</p>
       )}
       <form className="folder-choices__create" onSubmit={create}>
         <label htmlFor={inputId} className="visually-hidden">
-          Neuer Ordner
+          {t("folderTarget.newFolder")}
         </label>
         <input
           id={inputId}
           className="input input--sm"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={'Neuer Ordner, z.B. wichtig/2026'}
+          placeholder={t("folderTarget.newPlaceholder")}
         />
         <button type="submit" className="btn btn--sm" disabled={!normalizeFolderPath(input)}>
           <Plus size={16} />
-          Anlegen
+          {t("folderTarget.create")}
         </button>
       </form>
       <p className="muted small">
         {from
-          ? `„Verschieben“ nimmt die Auswahl aus „${from}“ heraus, „Hinzufügen“ behält ihre bisherigen Ordner.`
-          : "„Verschieben“ ersetzt die bisherigen Ordner der Auswahl, „Hinzufügen“ behält sie."}
+          ? t("folderTarget.moveFromHint", { folder: from })
+          : t("folderTarget.moveHint")}
       </p>
     </Dialog>
   );

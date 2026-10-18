@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import { DEFAULT_EDIT_SETTINGS, normalizeQuad } from "./editSettings";
 import { describeGrayMix, normalizeGrayMix } from "./image/grayMix";
 import { isAxisAlignedRect } from "./image/perspective";
@@ -170,48 +171,41 @@ export function applyFixedSteps(settings: EditSettings, steps: PresetSteps): Edi
   return next;
 }
 
-const COLOR_MODE_LABELS: Record<ColorMode, string> = { color: "Farbe", grayscale: "Graustufen", bw: "S/W" };
-export const DENOISE_LABELS = ["Aus", "Leicht", "Mittel", "Stark"];
+export const DENOISE_LEVELS = ["off", "light", "medium", "strong"] as const;
 
 export const formatPercent = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v * 100)} %`;
 export const formatSigned = (v: number) => `${v > 0 ? "+" : ""}${Math.round(v)}`;
 
-export function describeStep(steps: PresetSteps, step: PresetStep): string {
+export function describeStep(t: TFunction, steps: PresetSteps, step: PresetStep): string {
   switch (step) {
-    case "autoRotate":
-      return "Automatisch drehen";
     case "rotation":
-      return `Drehung ${steps.rotation}°`;
-    case "autoDewarp":
-      return "Automatisch entzerren";
-    case "autoCrop":
-      return "Auto-Zuschnitt";
+      return t("presetSteps.rotation", { value: steps.rotation });
     case "crop":
-      return isAxisAlignedRect(steps.crop!) ? "Fester Ausschnitt" : "Feste Entzerrung";
-    case "autoBw":
-      return "Automatisch SW";
+      return isAxisAlignedRect(steps.crop!) ? t("presetSteps.cropRect") : t("presetSteps.cropQuad");
     case "colorMode":
-      return COLOR_MODE_LABELS[steps.colorMode!];
+      return t(`colorModes.${steps.colorMode!}`);
     case "grayMix":
-      return `Graustufen-Kanäle: ${describeGrayMix(steps.grayMix!)}`;
+      return t("presetSteps.grayMix", { value: describeGrayMix(t, steps.grayMix!) });
     case "grayThreshold":
-      return `Graustufen-Schwelle ${steps.grayThreshold}`;
+      return t("presetSteps.grayThreshold", { value: steps.grayThreshold });
     case "brightness":
-      return `Helligkeit ${formatPercent(steps.brightness!)}`;
+      return t("presetSteps.brightness", { value: formatPercent(steps.brightness!) });
     case "contrast":
-      return `Kontrast ${formatPercent(steps.contrast!)}`;
+      return t("presetSteps.contrast", { value: formatPercent(steps.contrast!) });
     case "saturation":
-      return `Sättigung ${formatSigned(steps.saturation!)}`;
+      return t("presetSteps.saturation", { value: formatSigned(steps.saturation!) });
     case "hue":
-      return `Farbton ${formatSigned(steps.hue!)}°`;
+      return t("presetSteps.hue", { value: formatSigned(steps.hue!) });
     case "bwThreshold":
-      return `Schwelle ${steps.bwThreshold}`;
+      return t("presetSteps.bwThreshold", { value: steps.bwThreshold });
     case "autoLevels":
-      return steps.autoLevels ? "Auto-Tonwerte" : "Tonwerte manuell";
+      return steps.autoLevels ? t("presetSteps.autoLevels") : t("presetSteps.manualLevels");
     case "denoise":
-      return `Entrauschen: ${DENOISE_LABELS[steps.denoise!]}`;
+      return t("presetSteps.denoise", { value: t(`denoise.${DENOISE_LEVELS[steps.denoise!]}`) });
     case "shapes":
-      return `Formen: ${steps.shapes!.length === 1 ? "1 Rechteck" : `${steps.shapes!.length} Rechtecke`}`;
+      return t("presetSteps.shapes", { count: steps.shapes!.length });
+    default:
+      return t(`presetSteps.${step}`);
   }
 }
 
@@ -220,9 +214,9 @@ export function presetStepList(steps: PresetSteps): PresetStep[] {
 }
 
 /** E.g. "Automatisch entzerren, Automatisch SW". */
-export function describePreset(steps: PresetSteps): string {
+export function describePreset(t: TFunction, steps: PresetSteps): string {
   return presetStepList(steps)
-    .map((step) => describeStep(steps, step))
+    .map((step) => describeStep(t, steps, step))
     .join(", ");
 }
 

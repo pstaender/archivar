@@ -26,6 +26,7 @@ import type {
   UploadedDocument,
   User,
 } from "../shared/types";
+import { t } from "./i18n";
 
 export class ApiRequestError extends Error {
   constructor(
@@ -80,13 +81,13 @@ function sendWithProgress<T>(path: string, body: FormData, onProgress?: (loaded:
       if (xhr.status >= 200 && xhr.status < 300) resolve(response as T);
       else {
         reportLoggedOut(path, xhr.status);
-        reject(new ApiRequestError(xhr.status, response?.error ?? (xhr.statusText || "Upload fehlgeschlagen")));
+        reject(new ApiRequestError(xhr.status, response?.error ?? (xhr.statusText || t("api.uploadFailed"))));
       }
     };
-    xhr.onerror = () => reject(new ApiRequestError(0, "Upload fehlgeschlagen"));
+    xhr.onerror = () => reject(new ApiRequestError(0, t("api.uploadFailed")));
     // Without these the promise would never settle and block the upload queue until the page is reloaded.
-    xhr.onabort = () => reject(new ApiRequestError(0, "Upload abgebrochen"));
-    xhr.ontimeout = () => reject(new ApiRequestError(0, "Zeitüberschreitung beim Upload"));
+    xhr.onabort = () => reject(new ApiRequestError(0, t("api.uploadAborted")));
+    xhr.ontimeout = () => reject(new ApiRequestError(0, t("api.uploadTimeout")));
     xhr.send(body);
   });
 }
@@ -164,10 +165,10 @@ export const api = {
   applyPreset: (id: number, presetId: number, editSettings?: EditSettings) =>
     request<{ editSettings: EditSettings; shapes: Shape[] | null }>(`/api/documents/${id}/apply-preset`, jsonBody("POST", { presetId, editSettings })),
   /** Searchable PDF of the edited image with its stored text; without `quality`, the user's setting applies. */
-  exportPdf: async (id: number, quality?: PdfQuality) => download(await send(`/api/documents/${id}/pdf`, jsonBody("POST", { quality })), `dokument-${id}.pdf`),
+  exportPdf: async (id: number, quality?: PdfQuality) => download(await send(`/api/documents/${id}/pdf`, jsonBody("POST", { quality })), t("api.documentFileName", { id })),
   /** One PDF of the documents in order: images as searchable pages, PDFs with all pages; other files are left out. */
   exportCombinedPdf: async (documentIds: number[], title?: string, quality?: PdfQuality) =>
-    download(await send("/api/export/pdf", jsonBody("POST", { documentIds, title, quality })), "Dokumente.pdf"),
+    download(await send("/api/export/pdf", jsonBody("POST", { documentIds, title, quality })), t("api.documentsFileName")),
   renderPreview: async (id: number, editSettings: EditSettings, signal?: AbortSignal) =>
     (await send(`/api/documents/${id}/render`, { ...jsonBody("POST", { editSettings }), signal })).blob(),
   /** `languages` changes the document's recognition languages (null: back to the default). */

@@ -4,9 +4,11 @@ import { api, ApiRequestError } from "../api";
 import { useToast } from "../hooks/toast";
 import { Fingerprint, Loader } from "../icons";
 import { createPasskey, loginWithPasskey, passkeyCancelled, passkeysSupported } from "../passkeys";
+import { useTranslation } from "react-i18next";
 
 export function LoginPage({ status, onLogin }: { status: AuthStatus; onLogin: () => Promise<void> }) {
   const toast = useToast();
+  const { t } = useTranslation();
   const nameId = useId();
   const passwordId = useId();
   const [name, setName] = useState("");
@@ -29,8 +31,8 @@ export function LoginPage({ status, onLogin }: { status: AuthStatus; onLogin: ()
       setError(
         e instanceof ApiRequestError && e.status === 401
           ? status.usernameRequired
-            ? "Benutzername oder Kennwort ist falsch."
-            : "Das Kennwort ist falsch."
+            ? t("login.wrongCredentials")
+            : t("login.wrongPassword")
           : e instanceof Error
             ? e.message
             : String(e),
@@ -41,9 +43,9 @@ export function LoginPage({ status, onLogin }: { status: AuthStatus; onLogin: ()
     if (addPasskey) {
       try {
         await createPasskey();
-        toast.success("Passkey angelegt");
+        toast.success(t("login.passkeyCreated"));
       } catch (e) {
-        if (!passkeyCancelled(e)) toast.error(`Der Passkey konnte nicht angelegt werden: ${e instanceof Error ? e.message : String(e)}`);
+        if (!passkeyCancelled(e)) toast.error(t("login.passkeyFailed", { message: e instanceof Error ? e.message : String(e) }));
       }
     }
     await onLogin();
@@ -56,7 +58,7 @@ export function LoginPage({ status, onLogin }: { status: AuthStatus; onLogin: ()
       await loginWithPasskey(status.usernameRequired && name.trim() ? name.trim() : null);
       await onLogin();
     } catch (e) {
-      if (!passkeyCancelled(e)) setError("Die Anmeldung mit dem Passkey ist fehlgeschlagen.");
+      if (!passkeyCancelled(e)) setError(t("login.passkeyLoginFailed"));
       setBusy(null);
     }
   };
@@ -71,14 +73,14 @@ export function LoginPage({ status, onLogin }: { status: AuthStatus; onLogin: ()
         {status.usernameRequired && (
           <div className="settings__field">
             <label htmlFor={nameId} className="field__label">
-              Benutzername
+              {t("login.username")}
             </label>
             <input id={nameId} className="input" autoComplete="username webauthn" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
           </div>
         )}
         <div className="settings__field">
           <label htmlFor={passwordId} className="field__label">
-            Kennwort
+            {t("login.password")}
           </label>
           <input
             id={passwordId}
@@ -93,7 +95,7 @@ export function LoginPage({ status, onLogin }: { status: AuthStatus; onLogin: ()
         {supported && (
           <label className="login__check">
             <input type="checkbox" checked={addPasskey} onChange={(e) => setAddPasskey(e.target.checked)} />
-            Passkey für dieses Gerät anlegen, um sich künftig ohne Kennwort anzumelden
+            {t("login.addPasskey")}
           </label>
         )}
         {error && (
@@ -103,12 +105,12 @@ export function LoginPage({ status, onLogin }: { status: AuthStatus; onLogin: ()
         )}
         <button type="submit" className="btn btn--primary" disabled={!canSubmit}>
           {busy === "password" && <Loader size={16} className="spin" />}
-          Anmelden
+          {t("login.submit")}
         </button>
         {supported && status.passkeyLogin && (
           <button type="button" className="btn" onClick={passkeyLogin} disabled={busy !== null}>
             {busy === "passkey" ? <Loader size={16} className="spin" /> : <Fingerprint size={16} />}
-            Mit Passkey anmelden
+            {t("login.withPasskey")}
           </button>
         )}
       </form>

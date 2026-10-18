@@ -3,13 +3,9 @@ import { MAX_PDF_COMPRESSION, MIN_PDF_COMPRESSION, type PdfImageQuality, type Pd
 import { Slider } from "../editor/EditControls";
 import { useSettings } from "../hooks/settings";
 import { ChevronDown, Download, Loader } from "../icons";
+import { useTranslation } from "react-i18next";
 
-export const PDF_QUALITY_CHOICES: { value: PdfImageQuality; label: string; description: string }[] = [
-  { value: "low", label: "Niedrig", description: "150 DPI, kleine Dateien für Bildschirm und E-Mail" },
-  { value: "medium", label: "Mittel", description: "300 DPI, gut zum Drucken" },
-  { value: "high", label: "Hoch", description: "Bis 600 DPI, kaum komprimiert" },
-  { value: "original", label: "Original", description: "Volle Auflösung, verlustfrei (PNG)" },
-];
+export const PDF_QUALITY_CHOICES: PdfImageQuality[] = ["low", "medium", "high", "original"];
 
 const CUSTOM_KEY = "archivar.pdfCompression";
 const DEFAULT_CUSTOM = 7;
@@ -39,6 +35,7 @@ interface PdfButtonProps {
 /** „PDF“ downloads with the quality from the settings; the arrow next to it offers the other qualities. */
 export function PdfButton({ onExport, busy, disabled, title, small, up, labelClassName }: PdfButtonProps) {
   const { settings } = useSettings();
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const [custom, setCustom] = useState(storedCustom);
@@ -101,35 +98,35 @@ export function PdfButton({ onExport, busy, disabled, title, small, up, labelCla
           setOpen(!open);
         }}
         disabled={disabled}
-        aria-label="PDF-Qualität wählen"
-        title="PDF-Qualität wählen"
+        aria-label={t("pdf.choose")}
+        title={t("pdf.choose")}
         aria-haspopup="menu"
         aria-expanded={open}
       >
         <ChevronDown size={14} />
       </button>
       {open && (
-        <div ref={menu} className={`menu split-button__menu ${up ? "split-button__menu--up" : ""}`} role="menu" aria-label="PDF-Qualität" onKeyDown={menuKeyDown}>
-          {PDF_QUALITY_CHOICES.map((choice) => (
-            <button key={choice.value} type="button" role="menuitem" onClick={() => exportWith(choice.value)}>
+        <div ref={menu} className={`menu split-button__menu ${up ? "split-button__menu--up" : ""}`} role="menu" aria-label={t("pdf.quality")} onKeyDown={menuKeyDown}>
+          {PDF_QUALITY_CHOICES.map((quality) => (
+            <button key={quality} type="button" role="menuitem" onClick={() => exportWith(quality)}>
               <span className="menu__label">
-                {choice.label}
-                {choice.value === settings.pdfImageQuality && <span className="choice__default">Standard</span>}
+                {t(`pdf.qualities.${quality}`)}
+                {quality === settings.pdfImageQuality && <span className="choice__default">{t("pdf.default")}</span>}
               </span>
-              <span className="menu__hint">{choice.description}</span>
+              <span className="menu__hint">{t(`pdf.qualityHints.${quality}`)}</span>
             </button>
           ))}
           <button type="button" role="menuitem" aria-expanded={customOpen} onClick={() => setCustomOpen(!customOpen)}>
-            <span className="menu__label">Eigene …</span>
-            <span className="menu__hint">300 DPI, Kompression selbst wählen</span>
+            <span className="menu__label">{t("pdf.custom")}</span>
+            <span className="menu__hint">{t("pdf.customHint")}</span>
           </button>
           {customOpen && (
             <div className="menu__custom">
-              <Slider label="Qualität" value={custom} min={MIN_PDF_COMPRESSION} max={MAX_PDF_COMPRESSION} step={1} defaultValue={DEFAULT_CUSTOM} onChange={setCustom} />
-              <span className="menu__hint">je höher, desto besser die Qualität</span>
+              <Slider label={t("pdf.customQuality")} value={custom} min={MIN_PDF_COMPRESSION} max={MAX_PDF_COMPRESSION} step={1} defaultValue={DEFAULT_CUSTOM} onChange={setCustom} />
+              <span className="menu__hint">{t("pdf.customQualityHint")}</span>
               <button type="button" className="btn btn--sm btn--primary" onClick={exportCustom}>
                 <Download size={16} />
-                Herunterladen
+                {t("pdf.download")}
               </button>
             </div>
           )}

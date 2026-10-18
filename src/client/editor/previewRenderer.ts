@@ -1,5 +1,6 @@
 import type { EditSettings } from "../../shared/types";
 import { PREVIEW_WORKER_URL } from "../../shared/preview";
+import { t } from "../i18n";
 
 export type WorkerRequest =
   | { type: "load"; id: number; url: string; maxSize: number | null }
@@ -64,7 +65,7 @@ export class PreviewRenderer {
     };
     worker.onerror = (event) => {
       event.preventDefault?.();
-      this.failAll(new Error(event.message || "Vorschau konnte nicht berechnet werden"));
+      this.failAll(new Error(event.message || t("preview.renderFailed")));
     };
   }
 

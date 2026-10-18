@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface EditableTitleProps {
   value: string;
@@ -6,7 +7,8 @@ interface EditableTitleProps {
   onSave: (value: string) => unknown;
 }
 
-export function EditableTitle({ value, placeholder = "Ohne Titel", onSave }: EditableTitleProps) {
+export function EditableTitle({ value, placeholder, onSave }: EditableTitleProps) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState(value);
 
   useEffect(() => setDraft(value), [value]);
@@ -22,7 +24,7 @@ export function EditableTitle({ value, placeholder = "Ohne Titel", onSave }: Edi
     <input
       className="editable-title"
       value={draft}
-      placeholder={placeholder}
+      placeholder={placeholder ?? t("editableTitle.untitled")}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {
@@ -32,7 +34,7 @@ export function EditableTitle({ value, placeholder = "Ohne Titel", onSave }: Edi
           e.currentTarget.blur();
         }
       }}
-      aria-label="Titel"
+      aria-label={t("editableTitle.label")}
     />
   );
 }

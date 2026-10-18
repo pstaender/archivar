@@ -1,5 +1,6 @@
 import { CircleAlert, CircleCheck, TriangleAlert, X } from "../icons";
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export type ToastTone = "success" | "error" | "warning" | "info";
 
@@ -23,6 +24,7 @@ let nextId = 1;
 
 export function ToastProvider({ children, duration = 4000 }: { children: ReactNode; duration?: number }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const { t } = useTranslation();
 
   const dismiss = useCallback((id: number) => setToasts((list) => list.filter((t) => t.id !== id)), []);
 
@@ -54,7 +56,7 @@ export function ToastProvider({ children, duration = 4000 }: { children: ReactNo
             <div key={toast.id} className={`toast toast--${toast.tone}`}>
               {Icon && <Icon size={18} aria-hidden />}
               <span>{toast.message}</span>
-              <button type="button" className="toast__close" onClick={() => dismiss(toast.id)} aria-label="Schließen">
+              <button type="button" className="toast__close" onClick={() => dismiss(toast.id)} aria-label={t("common.close")}>
                 <X size={16} />
               </button>
             </div>

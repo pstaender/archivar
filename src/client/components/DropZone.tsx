@@ -1,6 +1,7 @@
 import { Upload } from "../icons";
 import { useEffect, useRef, useState } from "react";
 import { useUpload } from "../hooks/upload";
+import { useTranslation } from "react-i18next";
 
 function hasFiles(e: DragEvent): boolean {
   return Array.from(e.dataTransfer?.types ?? []).includes("Files");
@@ -8,6 +9,7 @@ function hasFiles(e: DragEvent): boolean {
 
 export function DropZone() {
   const { uploadToCurrentTarget } = useUpload();
+  const { t } = useTranslation();
   const [active, setActive] = useState(false);
   const depth = useRef(0);
 
@@ -49,7 +51,7 @@ export function DropZone() {
     <div className="dropzone" aria-hidden>
       <div className="dropzone__inner">
         <Upload size={32} />
-        <p>Dateien hier ablegen</p>
+        <p>{t("upload.dropHere")}</p>
       </div>
     </div>
   );

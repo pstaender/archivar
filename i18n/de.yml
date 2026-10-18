@@ -1,0 +1,694 @@
+common:
+  cancel: Abbrechen
+  close: Schließen
+  delete: Löschen
+  save: Speichern
+  retry: Erneut versuchen
+  apply: Anwenden
+  back: Zurück
+  name: Name
+
+format:
+  yesterday: "Gestern, {{time}}"
+  weekdayTime: "{{weekday}}, {{time}}"
+  seconds_one: "{{count}} Sekunde"
+  seconds_other: "{{count}} Sekunden"
+  minutes_one: "{{count}} Minute"
+  minutes_other: "{{count}} Minuten"
+  hours_one: "{{count}} Stunde"
+  hours_other: "{{count}} Stunden"
+
+ocrStatus:
+  none: Kein Text erkannt
+  pending: Texterkennung wartet
+  running: Texterkennung läuft
+  done: Text erkannt
+  failed: Texterkennung fehlgeschlagen
+
+notFound:
+  title: Nicht gefunden
+  text: Diese Seite gibt es nicht.
+  home: Zur Übersicht
+
+shell:
+  menu: Menü
+  home: archivar Startseite
+  searchPlaceholder: Suchen …
+  search: Suche
+  settings: Einstellungen
+
+auth:
+  serverUnreachable: Der Server ist nicht erreichbar.
+  loading: Wird geladen
+
+api:
+  uploadFailed: Upload fehlgeschlagen
+  uploadAborted: Upload abgebrochen
+  uploadTimeout: Zeitüberschreitung beim Upload
+  documentFileName: "dokument-{{id}}.pdf"
+  documentsFileName: Dokumente.pdf
+
+passkeys:
+  deviceName: "{{browser}} auf {{system}}"
+
+smartStacks:
+  series: Nummernfolge
+
+login:
+  wrongCredentials: Benutzername oder Kennwort ist falsch.
+  wrongPassword: Das Kennwort ist falsch.
+  passkeyCreated: Passkey angelegt
+  passkeyFailed: "Der Passkey konnte nicht angelegt werden: {{message}}"
+  passkeyLoginFailed: Die Anmeldung mit dem Passkey ist fehlgeschlagen.
+  username: Benutzername
+  password: Kennwort
+  addPasskey: Passkey für dieses Gerät anlegen, um sich künftig ohne Kennwort anzumelden
+  submit: Anmelden
+  withPasskey: Mit Passkey anmelden
+
+unsaved:
+  title: Bearbeitung nicht gespeichert
+  discard: Verwerfen
+  text: Die Änderungen an diesem Bild sind noch nicht gespeichert.
+
+editableTitle:
+  untitled: Ohne Titel
+  label: Titel
+
+upload:
+  file: Datei
+  fileOf: "Datei {{current}} von {{total}}"
+  processing: "Verarbeite {{label}} …"
+  uploading: "Lade {{label}} hoch …"
+  progress: Upload-Fortschritt
+  takePhoto: Foto aufnehmen
+  upload: Hochladen
+  dropHere: Dateien hier ablegen
+  skipped_one: "1 Datei wird nicht unterstützt und wurde übersprungen"
+  skipped_other: "{{count}} Dateien werden nicht unterstützt und wurden übersprungen"
+  uploaded_one: 1 Datei hochgeladen
+  uploaded_other: "{{count}} Dateien hochgeladen"
+  duplicate: "„{{name}}“ ist bereits vorhanden ({{titles}}) und wurde trotzdem hochgeladen"
+  duplicates: "{{count}} Dateien waren bereits vorhanden und wurden trotzdem hochgeladen"
+  failed: "{{count}} Dateien konnten nicht hochgeladen werden"
+
+quoted: "„{{text}}“"
+
+tabs:
+  more: Mehr
+  moreLabel: Weitere Bereiche
+
+zoom:
+  label: Zoom
+  out: Verkleinern
+  level: Zoomstufe
+  in: Vergrößern
+  fitTitle: Ganzes Bild anzeigen
+  fit: Einpassen
+  original: Originalgröße
+  openInTab: In neuem Tab öffnen
+
+archiveExport:
+  started: Export gestartet
+  description: "Lädt das komplette Archiv als ZIP herunter: die SQLite-Datenbank (<code>archivar.sqlite</code>, mit den Daten aller Benutzer) und alle Bilder und Dateien (<code>files/</code>). In das Datenverzeichnis entpackt stellt es das Archiv wieder her. Auf dem Server geht das auch mit <code>bun run export</code>."
+  export: Archiv exportieren
+  confirm: "Möchtest du wirklich {{size}} herunterladen?"
+  download: Herunterladen
+
+folderPicker:
+  label: Ordner
+  remove: "{{path}} entfernen"
+  placeholder: z.B. wichtig/2026
+
+tokens:
+  deleted: "Token „{{name}}“ gelöscht"
+  copied: Token kopiert
+  description: "Mit einem Token können Skripte und andere Programme die API nutzen, z. B. <code>scripts/upload.sh</code>. Er wird als Header <code>Authorization: Bearer …</code> gesendet."
+  new: Neuer Token
+  namePlaceholder: Name, z. B. Scanner
+  create: Erstellen
+  token: "Token „{{name}}“"
+  copy: Kopieren
+  shownOnce: Der Token wird nur jetzt angezeigt. Bewahre ihn sicher auf.
+  loading: Tokens werden geladen …
+  none: Noch keine Tokens.
+  list: API-Tokens
+  created: "erstellt {{date}}"
+  lastUsed: "zuletzt benutzt {{date}}"
+  neverUsed: noch nicht benutzt
+  delete: "Token „{{name}}“ löschen"
+
+access:
+  wrongCurrent: Das aktuelle Kennwort ist falsch.
+  minLength: "Mindestens {{count}} Zeichen."
+  mismatch: Die Kennwörter stimmen nicht überein.
+  changed: Kennwort geändert
+  set: Kennwort festgelegt
+  removed: Kennwort entfernt
+  passkeyDeleted: "Passkey „{{name}}“ gelöscht"
+  protected: "Archivar ist mit einem Kennwort geschützt. Kennwort vergessen? Auf dem Server setzt <code>bun run password</code> ein neues."
+  unprotected: "Ohne Kennwort kann jeder Archivar nutzen, der die Adresse erreicht. Mit Kennwort muss sich jeder Browser anmelden; API-Tokens gelten weiter."
+  current: Aktuelles Kennwort
+  newPassword: Neues Kennwort
+  repeat: Kennwort wiederholen
+  change: Kennwort ändern
+  setPassword: Kennwort festlegen
+  removeTitle: Löscht auch alle Passkeys
+  remove: Kennwort entfernen
+  passkeys: Passkeys
+  passkeysLoading: Passkeys werden geladen …
+  noPasskeys: Noch keine Passkeys. Beim Anmelden lässt sich einer für das Gerät anlegen.
+  deletePasskey: "Passkey „{{name}}“ löschen"
+  addPasskey: Passkey für dieses Gerät
+  logout: Abmelden
+
+ocrLanguages:
+  deu: Deutsch
+  eng: Englisch
+  fra: Französisch
+  ita: Italienisch
+  spa: Spanisch
+  por: Portugiesisch
+  nld: Niederländisch
+  dan: Dänisch
+  swe: Schwedisch
+  nor: Norwegisch
+  fin: Finnisch
+  pol: Polnisch
+  ces: Tschechisch
+  slk: Slowakisch
+  hun: Ungarisch
+  ron: Rumänisch
+  hrv: Kroatisch
+  tur: Türkisch
+  ell: Griechisch
+  rus: Russisch
+  ukr: Ukrainisch
+
+pdf:
+  qualities:
+    low: Niedrig
+    medium: Mittel
+    high: Hoch
+    original: Original
+  qualityHints:
+    low: 150 DPI, kleine Dateien für Bildschirm und E-Mail
+    medium: 300 DPI, gut zum Drucken
+    high: Bis 600 DPI, kaum komprimiert
+    original: Volle Auflösung, verlustfrei (PNG)
+  choose: PDF-Qualität wählen
+  quality: PDF-Qualität
+  default: Standard
+  custom: Eigene …
+  customHint: 300 DPI, Kompression selbst wählen
+  customQuality: Qualität
+  customQualityHint: je höher, desto besser die Qualität
+  download: Herunterladen
+
+settings:
+  tabs:
+    sizes: Bildgrößen
+    import: Import
+    api: API
+    access: Zugriff
+    language: Sprache
+    export: Export
+  mediumPageSize: "{{description}}. Eine Schwarzweiß-Seite hat etwa 150–200 KB."
+  saved: Einstellungen gespeichert
+  title: Einstellungen
+  loading: Einstellungen werden geladen …
+  pdfQualityLegend: Bildqualität im PDF-Export (Klick auf „PDF“; der Pfeil daneben bietet die anderen an)
+  autoOcr: Text nach dem Upload erkennen
+  autoOcrHint: Erkennt den Text von Bildern und PDFs direkt beim Hochladen.
+  allText: Alle Textteile erkennen
+  allTextHint: Übernimmt auch unsichere, vermutlich fehlerhafte Textteile.
+  ocrLanguage: Sprache der Texterkennung
+  automatic: Automatisch
+  ocrLanguageFixed: Gilt für alle hochgeladenen Bilder und PDFs; einzelne Dokumente lassen sich im Tab „Text“ neu erkennen.
+  ocrLanguageAuto: "Erkennt zuerst mit {{languages}}. Ist der Text in einer anderen Sprache, wird er in dieser Sprache neu erkannt."
+  and: " und "
+  applyPreset: Bildeinstellung anwenden
+  noPreset: Keine – Bilder bleiben unverändert
+  presetHint: Wird vor der Texterkennung auf jedes hochgeladene Bild angewendet. Bildeinstellungen werden im Tab „Bearbeiten“ eines Bildes gespeichert.
+  importFolders: Zu Ordnern hinzufügen
+  importFoldersHint: Jeder Upload kommt zusätzlich in diese Ordner.
+  uiLanguage: Sprache der Oberfläche
+  uiLanguageHint: Gilt für diesen Browser und sofort, ohne „Speichern“.
+
+colorModes:
+  color: Farbe
+  grayscale: Graustufen
+  bw: S/W
+
+denoise:
+  off: Aus
+  light: Leicht
+  medium: Mittel
+  strong: Stark
+
+presetSteps:
+  autoRotate: Automatisch drehen
+  rotation: "Drehung {{value}}°"
+  autoDewarp: Automatisch entzerren
+  autoCrop: Auto-Zuschnitt
+  cropRect: Fester Ausschnitt
+  cropQuad: Feste Entzerrung
+  autoBw: Automatisch SW
+  grayMix: "Graustufen-Kanäle: {{value}}"
+  grayThreshold: "Graustufen-Schwelle {{value}}"
+  brightness: "Helligkeit {{value}}"
+  contrast: "Kontrast {{value}}"
+  saturation: "Sättigung {{value}}"
+  hue: "Farbton {{value}}°"
+  bwThreshold: "Schwelle {{value}}"
+  autoLevels: Auto-Tonwerte
+  manualLevels: Tonwerte manuell
+  denoise: "Entrauschen: {{value}}"
+  shapes_one: "Formen: 1 Rechteck"
+  shapes_other: "Formen: {{count}} Rechtecke"
+
+grayMix:
+  channels:
+    reds: Rottöne
+    yellows: Gelbtöne
+    greens: Grüntöne
+    cyans: Cyantöne
+    blues: Blautöne
+    magentas: Magentatöne
+  channelsShort:
+    reds: Ro
+    yellows: Ge
+    greens: Gr
+    cyans: Cy
+    blues: Bl
+    magentas: Ma
+  presets:
+    luma: Standard
+    balanced: Ausgewogen
+    red: Rotfilter
+    yellow: Gelbfilter
+    green: Grünfilter
+    blue: Blaufilter
+
+shapeColors:
+  black: Schwarz
+  white: Weiß
+
+presetDialog:
+  brightness: Helligkeit
+  contrast: Kontrast
+  saturation: Sättigung
+  hue: Farbton
+  threshold: Schwelle
+  denoise: Entrauschen
+  settings: Einstellungen
+  nothing: Das Bild hat keine Bearbeitungen, die sich speichern lassen.
+  colorMode: Farbmodus
+  grayMix: Graustufen-Kanäle
+  customValues: Eigene Werte
+  shapesHint: Liegen relativ zur Bildgröße an derselben Stelle – passend für gleich aufgebaute Scans. Ersetzen vorhandene Formen.
+  rotation: Drehung
+  autoHint: Automatische Schritte werden für jedes Bild neu ermittelt. Nicht gewählte Einstellungen bleiben unverändert.
+
+batch:
+  started_one: Stapelverarbeitung für 1 Dokument gestartet
+  started_other: "Stapelverarbeitung für {{count}} Dokumente gestartet"
+  title: Stapelverarbeitung
+  preset: Bildeinstellung
+  presetHint: Gilt nur für Bilder, angewendet auf ihre bisherige Bearbeitung.
+  rename: Umbenennen
+  renamePlaceholder: "z. B. Scans {n}/{m}"
+  renamePreview: "Wird zu „{{first}}“."
+  renamePreviewRange: "Wird zu „{{first}}“ … „{{last}}“."
+  renameHint: "{n} steht für die laufende Nummer ab 1 (ab 10 Dokumenten mit führenden Nullen), {m} für die Anzahl. Leer lässt die Namen unverändert."
+  ocr: Text erkennen
+  ocrHint: Erkennt den Text der Bilder und PDFs neu.
+  language: Sprache
+  automaticLanguages: "Automatisch ({{languages}})"
+  background: Läuft im Hintergrund weiter; den Fortschritt zeigt „Stapelverarbeitung“ in der Seitenleiste.
+
+presets:
+  saved: Bildeinstellung gespeichert
+  deleted: "„{{name}}“ gelöscht"
+  title: Bildeinstellungen
+  intro: "Gespeicherte Bearbeitungsschritte für Bilder: im Tab „Bearbeiten“ anwenden, beim Import (Einstellungen → Import) und in der Stapelverarbeitung."
+  empty: Noch keine Bildeinstellungen. Speichere die Bearbeitung eines Bildes im Tab „Bearbeiten“ oder „Formen“ als Bildeinstellung.
+  onImport: Beim Import
+  editLabel: "{{name}} bearbeiten"
+  edit: Bearbeiten
+  deleteLabel: "{{name}} löschen"
+  steps: "Schritte von {{name}}"
+  editTitle: Bildeinstellung bearbeiten
+  deleteTitle: Bildeinstellung löschen
+  deleteImportPreset: "„{{name}}“ löschen? Sie wird bei Imports angewendet – danach gilt dort wieder die Bildbearbeitung aus den Einstellungen."
+  deleteConfirm: "„{{name}}“ löschen? Bereits bearbeitete Bilder bleiben unverändert."
+
+jobs:
+  states:
+    pending: Wartet
+    running: Wird bearbeitet
+    ocr: Text wird erkannt
+    done: Fertig
+    skipped: Übersprungen
+    failed: Fehler
+  importStates:
+    pending: Wartet auf Upload
+    running: Wird verarbeitet
+  files_one: 1 Datei
+  files_other: "{{count}} Dateien"
+  rename: "Umbenennen „{{scheme}}“"
+  preset: "Bildeinstellung „{{name}}“"
+  allText: alle Textteile
+  ocrWith: "Texterkennung ({{details}})"
+  ocr: Texterkennung
+  title: Stapelverarbeitung
+  intro: Stapelverarbeitungen und Importe, die neuesten zuerst.
+  removeFinished: Erledigte entfernen
+  empty: Noch keine Aufträge. Wähle in der Übersicht Dokumente aus und starte die Stapelverarbeitung – auch Uploads erscheinen hier.
+  import: Import
+  jobLabel: "{{title}} vom {{date}}"
+  duration: "Dauer: {{duration}}"
+  doneOf: "{{done}} von {{total}} fertig"
+  failed: "{{count}} fehlgeschlagen"
+  remove: Auftrag entfernen
+  removeTitle: Aus der Liste entfernen
+  progress: Fortschritt
+  documents: Dokumente
+  showDocuments: Dokumente anzeigen
+
+folderTarget:
+  title: In Ordner ablegen
+  add: Hinzufügen
+  move: Verschieben
+  folders: Ordner
+  new: neu
+  none: Noch keine Ordner vorhanden.
+  newFolder: Neuer Ordner
+  newPlaceholder: Neuer Ordner, z.B. wichtig/2026
+  create: Anlegen
+  moveFromHint: "„Verschieben“ nimmt die Auswahl aus „{{folder}}“ heraus, „Hinzufügen“ behält ihre bisherigen Ordner."
+  moveHint: "„Verschieben“ ersetzt die bisherigen Ordner der Auswahl, „Hinzufügen“ behält sie."
+
+folderTree:
+  folders: Ordner
+  allDocuments: Alle Dokumente
+  jobs: Stapelverarbeitung
+  running_one: 1 Auftrag läuft
+  running_other: "{{count}} Aufträge laufen"
+  presets: Bildeinstellungen
+  newFolder: Neuer Ordner
+  newFolderName: Name des neuen Ordners
+  empty: Noch keine Ordner
+  renameFolder: Ordner umbenennen
+  collapse: Zuklappen
+  expand: Aufklappen
+  rename: "{{path}} umbenennen"
+  delete: "{{path}} löschen"
+  deleteTitle: Ordner löschen
+  deleteConfirm: "Ordner <strong>{{path}}</strong> und alle Unterordner entfernen? Die Dokumente selbst bleiben erhalten."
+
+grid:
+  instructions: Leertaste drücken, um die Karte aufzunehmen, mit den Pfeiltasten verschieben und mit Leertaste ablegen. Escape bricht ab.
+  move: "{{label}} verschieben"
+  dragTitle: Ziehen, um die Reihenfolge zu ändern
+
+card:
+  pages: "{{count}} S."
+  stack: Stapel
+  deselect: "{{title}} abwählen"
+  select: "{{title}} auswählen"
+  smartStack: Smarter Stapel
+  smartReasons:
+    name: Namensfolge
+    similar: Ähnliche Namen
+
+stack:
+  loading: Lade …
+  emptyDissolved: Stapel ist leer und wurde aufgelöst
+  dissolved: Stapel aufgelöst
+  deleted: Stapel gelöscht
+  meta_one: "Stapel · 1 Seite · zuletzt geändert {{date}}"
+  meta_other: "Stapel · {{count}} Seiten · zuletzt geändert {{date}}"
+  addPages: Seiten hinzufügen
+  dissolve: Stapel auflösen
+  delete: Stapel löschen
+  forward: Nach vorne
+  backward: Nach hinten
+  removeFromStack: Aus Stapel entfernen
+  dissolveText: Der Stapel wird entfernt, die Dokumente bleiben einzeln erhalten.
+  dissolveConfirm: Auflösen
+  deleteText: "Den Stapel und alle {{count}} Dokumente endgültig löschen?"
+
+library:
+  sorts:
+    updated: Zuletzt geändert
+    created-desc: Hochgeladen, neueste zuerst
+    created-asc: Hochgeladen, älteste zuerst
+    title-asc: Name A–Z
+    title-desc: Name Z–A
+    custom: Eigene Reihenfolge
+  cardShapes:
+    portrait: Hochformat
+    landscape: Querformat
+    square: Quadratisch
+  search: "Suche „{{q}}“"
+  allDocuments: Alle Dokumente
+  smartStack: Smarter Stapel
+  documents_one: 1 Dokument
+  documents_other: "{{count}} Dokumente"
+  backTo: "Zurück zu „{{title}}“"
+  entries_one: 1 Eintrag
+  entries_other: "{{count}} Einträge"
+  hiddenInFolders: "{{count}} in Ordnern ausgeblendet"
+  dragToArrange: Karten ziehen, um sie anzuordnen
+  showFiled: Dokumente in Ordnern zeigen
+  showingFiled: Zeigt alle Dokumente, auch die in Ordnern
+  hidingFiled: Zeigt nur Dokumente ohne Ordner – klicken, um auch die in Ordnern zu zeigen
+  smartStacks: Smarte Stapel
+  smartStacksCustom: Nicht bei eigener Reihenfolge
+  smartStacksHint: "Smarte Stapel: fasst Dateien zusammen, die nach Name oder Uploadzeit zusammengehören – nur in der Ansicht, nichts wird gespeichert"
+  cardShape: Kartenformat
+  sort: Sortierung
+  allFiled: Alle Dokumente sind in Ordnern einsortiert.
+  noMatches: Keine passenden Dokumente gefunden.
+  emptyTitle: Noch nichts archiviert
+  emptyText: Fotos, Scans und PDFs hierher ziehen oder auswählen.
+  chooseFiles: Dateien auswählen
+
+selection:
+  stackCreated: "Stapel „{{title}}“ erstellt"
+  folderCount: "{{count}} Ordner"
+  movedTo: "In {{where}} verschoben"
+  addedTo: "Zu {{where}} hinzugefügt"
+  removedFrom: "Aus „{{folder}}“ entfernt"
+  deleted_one: 1 Dokument gelöscht
+  deleted_other: "{{count}} Dokumente gelöscht"
+  label: Auswahl
+  clear: Auswahl aufheben
+  count: "{{count}} ausgewählt"
+  selectAll: Alle markieren
+  batchTitle: Bildeinstellung und Texterkennung auf die Auswahl anwenden
+  batch: Stapelverarbeitung
+  stack: Stapeln
+  folderTitle: In Ordner ablegen
+  folder: Ordner
+  removeFrom: "Aus „{{folder}}“ entfernen"
+  pdfTitle: Bilder und PDFs der Auswahl als ein PDF herunterladen
+  deleteTitle: Endgültig löschen
+  deleteText_one: 1 Dokument inklusive aller Bearbeitungen und erkannter Texte löschen?
+  deleteText_other: "{{count}} Dokumente inklusive aller Bearbeitungen und erkannter Texte löschen?"
+
+editControls:
+  shades:
+    best: beste Schätzung
+    darker: dunkler
+    lighter: heller
+  orientation: Ausrichtung
+  rotateLeft: Nach links drehen
+  rotateRight: Nach rechts drehen
+  crop: Zuschneiden
+  perspective: Entzerren
+  autoRotateTitle: Dreht das Bild so, dass der Text aufrecht steht
+  autoRotate: Auto-Drehen
+  autoCropTitle: Sucht den Rand von Seite oder Foto und schneidet den Hintergrund ab
+  autoCrop: Auto-Zuschnitt
+  detectingOrientation: Textausrichtung wird erkannt …
+  findingEdges: Seitenrand wird gesucht …
+  autoDewarp: Automatisch entzerren
+  detectingPage: Seite wird erkannt …
+  dewarped: Gewölbte Seite geglättet.
+  cropHint: Ecken ziehen, um den Ausschnitt festzulegen, Enter übernimmt.
+  perspectiveHint: Ecken auf die Ecken des Dokuments ziehen – es wird gerade gerückt. Enter übernimmt.
+  reset: Zurücksetzen
+  cropActive: Ausschnitt aktiv.
+  remove: Entfernen
+  light: Licht
+  brightness: Helligkeit
+  contrast: Kontrast
+  autoLevels: Tonwerte automatisch
+  color: Farbe
+  autoBw: Automatisch SW
+  autoBwLoading: Werte werden ermittelt …
+  autoBwVariant: "Variante {{index}} von {{count}} · {{shade}}"
+  autoBwNext: " – erneut klicken für die nächste."
+  autoBwHint: Ermittelt Helligkeit, Kontrast und Schwelle.
+  colorMode: Farbmodus
+  saturation: Sättigung
+  hue: Farbton
+  threshold: Schwellenwert
+  thresholdSlider: Schwelle
+  noise: Störungen entfernen
+  denoise: Entrauschen
+  denoiseStrength: "Stärke: {{level}} – {{next}}"
+  denoiseStronger: erneut klicken für stärker.
+  denoiseOff: erneut klicken zum Ausschalten.
+  denoiseHint: Glättet Rauschen und entfernt im S/W-Modus einzelne Punkte.
+  channels: Kanäle
+  customValues: Eigene Werte
+  resetAll: Alle zurücksetzen
+
+shapes:
+  rectangle: "Rechteck {{number}}"
+  outdated: Zuschnitt, Drehung oder Entzerrung wurden nach dem Zeichnen geändert. Prüfe, ob die Formen noch an der richtigen Stelle liegen.
+  title: Rechtecke
+  intro: Auf dem Bild ziehen, um ein Rechteck zu zeichnen, z. B. zum Schwärzen oder um Flecken weiß zu übermalen. Rechtecke lassen sich verschieben, an den Griffen in der Größe ändern und mit Entf löschen.
+  delete: Rechteck löschen
+  savePresetTitle: Als Bildeinstellung speichern, um die Rechtecke beim Import oder in der Stapelverarbeitung auf andere Bilder anzuwenden
+  savePreset: Als Bildeinstellung
+  removeAll: Alle entfernen
+  none: Noch keine Rechtecke.
+  count_one: 1 Rechteck
+  count_other: "{{count}} Rechtecke"
+  colorSelected: Farbe des Rechtecks
+  colorNew: Farbe für neue Rechtecke
+  color: Farbe
+  customColor: Eigene Farbe
+  ocrHint: Nach dem Speichern wird der Text neu erkannt, damit übermalter Text auch aus Text, Suche und PDF verschwindet.
+  saving: Speichert …
+
+vector:
+  details:
+    "1": Sehr grob
+    "2": Grob
+    "3": Mittel
+    "4": Fein
+    "5": Sehr fein
+  area: "Vektorbereich {{number}}"
+  outdated: Zuschnitt, Drehung oder Entzerrung wurden nach dem Vektorisieren geändert. Prüfe, ob die Bereiche noch an der richtigen Stelle liegen.
+  title: Bereiche
+  intro: "Auf dem Bild einen Bereich aufziehen: Er wird mit passenden Einstellungen vektorisiert und ersetzt beim Speichern die Pixel des Bildes. Bereiche lassen sich verschieben, an den Griffen in der Größe ändern und mit Entf löschen."
+  delete: Bereich löschen
+  showVectors: Vektoren zeigen
+  showOriginal: Original zeigen
+  none: Noch keine Bereiche.
+  areas_one: "1 Bereich, {{vectorized}} vektorisiert"
+  areas_other: "{{count}} Bereiche, {{vectorized}} vektorisiert"
+  vectorization: Vektorisierung
+  colors: Farben
+  bw: Schwarzweiß
+  detail: Details
+  threshold: Schwelle
+  edges: Kanten
+  smooth: Glatt
+  sharp: Eckig
+  auto: Automatisch einstellen
+  suggesting: Einstellungen werden ermittelt …
+  vectorizing: Wird vektorisiert …
+  failed: Nicht vektorisiert – Einstellungen ändern, um es erneut zu versuchen.
+  paths_one: 1 Form
+  paths_other: "{{count}} Formen"
+  seconds: "{{value}} s"
+  ocrHint: Nach dem Speichern wird der Text neu erkannt.
+  pending: Vektorisiert …
+
+preview:
+  label: Vorschau
+  finalHint: Endergebnis · Maus über das Bild für 100 %
+  live: Live-Ansicht
+  rendering: Vorschau wird berechnet …
+  show: Vorschau
+  loadFailed: "Vorschau konnte nicht geladen werden: {{error}}"
+  fullResolution: Vorschau in voller Auflösung
+  renderingLabel: Vorschau wird berechnet
+  renderFailed: Vorschau konnte nicht berechnet werden
+  moveCorner: "Ecke {{number}} verschieben"
+
+document:
+  tabs:
+    edit: Bearbeiten
+    text: Text
+    details: Datei
+    vectors: Vektor
+    shapes: Formen
+  editSaved: "Bearbeitung von „{{title}}“ gespeichert"
+  shapesSavedOcr: Formen gespeichert – Text wird neu erkannt
+  shapesSaved: Formen gespeichert
+  vectorsSavedOcr: Vektoren gespeichert – Text wird neu erkannt
+  vectorsSaved: Vektoren gespeichert
+  noOrientation: Ausrichtung nicht erkannt – zu wenig Text im Bild.
+  alreadyUpright: Das Bild ist bereits richtig ausgerichtet.
+  noEdges: Kein Seitenrand gefunden.
+  presetShapes: Die Formen der Bildeinstellung wurden übernommen und werden im Tab „Formen“ gespeichert.
+  presetSaved: "Bildeinstellung „{{name}}“ gespeichert"
+  deleted: Dokument gelöscht
+  duplicated: Duplikat erstellt
+  detached: Das Dokument hat jetzt eine eigene Originaldatei
+  deleteText: "„{{title}}“ inklusive Bearbeitungen und erkanntem Text endgültig löschen?"
+  deleteHeir_one: " Die Originaldatei bleibt für das Duplikat erhalten, „{{heir}}“ wird zum neuen Original."
+  deleteHeir_other: " Die Originaldatei bleibt für die {{count}} Duplikate erhalten, „{{heir}}“ wird zum neuen Original."
+  pageOf: "Seite {{page}} von {{count}}"
+  previousPage: Vorherige Seite
+  previousDocument: Vorheriges Dokument
+  nextPage: Nächste Seite
+  nextDocument: Nächstes Dokument
+  downloadOriginal: Original herunterladen
+  delete: Dokument löschen
+  applyPreset: Bildeinstellung anwenden
+  applyPresetOption: Bildeinstellung anwenden …
+  noPresets: Keine Bildeinstellungen gespeichert
+  applying: Wird angewendet
+  savePreset: Als Bildeinstellung speichern
+  savePresetTitle: Als Bildeinstellung speichern, um die Bearbeitung auf andere Bilder anzuwenden
+  savePresetDialog: Bildeinstellung speichern
+  openPdf: PDF öffnen
+  noPreview: Für diesen Dateityp gibt es keine Vorschau.
+  download: Herunterladen
+
+textPanel:
+  copied: Text kopiert
+  confidence: "{{value}} % Konfidenz"
+  fromPdf: aus PDF übernommen
+  copy: Text kopieren
+  recognizeIn: "Auf {{language}} erkennen"
+  recognize: Text erkennen
+  recognizeAgain: Erneut erkennen
+  language: "Sprache: {{language}}"
+  languageUnknown: Sprache nicht erkannt
+  languageSelect: Sprache für die Texterkennung
+  removed_one: 1 unsicherer Textteil wurde als vermutlich fehlerhaft ausgeblendet.
+  removed_other: "{{count}} unsichere Textteile wurden als vermutlich fehlerhaft ausgeblendet."
+  allTextKept: Alle Textteile wurden übernommen, auch unsichere.
+  hideUncertain: Unsichere Textteile ausblenden
+  recognizing: Text wird erkannt …
+  noText: Noch kein Text vorhanden.
+  recognized: Erkannter Text
+  save: Text speichern
+
+details:
+  fileName: Dateiname
+  type: Typ
+  size: Größe
+  dimensions: Abmessungen
+  dimensionsValue: "{{width}} × {{height}} px"
+  pages: Seiten
+  uploaded: Hochgeladen
+  modified: Geändert
+  original: Original
+  pdfTitle: Bild mit dem gespeicherten Text als durchsuchbares PDF herunterladen
+  duplicateTitle: Kopie mit denselben Bearbeitungen anlegen, die dieselbe Originaldatei verwendet
+  duplicate: Duplizieren
+  detachTitle: Die Originaldatei kopieren und die Verknüpfung zum Original aufheben
+  detach: Eigenständig machen
+  copyOf: Duplikat von
+  usesOriginal: " (verwendet dessen Originaldatei)"
+  copies: Duplikate

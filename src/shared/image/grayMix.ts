@@ -1,12 +1,13 @@
+import type { TFunction } from "i18next";
 import type { GrayMix } from "../types";
 
-export const GRAY_MIX_CHANNELS: { key: keyof GrayMix; label: string }[] = [
-  { key: "reds", label: "Rottöne" },
-  { key: "yellows", label: "Gelbtöne" },
-  { key: "greens", label: "Grüntöne" },
-  { key: "cyans", label: "Cyantöne" },
-  { key: "blues", label: "Blautöne" },
-  { key: "magentas", label: "Magentatöne" },
+export const GRAY_MIX_CHANNELS: { key: keyof GrayMix }[] = [
+  { key: "reds" },
+  { key: "yellows" },
+  { key: "greens" },
+  { key: "cyans" },
+  { key: "blues" },
+  { key: "magentas" },
 ];
 
 export const GRAY_MIX_MIN = -200;
@@ -19,12 +20,12 @@ export const GRAY_MIX_MAX = 300;
 export const LUMA_GRAY_MIX: GrayMix = { reds: 30, yellows: 89, greens: 59, cyans: 70, blues: 11, magentas: 41 };
 
 /** Named mixes offered in the editor besides the plain conversion ("luma", stored as no mix). */
-export const GRAY_MIX_PRESETS: { id: string; label: string; mix: GrayMix }[] = [
-  { id: "balanced", label: "Ausgewogen", mix: { reds: 40, yellows: 60, greens: 40, cyans: 60, blues: 20, magentas: 80 } },
-  { id: "red", label: "Rotfilter", mix: { reds: 120, yellows: 110, greens: -10, cyans: -50, blues: -50, magentas: 120 } },
-  { id: "yellow", label: "Gelbfilter", mix: { reds: 120, yellows: 110, greens: 40, cyans: -30, blues: -50, magentas: 90 } },
-  { id: "green", label: "Grünfilter", mix: { reds: -10, yellows: 100, greens: 120, cyans: 70, blues: -30, magentas: -50 } },
-  { id: "blue", label: "Blaufilter", mix: { reds: -50, yellows: -50, greens: -10, cyans: 110, blues: 120, magentas: 90 } },
+export const GRAY_MIX_PRESETS: { id: string; mix: GrayMix }[] = [
+  { id: "balanced", mix: { reds: 40, yellows: 60, greens: 40, cyans: 60, blues: 20, magentas: 80 } },
+  { id: "red", mix: { reds: 120, yellows: 110, greens: -10, cyans: -50, blues: -50, magentas: 120 } },
+  { id: "yellow", mix: { reds: 120, yellows: 110, greens: 40, cyans: -30, blues: -50, magentas: 90 } },
+  { id: "green", mix: { reds: -10, yellows: 100, greens: 120, cyans: 70, blues: -30, magentas: -50 } },
+  { id: "blue", mix: { reds: -50, yellows: -50, greens: -10, cyans: 110, blues: 120, magentas: 90 } },
 ];
 
 
@@ -47,10 +48,10 @@ export function grayMixPresetId(mix: GrayMix | null): string | null {
   return GRAY_MIX_PRESETS.find((preset) => sameMix(preset.mix, mix))?.id ?? null;
 }
 
-export function describeGrayMix(mix: GrayMix): string {
-  if (grayMixPresetId(mix) === "luma") return "Standard";
-  const preset = GRAY_MIX_PRESETS.find((p) => p.id === grayMixPresetId(mix));
-  return preset ? preset.label : GRAY_MIX_CHANNELS.map(({ key, label }) => `${label.slice(0, 2)} ${mix[key]}`).join(" ");
+export function describeGrayMix(t: TFunction, mix: GrayMix): string {
+  const id = grayMixPresetId(mix);
+  if (id === "luma" || GRAY_MIX_PRESETS.some((p) => p.id === id)) return t(`grayMix.presets.${id}`);
+  return GRAY_MIX_CHANNELS.map(({ key }) => `${t(`grayMix.channelsShort.${key}`)} ${mix[key]}`).join(" ");
 }
 
 /**

@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { describeGrayMix, GRAY_MIX_PRESETS, grayMixPresetId, LUMA_GRAY_MIX, mixGray, normalizeGrayMix } from "./grayMix";
+import { createI18n } from "../i18n";
+
+const { t } = createI18n({ lng: "de" });
 
 const BALANCED = GRAY_MIX_PRESETS[0]!.mix;
 
@@ -44,8 +47,8 @@ describe("grayscale channel mix", () => {
     expect(grayMixPresetId(BALANCED)).toBe("balanced");
     expect(grayMixPresetId(mix)).toBeNull();
     expect(grayMixPresetId(LUMA_GRAY_MIX)).toBe("luma");
-    expect(describeGrayMix(LUMA_GRAY_MIX)).toBe("Standard");
-    expect(describeGrayMix(BALANCED)).toBe("Ausgewogen");
-    expect(describeGrayMix(mix)).toBe("Ro 100 Ge 50 Gr 0 Cy 25 Bl -100 Ma 200");
+    expect(describeGrayMix(t, LUMA_GRAY_MIX)).toBe("Standard");
+    expect(describeGrayMix(t, BALANCED)).toBe("Ausgewogen");
+    expect(describeGrayMix(t, mix)).toBe("Ro 100 Ge 50 Gr 0 Cy 25 Bl -100 Ma 200");
   });
 });

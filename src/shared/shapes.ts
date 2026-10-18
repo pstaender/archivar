@@ -24,9 +24,9 @@ export const MAX_SHAPES = 500;
 /** Smaller rectangles are dropped (e.g. a click without dragging). */
 export const MIN_SHAPE_SIZE = 0.002;
 
-export const SHAPE_COLORS: { color: string; label: string }[] = [
-  { color: "#000000", label: "Schwarz" },
-  { color: "#ffffff", label: "Weiß" },
+export const SHAPE_COLORS: { color: string; name: "black" | "white" }[] = [
+  { color: "#000000", name: "black" },
+  { color: "#ffffff", name: "white" },
 ];
 
 const COLOR = /^#[0-9a-f]{6}$/;

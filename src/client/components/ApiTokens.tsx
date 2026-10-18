@@ -4,10 +4,12 @@ import type { ApiToken, CreatedApiToken } from "../../shared/tokens";
 import { api } from "../api";
 import { formatDateTime } from "../format";
 import { useToast } from "../hooks/toast";
+import { Trans, useTranslation } from "react-i18next";
 
 /** Personal access tokens for scripts; changes take effect at once, not with the dialog's „Speichern“. */
 export function ApiTokens() {
   const toast = useToast();
+  const { t } = useTranslation();
   const nameId = useId();
   const [tokens, setTokens] = useState<ApiToken[] | null>(null);
   const [name, setName] = useState("");
@@ -40,9 +42,9 @@ export function ApiTokens() {
   const remove = async (token: ApiToken) => {
     try {
       await api.deleteToken(token.id);
-      setTokens((current) => current?.filter((t) => t.id !== token.id) ?? null);
+      setTokens((current) => current?.filter((other) => other.id !== token.id) ?? null);
       if (created?.id === token.id) setCreated(null);
-      toast.success(`Token „${token.name}“ gelöscht`);
+      toast.success(t("tokens.deleted", { name: token.name }));
     } catch (error) {
       toast.error(error);
     }
@@ -51,7 +53,7 @@ export function ApiTokens() {
   const copy = async (token: string) => {
     try {
       await navigator.clipboard.writeText(token);
-      toast.success("Token kopiert");
+      toast.success(t("tokens.copied"));
     } catch (error) {
       toast.error(error);
     }
@@ -60,52 +62,51 @@ export function ApiTokens() {
   return (
     <>
       <p className="muted small">
-        Mit einem Token können Skripte und andere Programme die API nutzen, z. B. <code>scripts/upload.sh</code>. Er wird als Header{" "}
-        <code>Authorization: Bearer …</code> gesendet.
+        <Trans i18nKey="tokens.description" components={{ code: <code /> }} />
       </p>
       <form className="settings__field" onSubmit={create}>
         <label htmlFor={nameId} className="field__label">
-          Neuer Token
+          {t("tokens.new")}
         </label>
         <div className="token-form">
-          <input id={nameId} className="input" placeholder="Name, z. B. Scanner" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
+          <input id={nameId} className="input" placeholder={t("tokens.namePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
           <button type="submit" className="btn" disabled={!name.trim() || creating}>
             {creating ? <Loader size={16} className="spin" /> : <Plus size={16} />}
-            Erstellen
+            {t("tokens.create")}
           </button>
         </div>
       </form>
       {created && (
         <div className="settings__field" role="status">
-          <span className="field__label">Token „{created.name}“</span>
+          <span className="field__label">{t("tokens.token", { name: created.name })}</span>
           <div className="token-form">
-            <input className="input token-value" readOnly value={created.token} aria-label="Neuer Token" onFocus={(e) => e.target.select()} />
+            <input className="input token-value" readOnly value={created.token} aria-label={t("tokens.new")} onFocus={(e) => e.target.select()} />
             <button type="button" className="btn" onClick={() => copy(created.token)}>
               <Copy size={16} />
-              Kopieren
+              {t("tokens.copy")}
             </button>
           </div>
-          <p className="muted small">Der Token wird nur jetzt angezeigt. Bewahre ihn sicher auf.</p>
+          <p className="muted small">{t("tokens.shownOnce")}</p>
         </div>
       )}
       {tokens === null ? (
         <p className="muted small">
-          <Loader size={16} className="spin" /> Tokens werden geladen …
+          <Loader size={16} className="spin" /> {t("tokens.loading")}
         </p>
       ) : tokens.length === 0 ? (
-        <p className="muted small">Noch keine Tokens.</p>
+        <p className="muted small">{t("tokens.none")}</p>
       ) : (
-        <ul className="token-list" aria-label="API-Tokens">
+        <ul className="token-list" aria-label={t("tokens.list")}>
           {tokens.map((token) => (
             <li key={token.id} className="token-list__item">
               <div className="token-list__text">
                 <span>{token.name}</span>
                 <span className="muted small">
-                  <code>{token.prefix}…</code> · erstellt {formatDateTime(token.createdAt)} ·{" "}
-                  {token.lastUsedAt ? `zuletzt benutzt ${formatDateTime(token.lastUsedAt)}` : "noch nicht benutzt"}
+                  <code>{token.prefix}…</code> · {t("tokens.created", { date: formatDateTime(token.createdAt) })} ·{" "}
+                  {token.lastUsedAt ? t("tokens.lastUsed", { date: formatDateTime(token.lastUsedAt) }) : t("tokens.neverUsed")}
                 </span>
               </div>
-              <button type="button" className="btn btn--sm btn--icon" onClick={() => remove(token)} aria-label={`Token „${token.name}“ löschen`} title="Löschen">
+              <button type="button" className="btn btn--sm btn--icon" onClick={() => remove(token)} aria-label={t("tokens.delete", { name: token.name })} title={t("common.delete")}>
                 <Trash size={16} />
               </button>
             </li>
