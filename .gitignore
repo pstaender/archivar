@@ -10,3 +10,4 @@ coverage
 *.tsbuildinfo
 models/*.onnx
 /claude_answers.md
+/logs
