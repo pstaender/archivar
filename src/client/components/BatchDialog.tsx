@@ -1,6 +1,7 @@
 import { Loader } from "../icons";
 import { useEffect, useId, useState } from "react";
 import { languageName, OCR_LANGUAGES } from "../../shared/languages";
+import { applyNameScheme } from "../../shared/nameScheme";
 import { api } from "../api";
 import { whenEditsSaved } from "../editSaves";
 import { useConfig } from "../hooks/config";
@@ -24,9 +25,11 @@ interface BatchChoice {
   /** Empty: the default languages. */
   language: string;
   allText: boolean;
+  /** Empty: the names stay. */
+  rename: string;
 }
 
-const DEFAULT_CHOICE: BatchChoice = { presetId: null, ocr: true, language: "", allText: false };
+const DEFAULT_CHOICE: BatchChoice = { presetId: null, ocr: true, language: "", allText: false, rename: "" };
 
 export function BatchDialog({ open, documentIds, onClose, onStarted }: BatchDialogProps) {
   const toast = useToast();
@@ -35,6 +38,7 @@ export function BatchDialog({ open, documentIds, onClose, onStarted }: BatchDial
   const { reload: reloadJobs } = useJobs();
   const presetId = useId();
   const languageId = useId();
+  const renameId = useId();
   const [options, setOptions] = useState<BatchChoice>(DEFAULT_CHOICE);
   const [working, setWorking] = useState(false);
 
@@ -43,7 +47,8 @@ export function BatchDialog({ open, documentIds, onClose, onStarted }: BatchDial
   }, [open]);
 
   const set = <K extends keyof BatchChoice>(key: K, value: BatchChoice[K]) => setOptions((current) => ({ ...current, [key]: value }));
-  const canRun = !working && (options.presetId !== null || options.ocr);
+  const rename = options.rename.trim();
+  const canRun = !working && (options.presetId !== null || options.ocr || rename !== "");
   const defaultLanguages = config.ocrLanguages.map(languageName).join(" + ");
 
   const run = async () => {
@@ -57,6 +62,7 @@ export function BatchDialog({ open, documentIds, onClose, onStarted }: BatchDial
         ocr: options.ocr,
         languages: options.language ? [options.language] : null,
         allText: options.allText,
+        rename: rename || null,
       });
       void reloadJobs();
       toast.success(`Stapelverarbeitung für ${documentIds.length === 1 ? "1 Dokument" : `${documentIds.length} Dokumente`} gestartet`);
@@ -106,6 +112,24 @@ export function BatchDialog({ open, documentIds, onClose, onStarted }: BatchDial
             ))}
           </select>
           <p className="muted small">Gilt nur für Bilder, angewendet auf ihre bisherige Bearbeitung.</p>
+        </div>
+        <div className="settings__field">
+          <label htmlFor={renameId} className="field__label">
+            Umbenennen
+          </label>
+          <input
+            id={renameId}
+            className="input"
+            value={options.rename}
+            disabled={working}
+            placeholder="z. B. Scans {n}/{m}"
+            onChange={(e) => set("rename", e.target.value)}
+          />
+          <p className="muted small">
+            {rename
+              ? `Wird zu „${applyNameScheme(rename, 1, documentIds.length)}“${documentIds.length > 1 ? ` … „${applyNameScheme(rename, documentIds.length, documentIds.length)}“` : ""}.`
+              : "{n} steht für die laufende Nummer ab 1, {m} für die Anzahl. Leer lässt die Namen unverändert."}
+          </p>
         </div>
         <Switch checked={options.ocr} disabled={working} onChange={(value) => set("ocr", value)} hint="Erkennt den Text der Bilder und PDFs neu.">
           Text erkennen

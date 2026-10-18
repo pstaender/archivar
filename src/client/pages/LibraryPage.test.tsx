@@ -219,6 +219,8 @@ describe("LibraryPage", () => {
     fireEvent.change(screen.getByLabelText("Bildeinstellung"), { target: { value: "7" } });
     fireEvent.change(screen.getByLabelText("Sprache"), { target: { value: "fra" } });
     fireEvent.click(screen.getByRole("checkbox", { name: /Alle Textteile erkennen/ }));
+    fireEvent.change(screen.getByLabelText("Umbenennen"), { target: { value: " bw scans {n}/{m} " } });
+    expect(screen.getByText("Wird zu „bw scans 1/3“ … „bw scans 3/3“.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Anwenden" }));
 
     await waitFor(() => expect(screen.getByText("Stapelverarbeitung für 3 Dokumente gestartet")).toBeTruthy());
@@ -229,6 +231,7 @@ describe("LibraryPage", () => {
       ocr: true,
       languages: ["fra"],
       allText: true,
+      rename: "bw scans {n}/{m}",
     });
     expect(screen.queryByRole("toolbar")).toBeNull();
   });
@@ -248,11 +251,15 @@ describe("LibraryPage", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /Text erkennen/ }));
     expect(apply.disabled).toBe(true);
     expect((screen.getByLabelText("Sprache") as HTMLSelectElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Umbenennen"), { target: { value: "Scan" } });
+    expect(apply.disabled).toBe(false);
+    fireEvent.change(screen.getByLabelText("Umbenennen"), { target: { value: "  " } });
+    expect(apply.disabled).toBe(true);
     fireEvent.click(screen.getByRole("checkbox", { name: /Text erkennen/ }));
     fireEvent.click(apply);
 
     await waitFor(() => expect(screen.getByText("Stapelverarbeitung für 1 Dokument gestartet")).toBeTruthy());
-    expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toMatchObject({ presetId: null, ocr: true, languages: null, allText: false });
+    expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toMatchObject({ presetId: null, ocr: true, languages: null, allText: false, rename: null });
   });
 
   const folders = () => [folder(1, "privat"), folder(2, "wichtig"), folder(3, "wichtig/2026")];

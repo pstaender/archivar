@@ -36,6 +36,10 @@ export interface QueuedBatchItem {
   itemId: number;
   userId: number;
   documentId: number | null;
+  /** The item's number in its job, from 1. */
+  number: number;
+  /** The number of items in its job. */
+  count: number;
   options: BatchOptions;
 }
 
@@ -158,11 +162,16 @@ export class JobRepository {
   nextBatchItem(): QueuedBatchItem | null {
     const row = this.db
       .query(
-        `SELECT i.id, j.user_id, i.document_id, j.options FROM job_items i JOIN jobs j ON j.id = i.job_id
+        `SELECT i.id, j.user_id, i.document_id, j.options,
+           (SELECT COUNT(*) FROM job_items o WHERE o.job_id = i.job_id AND o.position < i.position) + 1 AS number,
+           (SELECT COUNT(*) FROM job_items o WHERE o.job_id = i.job_id) AS count
+         FROM job_items i JOIN jobs j ON j.id = i.job_id
          WHERE j.kind = 'batch' AND i.status = 'pending' ORDER BY j.id, i.position LIMIT 1`,
       )
-      .get() as { id: number; user_id: number; document_id: number | null; options: string } | null;
-    return row ? { itemId: row.id, userId: row.user_id, documentId: row.document_id, options: JSON.parse(row.options) as BatchOptions } : null;
+      .get() as { id: number; user_id: number; document_id: number | null; options: string; number: number; count: number } | null;
+    return row
+      ? { itemId: row.id, userId: row.user_id, documentId: row.document_id, number: row.number, count: row.count, options: JSON.parse(row.options) as BatchOptions }
+      : null;
   }
 
   /**

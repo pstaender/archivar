@@ -917,6 +917,21 @@ describe("jobs", () => {
     expect(states(await byId(second))).toEqual([["foto", "failed", "kaputt"]]);
   });
 
+  test("batch jobs rename the documents in order with {n} and {m}", async () => {
+    const [a, b, c] = await upload(["a.txt", "b.txt", "c.txt"].map((name) => ({ name, data: new TextEncoder().encode("x"), type: "text/plain" })));
+    const res = await post("/api/jobs", { kind: "batch", documentIds: [c!.id, a!.id, b!.id], ocr: false, rename: " bw scans {n}/{m} " });
+    expect(res.status).toBe(201);
+    expect(((await res.json()) as Job).options).toMatchObject({ rename: "bw scans {n}/{m}" });
+    await server.ctx.jobQueue.idle();
+    expect([a, b, c].map((doc) => server.ctx.documents.getById(doc!.id)?.title)).toEqual(["bw scans 2/3", "bw scans 3/3", "bw scans 1/3"]);
+    expect(states((await jobs())[0])).toEqual([
+      ["c", "done", null],
+      ["a", "done", null],
+      ["b", "done", null],
+    ]);
+    expect((await post("/api/jobs", { kind: "batch", documentIds: [a!.id], ocr: false, rename: "  " })).status).toBe(400);
+  });
+
   test("batch jobs need documents of the user and something to do", async () => {
     const photo = await uploadImage();
     expect((await post("/api/jobs", { kind: "batch", documentIds: [photo.id], ocr: false })).status).toBe(400);

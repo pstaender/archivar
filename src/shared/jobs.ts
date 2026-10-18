@@ -11,6 +11,8 @@ export interface BatchOptions {
   /** Null: the default languages. */
   languages: string[] | null;
   allText: boolean;
+  /** New names: `{n}` is the document's number (from 1), `{m}` the number of documents; null keeps the names. */
+  rename?: string | null;
 }
 
 export interface BatchJobCreate {
@@ -20,6 +22,7 @@ export interface BatchJobCreate {
   ocr: boolean;
   languages: string[] | null;
   allText: boolean;
+  rename?: string | null;
 }
 
 export interface ImportJobCreate {

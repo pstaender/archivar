@@ -27,6 +27,7 @@ export function jobDescription(job: Job): string {
   const options = job.options;
   if (!options) return "";
   const parts: string[] = [];
+  if (options.rename) parts.push(`Umbenennen „${options.rename}“`);
   if (options.preset) parts.push(`Bildeinstellung „${options.preset.name}“`);
   if (options.ocr) {
     const details = [options.languages ? options.languages.map(languageName).join(" + ") : null, options.allText ? "alle Textteile" : null].filter(Boolean);
