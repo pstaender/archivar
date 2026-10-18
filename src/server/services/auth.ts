@@ -78,8 +78,10 @@ export class AuthService {
   async login(name: unknown, password: unknown): Promise<string> {
     const user = this.loginUser(name);
     const hash = user ? this.users.passwordHash(user.id) : null;
-    const valid = await Bun.password.verify(typeof password === "string" ? password : "", hash ?? (await DUMMY_HASH));
-    if (!user || !hash || !valid) throw new HttpError(401, "Wrong user name or password");
+    const given = typeof password === "string" ? password : "";
+    const valid = await Bun.password.verify(given, hash ?? (await DUMMY_HASH));
+    // With several users, a user without a password logs in with the name and an empty password.
+    if (!user || !(hash ? valid : given === "")) throw new HttpError(401, "Wrong user name or password");
     return this.auth.createSession(user.id);
   }
 
@@ -95,9 +97,8 @@ export class AuthService {
     return this.auth.createSession(user.id);
   }
 
-  /** Passkeys are an alternative to the password, so they go with it. With several users everyone needs a password. */
+  /** Passkeys are an alternative to the password, so they go with it. */
   async removePassword(user: User, currentPassword: unknown): Promise<void> {
-    if (this.users.count() > 1) throw new HttpError(400, "With several users every user needs a password");
     await this.checkCurrentPassword(user, currentPassword);
     this.setPassword(user.id, null);
   }

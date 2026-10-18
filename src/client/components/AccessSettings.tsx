@@ -21,7 +21,7 @@ export function AccessSettings() {
   const [repeat, setRepeat] = useState("");
   const [busy, setBusy] = useState<"set" | "remove" | "passkey" | null>(null);
   const [passkeys, setPasskeys] = useState<Passkey[] | null>(null);
-  const { passwordSet, usernameRequired } = status;
+  const { passwordSet } = status;
 
   useEffect(() => {
     if (!passwordSet) {
@@ -145,7 +145,7 @@ export function AccessSettings() {
             {busy === "set" && <Loader size={16} className="spin" />}
             {passwordSet ? "Kennwort ändern" : "Kennwort festlegen"}
           </button>
-          {passwordSet && !usernameRequired && (
+          {passwordSet && (
             <button type="button" className="btn btn--danger-ghost" onClick={remove} disabled={!current || busy !== null} title="Löscht auch alle Passkeys">
               {busy === "remove" && <Loader size={16} className="spin" />}
               Kennwort entfernen

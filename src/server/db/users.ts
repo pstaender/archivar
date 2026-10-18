@@ -27,11 +27,15 @@ export class UserRepository {
     return (this.db.query("SELECT id, name, is_admin FROM users ORDER BY id").all() as UserRow[]).map(toUser);
   }
 
-  create(name: string, passwordHash: string, admin: boolean): User {
+  create(name: string, passwordHash: string | null, admin: boolean): User {
     const row = this.db
       .query("INSERT INTO users (name, password_hash, is_admin) VALUES (?, ?, ?) RETURNING id, name, is_admin")
       .get(name, passwordHash, admin ? 1 : 0) as UserRow;
     return toUser(row);
+  }
+
+  setAdmin(id: number, admin: boolean): void {
+    this.db.query("UPDATE users SET is_admin = ? WHERE id = ?").run(admin ? 1 : 0, id);
   }
 
   /** Its rows in the other tables go with it (ON DELETE CASCADE); stored files are left to the caller. */

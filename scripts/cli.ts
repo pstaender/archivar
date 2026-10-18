@@ -36,9 +36,11 @@ export function readHidden(prompt: string): Promise<string> {
   });
 }
 
-export async function readNewPassword(): Promise<string> {
+/** `optional`: an empty password is accepted without asking again. */
+export async function readNewPassword(optional = false): Promise<string> {
   if (!process.stdin.isTTY) return (await Bun.stdin.text()).replace(/\r?\n$/, "");
-  const password = await readHidden("Neues Kennwort: ");
+  const password = await readHidden(optional ? "Kennwort (leer: ohne Kennwort): " : "Neues Kennwort: ");
+  if (optional && !password) return password;
   if ((await readHidden("Kennwort wiederholen: ")) !== password) fail("Die Kennwörter stimmen nicht überein.");
   return password;
 }

@@ -24,14 +24,22 @@ async function login(name: string, password: string): Promise<string> {
 
 describe("users", () => {
   test("the first user is the admin", () => {
-    expect(server.ctx.users.list()).toEqual([{ id: 1, name: "default", admin: true }]);
+    expect(server.ctx.users.list()).toEqual([{ id: 1, name: "admin", admin: true }]);
+  });
+
+  test("a single user left is admin", async () => {
+    const { ctx } = server;
+    const anna = await createUser(ctx.users, "anna", "", false);
+    expect(ctx.users.passwordHash(anna.id)).toBeNull();
+    await deleteUser(ctx.db, ctx.storage, 1);
+    expect(ctx.users.list()).toEqual([{ id: anna.id, name: "anna", admin: true }]);
   });
 
   test("creating checks the name and the password", async () => {
     const { users } = server.ctx;
     await expect(createUser(users, " ", "geheim123", false)).rejects.toThrow("leer");
     await expect(createUser(users, "anna maria", "geheim123", false)).rejects.toThrow("Leerzeichen");
-    await expect(createUser(users, "default", "geheim123", false)).rejects.toThrow("gibt es schon");
+    await expect(createUser(users, "admin", "geheim123", false)).rejects.toThrow("gibt es schon");
     await expect(createUser(users, "anna", "kurz", false)).rejects.toThrow("mindestens");
     const anna = await createUser(users, " anna ", "geheim123", true);
     expect(anna).toMatchObject({ name: "anna", admin: true });

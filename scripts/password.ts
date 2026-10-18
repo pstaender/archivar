@@ -1,7 +1,7 @@
 // Sets or removes a user's password, e.g. when it is forgotten. Ends the user's sessions; removing it also deletes the
 // user's passkeys. Usage:
 //   bun run password [user]            asks for the new password (or reads it from stdin when piped)
-//   bun run password [user] --remove   turns the login off again (only for the only user)
+//   bun run password [user] --remove   turns the login off again (with several users: logs in with an empty password)
 // The user can be left out when there is only one. The server does not need to be stopped.
 import { loadConfig } from "../src/server/config";
 import { AuthRepository } from "../src/server/db/auth";
@@ -23,9 +23,8 @@ if (!user) fail(name ? `Benutzer „${name}“ nicht gefunden. Vorhanden: ${all.
 
 const auth = new AuthService(users, new AuthRepository(db));
 if (remove) {
-  if (all.length > 1) fail("Mit mehreren Benutzern braucht jeder ein Kennwort.");
   auth.setPassword(user.id, null);
-  console.log(`Kennwort von „${user.name}“ entfernt, die Anmeldung ist ausgeschaltet.`);
+  console.log(all.length > 1 ? `Kennwort von „${user.name}“ entfernt, die Anmeldung geht mit leerem Kennwort.` : `Kennwort von „${user.name}“ entfernt, die Anmeldung ist ausgeschaltet.`);
 } else {
   const password = await readNewPassword();
   if (password.length < MIN_PASSWORD_LENGTH) fail(`Das Kennwort braucht mindestens ${MIN_PASSWORD_LENGTH} Zeichen.`);

@@ -34,7 +34,7 @@ async function setPassword(password: string, cookie?: string, currentPassword?: 
 
 describe("access", () => {
   test("without a password everything is open and no user name is asked for", async () => {
-    expect(await status()).toEqual({ user: { id: 1, name: "default", admin: true }, passwordSet: false, usernameRequired: false, passkeyLogin: false });
+    expect(await status()).toEqual({ user: { id: 1, name: "admin", admin: true }, passwordSet: false, usernameRequired: false, passkeyLogin: false });
     expect((await server.api("/api/library")).status).toBe(200);
   });
 
@@ -43,7 +43,7 @@ describe("access", () => {
     expect((await server.api("/api/library")).status).toBe(401);
     expect(await status()).toEqual({ user: null, passwordSet: true, usernameRequired: false, passkeyLogin: false });
     expect((await server.api("/api/library", { headers: { Cookie: cookie } })).status).toBe(200);
-    expect((await status(cookie)).user?.name).toBe("default");
+    expect((await status(cookie)).user?.name).toBe("admin");
 
     const login = await server.api("/api/auth/login", jsonInit("POST", { password: "falsch123" }));
     expect(login.status).toBe(401);
@@ -92,7 +92,18 @@ describe("access", () => {
     expect((await server.api("/api/auth/login", jsonInit("POST", { password: "annas-kennwort" }))).status).toBe(401);
     const cookie = sessionCookie(await server.api("/api/auth/login", jsonInit("POST", { name: "anna", password: "annas-kennwort" })));
     expect((await status(cookie)).user).toEqual({ id: anna.id, name: "anna", admin: false });
-    expect((await server.api("/api/auth/password", jsonInit("DELETE", { currentPassword: "annas-kennwort" }, cookie))).status).toBe(400);
+  });
+
+  test("with several users a user without a password logs in with the name and an empty password", async () => {
+    await createUser(server.ctx.users, "anna", "", false);
+    expect(await status()).toEqual({ user: null, passwordSet: false, usernameRequired: true, passkeyLogin: false });
+    expect((await server.api("/api/library")).status).toBe(401);
+    expect((await server.api("/api/auth/login", jsonInit("POST", { name: "anna", password: "irgendwas" }))).status).toBe(401);
+    expect((await server.api("/api/auth/login", jsonInit("POST", { name: "nobody", password: "" }))).status).toBe(401);
+    const cookie = sessionCookie(await server.api("/api/auth/login", jsonInit("POST", { name: "anna", password: "" })));
+    expect((await status(cookie)).user?.name).toBe("anna");
+    const admin = sessionCookie(await server.api("/api/auth/login", jsonInit("POST", { name: "admin" })));
+    expect((await status(admin)).user?.name).toBe("admin");
   });
 
   test("a single user with a password is asked only for it", async () => {
@@ -125,7 +136,7 @@ describe("access", () => {
     const cookie = await setPassword("geheim123");
     const registration = await (await server.api("/api/auth/passkeys/options", jsonInit("POST", {}, cookie))).json();
     expect(registration.options.rp).toEqual({ name: "Archivar", id: "localhost" });
-    expect(registration.options.user.name).toBe("default");
+    expect(registration.options.user.name).toBe("admin");
 
     const repo = server.ctx.authStore;
     repo.addPasskey(1, { credentialId: "abc", publicKey: new Uint8Array([1]), counter: 0, transports: ["internal"], name: "Passkey" });

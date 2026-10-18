@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { migrate, migrations } from "./database";
+import { migrate, migrations, openDatabase } from "./database";
 
 const versionBefore = (table: string) => migrations.findIndex((sql) => sql.includes(`CREATE TABLE ${table}_new`));
 
@@ -48,4 +48,17 @@ test("rebuilding the stacks table keeps its documents and folders", () => {
 
   db.query("DELETE FROM stacks WHERE id = ?").run(stack);
   expect((insert.get() as { id: number }).id).toBe(stack + 1);
+});
+
+test("the first user is created as admin, an existing default user is renamed to admin", () => {
+  expect(openDatabase(":memory:").query("SELECT name, is_admin AS admin FROM users").all()).toEqual([{ name: "admin", admin: 1 }]);
+
+  const db = new Database(":memory:", { strict: true });
+  migrate(db, migrations.findIndex((sql) => sql.includes("is_admin")));
+  db.query("INSERT INTO users (name) VALUES ('default'), ('anna')").run();
+  migrate(db);
+  expect(db.query("SELECT name, is_admin AS admin FROM users ORDER BY id").all()).toEqual([
+    { name: "admin", admin: 1 },
+    { name: "anna", admin: 0 },
+  ]);
 });

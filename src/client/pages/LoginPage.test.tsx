@@ -8,7 +8,7 @@ let fetchMock: FetchMock;
 afterEach(() => fetchMock.restore());
 
 const loggedOut = { user: null, passwordSet: true, usernameRequired: false, passkeyLogin: false };
-const loggedIn = { user: { id: 1, name: "default", admin: true }, passwordSet: true, usernameRequired: false, passkeyLogin: false };
+const loggedIn = { user: { id: 1, name: "admin", admin: true }, passwordSet: true, usernameRequired: false, passkeyLogin: false };
 
 describe("login", () => {
   test("asks only for the password when there is one user, then shows the app", async () => {
@@ -45,6 +45,21 @@ describe("login", () => {
     fireEvent.click(screen.getByRole("button", { name: "Anmelden" }));
     await screen.findByText("Benutzername oder Kennwort ist falsch.");
     expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toEqual({ name: "anna", password: "geheim123" });
+  });
+
+  test("with several users the password may be left empty", async () => {
+    fetchMock = mockFetch({
+      "GET /api/auth/status": () => ({ ...loggedOut, passwordSet: false, usernameRequired: true }),
+      "POST /api/auth/login": () => Response.json({ error: "Wrong user name or password" }, { status: 401 }),
+    });
+    await renderApp(<p>Bibliothek</p>);
+    const submit = screen.getByRole("button", { name: "Anmelden" }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Benutzername"), { target: { value: "anna" } });
+    expect(submit.disabled).toBe(false);
+    fireEvent.click(submit);
+    await screen.findByText("Benutzername oder Kennwort ist falsch.");
+    expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toEqual({ name: "anna", password: "" });
   });
 
   test("shows the login again when the session ends", async () => {

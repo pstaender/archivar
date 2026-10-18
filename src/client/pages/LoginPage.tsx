@@ -15,10 +15,12 @@ export function LoginPage({ status, onLogin }: { status: AuthStatus; onLogin: ()
   const [busy, setBusy] = useState<"password" | "passkey" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const supported = passkeysSupported();
+  // With several users, users without a password log in with an empty one.
+  const canSubmit = busy === null && (status.usernameRequired ? name.trim() !== "" : password !== "");
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!password || busy) return;
+    if (!canSubmit) return;
     setBusy("password");
     setError(null);
     try {
@@ -99,7 +101,7 @@ export function LoginPage({ status, onLogin }: { status: AuthStatus; onLogin: ()
             {error}
           </p>
         )}
-        <button type="submit" className="btn btn--primary" disabled={!password || busy !== null}>
+        <button type="submit" className="btn btn--primary" disabled={!canSubmit}>
           {busy === "password" && <Loader size={16} className="spin" />}
           Anmelden
         </button>

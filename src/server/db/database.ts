@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { seedImportPresets } from "./presets";
 
-export const DEFAULT_USER_NAME = "default";
+export const DEFAULT_USER_NAME = "admin";
 
 export const migrations: string[] = [
   `
@@ -251,6 +251,9 @@ export const migrations: string[] = [
   `
   ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;
   UPDATE users SET is_admin = 1 WHERE id = (SELECT MIN(id) FROM users);
+  `,
+  `
+  UPDATE users SET name = 'admin' WHERE name = 'default' AND NOT EXISTS (SELECT 1 FROM users WHERE name = 'admin');
   `,
 ];
 

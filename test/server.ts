@@ -138,7 +138,7 @@ export async function startTestServer({ ocrPageTimeoutMs, importPreset = false }
     imageConverter: converter,
     ocrPageTimeoutMs,
   });
-  ctx.users.updateSettings(ctx.users.findByName("default")!.id, importPreset ? { autoOcr: false } : { autoOcr: false, importPresetId: null });
+  ctx.users.updateSettings(ctx.users.findByName("admin")!.id, importPreset ? { autoOcr: false } : { autoOcr: false, importPresetId: null });
   const server = Bun.serve({ port: 0, routes: createApiRoutes(ctx) });
   const url = server.url.toString().replace(/\/$/, "");
   return {

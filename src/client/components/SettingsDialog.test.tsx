@@ -138,7 +138,7 @@ describe("SettingsDialog", () => {
 
   test("offers the archive export only to an admin with a password and asks before downloading", async () => {
     fetchMock = mockSettings({}, [], {
-      "GET /api/auth/status": () => ({ user: { id: 1, name: "default", admin: true }, passwordSet: true, usernameRequired: false, passkeyLogin: false }),
+      "GET /api/auth/status": () => ({ user: { id: 1, name: "admin", admin: true }, passwordSet: true, usernameRequired: false, passkeyLogin: false }),
       "GET /api/export/archive/size": () => ({ bytes: 25 * 1024 * 1024 }),
     });
     const clicked: string[] = [];
