@@ -9,6 +9,7 @@ let fetchMock: FetchMock;
 afterEach(() => {
   fetchMock.restore();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe("LibraryPage", () => {
@@ -22,6 +23,29 @@ describe("LibraryPage", () => {
     expect(screen.getByText("2 Einträge")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Rechnung/ }).getAttribute("href")).toBe(`/documents/${doc.id}`);
     expect(screen.getByRole("link", { name: /Steuer 2026/ }).getAttribute("href")).toBe(`/stacks/${stack.id}`);
+  });
+
+  test("remembers its location and scrolls to the card named in the hash, also inside a smart stack", async () => {
+    const scrolled: string[] = [];
+    const scrollIntoView = spyOn(Element.prototype, "scrollIntoView").mockImplementation(function (this: Element) {
+      scrolled.push(this.getAttribute("data-item-key") ?? "");
+    });
+    const scans = [1, 2].map((n) => makeDocument({ id: 40 + n, title: `Scan ${n}`, createdAt: `2026-10-01T10:0${n}:00.000Z` }));
+    const stack = makeStack({ id: 7, title: "Steuer" });
+    fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => [stackItem(stack), ...scans.map(docItem)] });
+    try {
+      const view = await renderApp(<LibraryPage />, { path: "/folders/wichtig?q=x#stack-7" });
+      await waitFor(() => expect(scrolled).toEqual(["s7"]));
+      expect(sessionStorage.getItem("archivar.libraryLocation")).toBe("/folders/wichtig?q=x");
+      expect(document.activeElement?.getAttribute("href")).toBe("/stacks/7");
+      view.unmount();
+
+      localStorage.setItem("archivar.smartStacks", "true");
+      await renderApp(<LibraryPage />, { path: "/#42" });
+      await waitFor(() => expect(scrolled).toEqual(["s7", "m41-42"]));
+    } finally {
+      scrollIntoView.mockRestore();
+    }
   });
 
   test("shows the cards in portrait, landscape or square and keeps the choice for all folders", async () => {

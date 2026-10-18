@@ -15,6 +15,8 @@ import { useRefreshOnJobProgress } from "../hooks/jobs";
 import { useRefreshOnEditSave } from "../editSaves";
 import { useRefreshOnUpload, useUpload } from "../hooks/upload";
 import { usePolling } from "../hooks/usePolling";
+import { useScrollToHashItem } from "../hooks/scrollToItem";
+import { itemFromHash, itemHash, libraryLocation } from "../documentOrder";
 import { useResource } from "../hooks/useResource";
 import { documentLabel, formatDate, isOcrBusy } from "../format";
 
@@ -36,6 +38,10 @@ export function StackPage() {
 
   const busy = stack.data?.documents.some(isOcrBusy) ?? false;
   usePolling(busy, stack.refresh, OCR_POLL_INTERVAL);
+  useScrollToHashItem(Boolean(stack.data), (hash) => {
+    const target = itemFromHash(hash);
+    return target?.type === "document" ? document.querySelector(`[data-document-id="${target.id}"]`) : null;
+  });
 
   if (stack.error) {
     return (
@@ -98,7 +104,7 @@ export function StackPage() {
   return (
     <div className="page">
       <header className="page__header page__header--detail">
-        <Link to="/" className="btn btn--ghost btn--icon" aria-label="Zurück">
+        <Link to={libraryLocation() + itemHash({ type: "stack", id })} className="btn btn--ghost btn--icon" aria-label="Zurück">
           <ArrowLeft size={18} />
         </Link>
         <div className="page__title">
@@ -139,7 +145,7 @@ export function StackPage() {
 
       <ol className="pages">
         {data.documents.map((doc, index) => (
-          <li key={doc.id} className="page-card">
+          <li key={doc.id} className="page-card" data-document-id={doc.id}>
             <Link to={`/documents/${doc.id}?stack=${id}`} className="page-card__media">
               <Thumbnail {...documentThumbnail(doc)} alt={documentLabel(doc)} />
               <span className="page-card__number">{index + 1}</span>

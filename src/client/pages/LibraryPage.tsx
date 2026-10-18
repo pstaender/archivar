@@ -32,7 +32,8 @@ import { useRefreshOnJobProgress } from "../hooks/jobs";
 import { useRefreshOnUpload, useUpload } from "../hooks/upload";
 import { usePolling } from "../hooks/usePolling";
 import { useResource } from "../hooks/useResource";
-import { rememberDocumentOrder } from "../documentOrder";
+import { itemFromHash, rememberDocumentOrder, rememberLibraryLocation } from "../documentOrder";
+import { useScrollToHashItem } from "../hooks/scrollToItem";
 import { type DisplayItem, groupSmartStacks, type SmartStack, smartStackKey } from "../smartStacks";
 import { saveBlob } from "../download";
 import { documentLabel, isOcrBusy } from "../format";
@@ -168,6 +169,18 @@ export function LibraryPage() {
   useEffect(() => {
     if (library.data) rememberDocumentOrder(items.flatMap((item) => (item.type === "document" ? [item.document.id] : [])));
   }, [allItems, smartParam]);
+  useEffect(() => rememberLibraryLocation(location.pathname + location.search), [location.pathname, location.search]);
+  // Coming back from a document or stack: its card, or the smart stack holding the document.
+  useScrollToHashItem(Boolean(library.data), (hash) => {
+    const target = itemFromHash(hash);
+    if (!target) return null;
+    const item = displayItems.find((item) =>
+      item.type === "smart"
+        ? target.type === "document" && item.documents.some((doc) => doc.id === target.id)
+        : item.type === target.type && (item.type === "stack" ? item.stack.id : item.document.id) === target.id,
+    );
+    return item ? document.querySelector(`[data-item-key="${displayKey(item)}"]`) : null;
+  });
   const busy = items.some((item) => item.type === "document" && isOcrBusy(item.document));
 
   usePolling(busy, library.refresh, POLL_INTERVAL);

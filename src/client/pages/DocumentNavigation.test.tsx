@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { DEFAULT_USER_SETTINGS } from "../../shared/settings";
 import type { ArchiveDocument } from "../../shared/types";
 import { type FetchMock, makeDocument, mockFetch, renderApp } from "../../../test/client";
-import { rememberDocumentOrder } from "../documentOrder";
+import { rememberDocumentOrder, rememberLibraryLocation } from "../documentOrder";
 import { DocumentPage } from "./DocumentPage";
 
 let fetchMock: FetchMock;
@@ -66,6 +66,25 @@ describe("document navigation", () => {
   test("has no previous or next document when opened from elsewhere", async () => {
     await open("/documents/2");
     expect(screen.queryByRole("button", { name: "Nächstes Dokument" })).toBeNull();
+  });
+
+  test("goes back to the library page it came from, marking the document to scroll to", async () => {
+    rememberLibraryLocation("/folders/wichtig?smart=1-2");
+    await open("/documents/2");
+    expect(screen.getByRole("link", { name: "Zurück" }).getAttribute("href")).toBe("/folders/wichtig?smart=1-2#2");
+  });
+
+  test("goes back to the stack it came from", async () => {
+    rememberLibraryLocation("/folders/wichtig");
+    await open("/documents/1?stack=9", {
+      "GET /api/stacks/9": () => ({ id: 9, title: "Stapel", documentIds: [1], documents: [docs.get(1)], folders: [], createdAt: "", updatedAt: "" }),
+    });
+    expect(screen.getByRole("link", { name: "Zurück" }).getAttribute("href")).toBe("/stacks/9#1");
+  });
+
+  test("goes back to the overview without a remembered library page", async () => {
+    await open("/documents/3");
+    expect(screen.getByRole("link", { name: "Zurück" }).getAttribute("href")).toBe("/#3");
   });
 
   test("remembers the chosen tab for all documents", async () => {

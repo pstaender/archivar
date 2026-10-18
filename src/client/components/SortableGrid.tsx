@@ -65,7 +65,7 @@ export function SortableGrid<T>({ items, itemKey, itemLabel, renderItem, onReord
     return (
       <div className="grid" aria-busy={busy}>
         {items.map((item) => (
-          <div key={itemKey(item)} className="grid__item">
+          <div key={itemKey(item)} className="grid__item" data-item-key={itemKey(item)}>
             {renderItem(item)}
           </div>
         ))}
@@ -107,6 +107,7 @@ function SortableItem({ id, label, children }: { id: string; label: string; chil
     <div
       ref={setNodeRef}
       className={`grid__item ${isDragging ? "is-dragging" : ""}`}
+      data-item-key={id}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       {...pointerListeners}
     >

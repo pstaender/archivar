@@ -32,7 +32,7 @@ import { usePresets } from "../hooks/presets";
 import { useSettings } from "../hooks/settings";
 import { useLeaveGuard } from "../hooks/leaveGuard";
 import { useArrowNavigation } from "../hooks/arrowNavigation";
-import { documentOrder } from "../documentOrder";
+import { documentOrder, itemHash, libraryLocation } from "../documentOrder";
 import { usePolling } from "../hooks/usePolling";
 import { useToast } from "../hooks/toast";
 import { useResource } from "../hooks/useResource";
@@ -175,7 +175,7 @@ export function DocumentPage() {
   }
   if (!doc) return <div className="page-loading">Lade …</div>;
 
-  const backHref = stackId ? `/stacks/${stackId}` : "/";
+  const backHref = (stackId ? `/stacks/${stackId}` : libraryLocation()) + itemHash({ type: "document", id: doc.id });
 
   const update = async (change: Parameters<typeof api.updateDocument>[1]) => {
     try {
