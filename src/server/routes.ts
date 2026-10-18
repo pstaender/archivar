@@ -6,6 +6,7 @@ import { type ImagePresetInput, normalizePresetName, normalizePresetSteps } from
 import { normalizePdfQuality } from "../shared/settings";
 import type { AppContext } from "./context";
 import { toPublicDocument } from "./db/documents";
+import { archiveExportSize, exportArchive, exportFilename } from "./services/archiveExport";
 import { handle, HttpError, json, noContent, parseId, readJson } from "./http";
 import { derivedKeys } from "./storage";
 
@@ -64,6 +65,10 @@ export function createApiRoutes(ctx: AppContext) {
     const res = noContent();
     res.headers.append("Set-Cookie", ctx.auth.sessionCookie(req, token));
     return res;
+  };
+  // The export holds the data of all users, so it needs a user who has to log in.
+  const archiveExporter = (req: Request) => {
+    if (ctx.users.passwordHash(ctx.currentUser(req).id) === null) throw new HttpError(403, "Exporting the archive needs a password");
   };
   const pdfQuality = (req: Request, value: unknown) => normalizePdfQuality(value, ctx.users.settings(userId(req)).pdfImageQuality);
 
@@ -300,6 +305,26 @@ export function createApiRoutes(ctx: AppContext) {
         const ids = body.documentIds.map((id) => parseId(String(id)));
         const title = typeof body.title === "string" ? body.title : undefined;
         return pdfResponse(await archive.exportCombinedPdf(userId(req), ids, title, pdfQuality(req, body.quality)));
+      }),
+    },
+
+    "/api/export/archive": {
+      GET: handle((req: Req) => {
+        archiveExporter(req);
+        return new Response(exportArchive(ctx.db, ctx.storage.root), {
+          headers: {
+            "Content-Type": "application/zip",
+            "Content-Disposition": `attachment; filename="${exportFilename()}"`,
+            "Cache-Control": "no-store",
+          },
+        });
+      }),
+    },
+
+    "/api/export/archive/size": {
+      GET: handle(async (req: Req) => {
+        archiveExporter(req);
+        return json({ bytes: await archiveExportSize(ctx.db, ctx.storage.root) });
       }),
     },
 

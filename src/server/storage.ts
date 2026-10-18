@@ -4,7 +4,7 @@ import { PREVIEW_SIZE } from "../shared/preview";
 import { HttpError } from "./http";
 
 export class FileStorage {
-  constructor(private root: string) {}
+  constructor(readonly root: string) {}
 
   path(key: string): string {
     const full = normalize(join(this.root, key));

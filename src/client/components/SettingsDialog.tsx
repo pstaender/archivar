@@ -4,23 +4,26 @@ import { languageName, OCR_LANGUAGES } from "../../shared/languages";
 import { describePreset } from "../../shared/presets";
 import { DEFAULT_USER_SETTINGS, type PdfImageQuality, type UserSettings } from "../../shared/settings";
 import { PDF_QUALITY_CHOICES } from "./PdfButton";
+import { useAuth } from "../hooks/auth";
 import { useConfig } from "../hooks/config";
 import { usePresets } from "../hooks/presets";
 import { useSettings } from "../hooks/settings";
 import { useToast } from "../hooks/toast";
 import { AccessSettings } from "./AccessSettings";
 import { ApiTokens } from "./ApiTokens";
+import { ArchiveExport } from "./ArchiveExport";
 import { Dialog } from "./Dialog";
 import { FolderPicker } from "./FolderPicker";
 import { Switch } from "./Switch";
 
-type Tab = "sizes" | "import" | "api" | "access";
+type Tab = "sizes" | "import" | "api" | "access" | "export";
 
 const TABS: { tab: Tab; label: string }[] = [
   { tab: "sizes", label: "Bildgrößen" },
   { tab: "import", label: "Import" },
   { tab: "api", label: "API" },
   { tab: "access", label: "Zugriff" },
+  { tab: "export", label: "Export" },
 ];
 
 interface Choice<T extends string> {
@@ -74,6 +77,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const { settings: stored, loaded, save } = useSettings();
   const { presets } = usePresets();
   const { ocrLanguages: defaultLanguages } = useConfig();
+  // The export holds the data of all users, so it is only offered to a user who has to log in.
+  const { passwordSet } = useAuth().status;
+  const tabs = passwordSet ? TABS : TABS.filter(({ tab }) => tab !== "export");
   const presetSelectId = useId();
   const languageSelectId = useId();
   const [tab, setTab] = useState<Tab>("sizes");
@@ -83,6 +89,10 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   useEffect(() => {
     if (open) setDraft(stored);
   }, [open, stored]);
+
+  useEffect(() => {
+    if (!passwordSet && tab === "export") setTab("access");
+  }, [passwordSet, tab]);
 
   const set = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => setDraft((current) => ({ ...current, [key]: value }));
 
@@ -119,7 +129,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
       }
     >
       <div className="tabs tabs--dialog" role="tablist">
-        {TABS.map(({ tab: value, label }) => (
+        {tabs.map(({ tab: value, label }) => (
           <button key={value} type="button" role="tab" aria-selected={tab === value} className={tab === value ? "is-active" : ""} onClick={() => setTab(value)}>
             {label}
           </button>
@@ -202,6 +212,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
           )}
           {tab === "api" && <ApiTokens />}
           {tab === "access" && <AccessSettings />}
+          {tab === "export" && passwordSet && <ArchiveExport />}
         </div>
       )}
     </Dialog>

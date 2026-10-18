@@ -11,6 +11,7 @@ The following features are available:
 - Export file(s) as searchable PDF
 
 - Optional login with a password or passkeys (reset with `bun run password`)
+- Export of the whole archive (database and files) as a zip, in the settings or with `bun run export`
 - REST API with personal access tokens, e.g. to upload from a script ([example](scripts/upload.sh))
 
 [More details in the software documentation.](documentation.md)

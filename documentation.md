@@ -17,7 +17,7 @@ Archive photos, scans, documents and PDFs in the browser – on desktop and on t
 - Group documents into ordered stacks with a title
 - Hierarchical folders as labels (e.g. `wichtig/2026`); selected documents and stacks can be moved into or added to existing folders (or a new one), or removed from the folder being viewed
 - "PDF" for a selection downloads all its images (as searchable pages) and PDFs, including the documents of selected stacks, as one PDF
-- "Einstellungen" (sidebar, stored per user on the server), in four tabs: "Bildgrößen" – the image resolution in exported PDFs (300 DPI for A4 by default, 150 DPI, or original); "Import" – "Text nach dem Upload erkennen", "Alle Textteile erkennen", the OCR language for uploads ("Automatisch" recognizes with the default languages and again in the detected language if it is another one), the image preset applied to uploads and folders every upload is added to; "API" – personal access tokens; "Zugriff" – password and passkeys (see [Access](#access)). In PDFs, black-and-white pages are stored as lossless 1-bit images (about 150–200 KB per A4 text page at 300 DPI), others as JPEG
+- "Einstellungen" (sidebar, stored per user on the server), in five tabs: "Bildgrößen" – the image resolution in exported PDFs (300 DPI for A4 by default, 150 DPI, or original); "Import" – "Text nach dem Upload erkennen", "Alle Textteile erkennen", the OCR language for uploads ("Automatisch" recognizes with the default languages and again in the detected language if it is another one), the image preset applied to uploads and folders every upload is added to; "API" – personal access tokens; "Zugriff" – password and passkeys (see [Access](#access)); "Export" – download of the whole archive (see [Backup](#backup), only shown with a password). In PDFs, black-and-white pages are stored as lossless 1-bit images (about 150–200 KB per A4 text page at 300 DPI), others as JPEG
 - Optional login with a password or passkeys; REST API, SQLite database, multi-user ready
 
 ## Getting started
@@ -66,6 +66,18 @@ echo "$PASSWORD" | bun run password anna
 bun run password --remove   # no login any more, also deletes the passkeys
 ```
 
+## Backup
+
+„Einstellungen" → „Export" → „Archiv exportieren" shows the size and, once confirmed, downloads the whole archive as a zip: a consistent snapshot of the SQLite database as `archivar.sqlite` (the data of all users) and every stored file under `files/` (originals and derived images). The tab is only shown, and the download only allowed, while the user has a password. Unzipped into an empty data directory (`ARCHIVAR_DATA_DIR`, default `data/`) it restores the archive.
+
+The same export on the server (it can keep running):
+
+```sh
+bun run export                  # archivar-<date>.zip in the current directory
+bun run export /backup/arch.zip
+bun run export - | ssh host 'cat > archivar.zip'
+```
+
 ## API
 
 | Method | Path                                | Description                                   |
@@ -97,6 +109,8 @@ bun run password --remove   # no login any more, also deletes the passkeys
 | POST   | `/api/documents/:id/auto-bw`        | Black-and-white variants `{ brightness, contrast, bwThreshold }[]` for `{ editSettings }`, best first |
 | POST   | `/api/documents/:id/render`         | Full-resolution JPEG of unsaved `{ editSettings }` (not stored) |
 | POST   | `/api/documents/:id/pdf`            | Searchable PDF of the edited image with `{ text }` (default: stored OCR text) |
+| GET    | `/api/export/archive`               | Zip of the database and all files (see [Backup](#backup)); 403 without a password |
+| GET    | `/api/export/archive/size`          | `{ bytes }`, about the size of that zip |
 | POST   | `/api/export/pdf`                   | One PDF of `{ documentIds, title? }` in order (images as searchable pages, PDF pages copied, other files left out) |
 | GET    | `/api/documents/:id/{file,preview,image,edited,thumbnail}` | Original, editor preview, edited image (with shapes), edited image without shapes, thumbnail |
 | GET    | `/api/stacks`                       | Stacks                                        |

@@ -136,6 +136,7 @@ export const api = {
   settings: () => request<UserSettings>("/api/settings"),
   updateSettings: (update: Partial<UserSettings>) => request<UserSettings>("/api/settings", jsonBody("PATCH", update)),
   config: () => request<AppConfig>("/api/config"),
+  archiveExportSize: () => request<{ bytes: number }>("/api/export/archive/size"),
 
   library: (params: LibraryQuery = {}) =>
     request<LibraryItem[]>(`/api/library${query({ folder: params.folder, q: params.q, sort: params.sort })}`),

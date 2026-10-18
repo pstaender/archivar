@@ -135,4 +135,28 @@ describe("SettingsDialog", () => {
     await waitFor(() => expect(screen.queryByText("Alt") === null).toBe(true));
     expect(fetchMock.calls.filter((c) => c.method === "POST" || c.method === "DELETE").map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/tokens", "DELETE /api/tokens/1"]);
   });
+
+  test("offers the archive export only with a password and asks before downloading", async () => {
+    fetchMock = mockSettings({}, [], {
+      "GET /api/auth/status": () => ({ user: { id: 1, name: "default" }, passwordSet: true, usernameRequired: false, passkeyLogin: false }),
+      "GET /api/export/archive/size": () => ({ bytes: 25 * 1024 * 1024 }),
+    });
+    const clicked: string[] = [];
+    const click = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      clicked.push(this.getAttribute("href")!);
+    };
+    try {
+      await renderApp(<SettingsDialog open onClose={() => {}} />);
+      expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import", "API", "Zugriff", "Export"]);
+      tab("Export");
+      fireEvent.click(screen.getByRole("button", { name: "Archiv exportieren" }));
+      await waitFor(() => expect(screen.getByText("Möchtest du wirklich 25 MB herunterladen?")).toBeTruthy());
+      expect(clicked).toEqual([]);
+      fireEvent.click(screen.getByRole("button", { name: "Herunterladen" }));
+      expect(clicked).toEqual(["/api/export/archive"]);
+    } finally {
+      HTMLAnchorElement.prototype.click = click;
+    }
+  });
 });
