@@ -45,7 +45,7 @@ function post(path: string, body: unknown) {
 describe("users", () => {
   test("requests act as the default user without login", async () => {
     const res = await server.api("/api/me");
-    expect(await res.json()).toEqual({ id: 1, name: "default" });
+    expect(await res.json()).toEqual({ id: 1, name: "default", admin: true });
   });
 });
 

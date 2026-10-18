@@ -57,6 +57,8 @@ export type OcrStatus = "none" | "pending" | "running" | "done" | "failed";
 export interface User {
   id: number;
   name: string;
+  /** May export the whole archive. */
+  admin: boolean;
 }
 
 export interface Folder {

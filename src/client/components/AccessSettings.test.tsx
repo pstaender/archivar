@@ -6,7 +6,7 @@ import { AccessSettings } from "./AccessSettings";
 let fetchMock: FetchMock;
 afterEach(() => fetchMock.restore());
 
-const statusWith = (passwordSet: boolean) => ({ user: { id: 1, name: "default" }, passwordSet, usernameRequired: false, passkeyLogin: false });
+const statusWith = (passwordSet: boolean) => ({ user: { id: 1, name: "default", admin: true }, passwordSet, usernameRequired: false, passkeyLogin: false });
 const type = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
 describe("AccessSettings", () => {

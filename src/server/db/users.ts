@@ -2,19 +2,41 @@ import type { Database } from "bun:sqlite";
 import { normalizeUserSettings, type UserSettings } from "../../shared/settings";
 import type { User } from "../../shared/types";
 
+interface UserRow {
+  id: number;
+  name: string;
+  is_admin: number;
+}
+
+const toUser = (row: UserRow): User => ({ id: row.id, name: row.name, admin: row.is_admin === 1 });
+
 export class UserRepository {
   constructor(private db: Database) {}
 
   findByName(name: string): User | null {
-    return (this.db.query("SELECT id, name FROM users WHERE name = ?").get(name) as User | null) ?? null;
+    const row = this.db.query("SELECT id, name, is_admin FROM users WHERE name = ?").get(name) as UserRow | null;
+    return row && toUser(row);
   }
 
   find(id: number): User | null {
-    return (this.db.query("SELECT id, name FROM users WHERE id = ?").get(id) as User | null) ?? null;
+    const row = this.db.query("SELECT id, name, is_admin FROM users WHERE id = ?").get(id) as UserRow | null;
+    return row && toUser(row);
   }
 
   list(): User[] {
-    return this.db.query("SELECT id, name FROM users ORDER BY id").all() as User[];
+    return (this.db.query("SELECT id, name, is_admin FROM users ORDER BY id").all() as UserRow[]).map(toUser);
+  }
+
+  create(name: string, passwordHash: string, admin: boolean): User {
+    const row = this.db
+      .query("INSERT INTO users (name, password_hash, is_admin) VALUES (?, ?, ?) RETURNING id, name, is_admin")
+      .get(name, passwordHash, admin ? 1 : 0) as UserRow;
+    return toUser(row);
+  }
+
+  /** Its rows in the other tables go with it (ON DELETE CASCADE); stored files are left to the caller. */
+  delete(id: number): boolean {
+    return this.db.query("DELETE FROM users WHERE id = ?").run(id).changes > 0;
   }
 
   count(): number {

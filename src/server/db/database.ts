@@ -248,6 +248,10 @@ export const migrations: string[] = [
   );
   CREATE INDEX passkeys_user ON passkeys(user_id, id);
   `,
+  `
+  ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;
+  UPDATE users SET is_admin = 1 WHERE id = (SELECT MIN(id) FROM users);
+  `,
 ];
 
 /** `until`: the number of migrations to apply (tests stop before a later one). */
@@ -276,7 +280,7 @@ export function openDatabase(path: string): Database {
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA foreign_keys = ON");
   migrate(db);
-  db.query("INSERT OR IGNORE INTO users (name) VALUES (?)").run(DEFAULT_USER_NAME);
+  db.query("INSERT INTO users (name, is_admin) SELECT ?, 1 WHERE NOT EXISTS (SELECT 1 FROM users)").run(DEFAULT_USER_NAME);
   seedImportPresets(db);
   return db;
 }

@@ -3,6 +3,7 @@ import { Database } from "bun:sqlite";
 import { unzipSync } from "fflate";
 import type { UploadedDocument } from "../shared/types";
 import { makeJpeg, startTestServer, type TestServer, uploadForm } from "../../test/server";
+import { createUser } from "./services/users";
 
 let server: TestServer;
 beforeEach(async () => {
@@ -24,6 +25,18 @@ describe("archive export", () => {
   test("needs a password", async () => {
     expect((await server.api("/api/export/archive/size")).status).toBe(403);
     expect((await server.api("/api/export/archive")).status).toBe(403);
+  });
+
+  test("needs an admin", async () => {
+    await createUser(server.ctx.users, "anna", "annas-kennwort", false);
+    const login = await server.api("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "anna", password: "annas-kennwort" }),
+    });
+    const cookie = login.headers.get("Set-Cookie")!.split(";")[0]!;
+    expect((await server.api("/api/export/archive/size", { headers: { Cookie: cookie } })).status).toBe(403);
+    expect((await server.api("/api/export/archive", { headers: { Cookie: cookie } })).status).toBe(403);
   });
 
   test("streams the database and all stored files as a zip", async () => {

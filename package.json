@@ -58,6 +58,7 @@
     "setup:uvdoc": "bash scripts/setup-uvdoc.sh",
     "setup:docseg": "bash scripts/setup-docseg.sh",
     "password": "bun scripts/password.ts",
-    "export": "bun scripts/export.ts"
+    "export": "bun scripts/export.ts",
+    "users": "bun scripts/users.ts"
   }
 }

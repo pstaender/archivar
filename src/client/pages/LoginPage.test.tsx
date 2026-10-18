@@ -8,7 +8,7 @@ let fetchMock: FetchMock;
 afterEach(() => fetchMock.restore());
 
 const loggedOut = { user: null, passwordSet: true, usernameRequired: false, passkeyLogin: false };
-const loggedIn = { user: { id: 1, name: "default" }, passwordSet: true, usernameRequired: false, passkeyLogin: false };
+const loggedIn = { user: { id: 1, name: "default", admin: true }, passwordSet: true, usernameRequired: false, passkeyLogin: false };
 
 describe("login", () => {
   test("asks only for the password when there is one user, then shows the app", async () => {

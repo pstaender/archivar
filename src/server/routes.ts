@@ -66,9 +66,11 @@ export function createApiRoutes(ctx: AppContext) {
     res.headers.append("Set-Cookie", ctx.auth.sessionCookie(req, token));
     return res;
   };
-  // The export holds the data of all users, so it needs a user who has to log in.
+  // The export holds the data of all users, so it needs an admin who has to log in.
   const archiveExporter = (req: Request) => {
-    if (ctx.users.passwordHash(ctx.currentUser(req).id) === null) throw new HttpError(403, "Exporting the archive needs a password");
+    const user = ctx.currentUser(req);
+    if (!user.admin) throw new HttpError(403, "Exporting the archive needs an admin");
+    if (ctx.users.passwordHash(user.id) === null) throw new HttpError(403, "Exporting the archive needs a password");
   };
   const pdfQuality = (req: Request, value: unknown) => normalizePdfQuality(value, ctx.users.settings(userId(req)).pdfImageQuality);
 

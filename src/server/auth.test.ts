@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import type { AuthStatus } from "../shared/auth";
 import { startTestServer, type TestServer } from "../../test/server";
+import { createUser, deleteUser } from "./services/users";
 
 let server: TestServer;
 beforeEach(async () => {
@@ -33,7 +34,7 @@ async function setPassword(password: string, cookie?: string, currentPassword?: 
 
 describe("access", () => {
   test("without a password everything is open and no user name is asked for", async () => {
-    expect(await status()).toEqual({ user: { id: 1, name: "default" }, passwordSet: false, usernameRequired: false, passkeyLogin: false });
+    expect(await status()).toEqual({ user: { id: 1, name: "default", admin: true }, passwordSet: false, usernameRequired: false, passkeyLogin: false });
     expect((await server.api("/api/library")).status).toBe(200);
   });
 
@@ -82,17 +83,24 @@ describe("access", () => {
     expect((await server.api("/api/library", { headers: { Authorization: `Bearer ${token}` } })).status).toBe(200);
   });
 
-  test("with several users the login needs the user name", async () => {
-    server.ctx.db.query("INSERT INTO users (name) VALUES ('anna')").run();
-    const anna = server.ctx.users.findByName("anna")!;
-    server.ctx.auth.setPassword(anna.id, await Bun.password.hash("annas-kennwort"));
+  test("with several users everyone logs in with user name and password", async () => {
+    const anna = await createUser(server.ctx.users, "anna", "annas-kennwort", false);
+    expect(anna).toEqual({ id: anna.id, name: "anna", admin: false });
 
-    expect((await status()).usernameRequired).toBe(true);
+    expect(await status()).toEqual({ user: null, passwordSet: true, usernameRequired: true, passkeyLogin: false });
+    expect((await server.api("/api/library")).status).toBe(401);
     expect((await server.api("/api/auth/login", jsonInit("POST", { password: "annas-kennwort" }))).status).toBe(401);
     const cookie = sessionCookie(await server.api("/api/auth/login", jsonInit("POST", { name: "anna", password: "annas-kennwort" })));
-    expect((await status(cookie)).user).toEqual({ id: anna.id, name: "anna" });
-    // The default user has no password, so browsers without a session still act as it.
-    expect((await status()).user?.name).toBe("default");
+    expect((await status(cookie)).user).toEqual({ id: anna.id, name: "anna", admin: false });
+    expect((await server.api("/api/auth/password", jsonInit("DELETE", { currentPassword: "annas-kennwort" }, cookie))).status).toBe(400);
+  });
+
+  test("a single user with a password is asked only for it", async () => {
+    await createUser(server.ctx.users, "anna", "annas-kennwort", false);
+    await deleteUser(server.ctx.db, server.ctx.storage, 1);
+    expect(await status()).toEqual({ user: null, passwordSet: true, usernameRequired: false, passkeyLogin: false });
+    const cookie = sessionCookie(await server.api("/api/auth/login", jsonInit("POST", { password: "annas-kennwort" })));
+    expect((await status(cookie)).user?.name).toBe("anna");
   });
 
   test("lists and deletes passkeys; removing the password removes them", async () => {

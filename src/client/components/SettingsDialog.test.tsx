@@ -136,9 +136,9 @@ describe("SettingsDialog", () => {
     expect(fetchMock.calls.filter((c) => c.method === "POST" || c.method === "DELETE").map((c) => `${c.method} ${c.path}`)).toEqual(["POST /api/tokens", "DELETE /api/tokens/1"]);
   });
 
-  test("offers the archive export only with a password and asks before downloading", async () => {
+  test("offers the archive export only to an admin with a password and asks before downloading", async () => {
     fetchMock = mockSettings({}, [], {
-      "GET /api/auth/status": () => ({ user: { id: 1, name: "default" }, passwordSet: true, usernameRequired: false, passkeyLogin: false }),
+      "GET /api/auth/status": () => ({ user: { id: 1, name: "default", admin: true }, passwordSet: true, usernameRequired: false, passkeyLogin: false }),
       "GET /api/export/archive/size": () => ({ bytes: 25 * 1024 * 1024 }),
     });
     const clicked: string[] = [];
@@ -158,5 +158,13 @@ describe("SettingsDialog", () => {
     } finally {
       HTMLAnchorElement.prototype.click = click;
     }
+  });
+
+  test("hides the archive export from users who are not admins", async () => {
+    mockSettings({}, [], {
+      "GET /api/auth/status": () => ({ user: { id: 2, name: "anna", admin: false }, passwordSet: true, usernameRequired: true, passkeyLogin: false }),
+    });
+    await renderApp(<SettingsDialog open onClose={() => {}} />);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["Bildgrößen", "Import", "API", "Zugriff"]);
   });
 });

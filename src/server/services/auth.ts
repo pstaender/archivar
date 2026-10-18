@@ -12,7 +12,6 @@ import {
 import { type AuthStatus, MIN_PASSWORD_LENGTH, type Passkey } from "../../shared/auth";
 import type { User } from "../../shared/types";
 import type { AuthRepository } from "../db/auth";
-import { DEFAULT_USER_NAME } from "../db/database";
 import type { UserRepository } from "../db/users";
 import { HttpError } from "../http";
 
@@ -55,13 +54,14 @@ export class AuthService {
     private origin: string | null = null,
   ) {}
 
-  /** The user of the request's session, else the default user while it has no password; null: a login is needed. */
+  /** The user of the request's session, else the only user while it has no password; null: a login is needed. */
   requestUser(req: Request): User | null {
     const token = cookieValue(req, SESSION_COOKIE);
     const sessionUserId = token ? this.auth.sessionUser(token) : null;
     if (sessionUserId !== null) return this.users.find(sessionUserId);
-    const user = this.users.findByName(DEFAULT_USER_NAME);
-    return user && this.users.passwordHash(user.id) === null ? user : null;
+    if (this.users.count() !== 1) return null;
+    const user = this.users.list()[0]!;
+    return this.users.passwordHash(user.id) === null ? user : null;
   }
 
   status(req: Request): AuthStatus {
@@ -95,8 +95,9 @@ export class AuthService {
     return this.auth.createSession(user.id);
   }
 
-  /** Passkeys are an alternative to the password, so they go with it. */
+  /** Passkeys are an alternative to the password, so they go with it. With several users everyone needs a password. */
   async removePassword(user: User, currentPassword: unknown): Promise<void> {
+    if (this.users.count() > 1) throw new HttpError(400, "With several users every user needs a password");
     await this.checkCurrentPassword(user, currentPassword);
     this.setPassword(user.id, null);
   }

@@ -77,9 +77,10 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const { settings: stored, loaded, save } = useSettings();
   const { presets } = usePresets();
   const { ocrLanguages: defaultLanguages } = useConfig();
-  // The export holds the data of all users, so it is only offered to a user who has to log in.
-  const { passwordSet } = useAuth().status;
-  const tabs = passwordSet ? TABS : TABS.filter(({ tab }) => tab !== "export");
+  // The export holds the data of all users, so it is only offered to an admin who has to log in.
+  const { passwordSet, user } = useAuth().status;
+  const canExport = passwordSet && user?.admin === true;
+  const tabs = canExport ? TABS : TABS.filter(({ tab }) => tab !== "export");
   const presetSelectId = useId();
   const languageSelectId = useId();
   const [tab, setTab] = useState<Tab>("sizes");
@@ -91,8 +92,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   }, [open, stored]);
 
   useEffect(() => {
-    if (!passwordSet && tab === "export") setTab("access");
-  }, [passwordSet, tab]);
+    if (!canExport && tab === "export") setTab("access");
+  }, [canExport, tab]);
 
   const set = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => setDraft((current) => ({ ...current, [key]: value }));
 
@@ -212,7 +213,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
           )}
           {tab === "api" && <ApiTokens />}
           {tab === "access" && <AccessSettings />}
-          {tab === "export" && passwordSet && <ArchiveExport />}
+          {tab === "export" && canExport && <ArchiveExport />}
         </div>
       )}
     </Dialog>
