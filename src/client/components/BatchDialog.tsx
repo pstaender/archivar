@@ -128,7 +128,7 @@ export function BatchDialog({ open, documentIds, onClose, onStarted }: BatchDial
           <p className="muted small">
             {rename
               ? `Wird zu „${applyNameScheme(rename, 1, documentIds.length)}“${documentIds.length > 1 ? ` … „${applyNameScheme(rename, documentIds.length, documentIds.length)}“` : ""}.`
-              : "{n} steht für die laufende Nummer ab 1, {m} für die Anzahl. Leer lässt die Namen unverändert."}
+              : "{n} steht für die laufende Nummer ab 1 (ab 10 Dokumenten mit führenden Nullen), {m} für die Anzahl. Leer lässt die Namen unverändert."}
           </p>
         </div>
         <Switch checked={options.ocr} disabled={working} onChange={(value) => set("ocr", value)} hint="Erkennt den Text der Bilder und PDFs neu.">
