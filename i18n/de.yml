@@ -362,6 +362,7 @@ jobs:
   removeFinished: Erledigte entfernen
   empty: Noch keine Aufträge. Wähle in der Übersicht Dokumente aus und starte die Stapelverarbeitung – auch Uploads erscheinen hier.
   import: Import
+  external: "Import aus „{{name}}“"
   jobLabel: "{{title}} vom {{date}}"
   duration: "Dauer: {{duration}}"
   doneOf: "{{done}} von {{total}} fertig"
@@ -371,6 +372,59 @@ jobs:
   progress: Fortschritt
   documents: Dokumente
   showDocuments: Dokumente anzeigen
+
+sources:
+  title: Externe Datenquellen
+  intro: Ordner, aus denen Dateien ins Archiv importiert werden. Die Quellen werden nur gelesen, nie verändert; importierte Dateien werden kopiert und bleiben mit ihrer Quelle verknüpft.
+  adminOnly: Nur Admins können Datenquellen einrichten.
+  empty: Noch keine Datenquellen.
+  loading: Wird geladen …
+  browse: Durchsuchen
+  add: Datenquelle hinzufügen
+  added: "„{{name}}“ hinzugefügt"
+  name: Name
+  namePlaceholder: z.B. Scanner
+  path: Ordner auf dem Server
+  pathPlaceholder: /mnt/scans
+  documents_one: 1 Dokument importiert
+  documents_other: "{{count}} Dokumente importiert"
+  deleteLabel: "{{name}} löschen"
+  deleteTitle: Datenquelle löschen
+  deleteConfirm: "Datenquelle „{{name}}“ entfernen? Importierte Dokumente bleiben im Archiv, die Dateien in der Quelle bleiben unverändert."
+  deleted: "„{{name}}“ entfernt"
+  types:
+    file_path: Ordner
+
+sourceBrowser:
+  path: Pfad
+  allFiles: Alle Dateien anzeigen
+  empty: Dieser Ordner ist leer.
+  selectAll: Alle markieren
+  select: "{{name}} auswählen"
+  name: Name
+  size: Größe
+  modified: Geändert
+  imported: Bereits importiert
+  hidden_one: 1 weitere Datei ausgeblendet (anderer Typ oder größer als 10 MB).
+  hidden_other: "{{count}} weitere Dateien ausgeblendet (andere Typen oder größer als 10 MB)."
+  clear: Auswahl aufheben
+  import: Importieren
+  importTitle: Ins Archiv importieren
+  summary: "Ausgewählt: {{files}}, {{folders}}."
+  files_one: 1 Datei
+  files_other: "{{count}} Dateien"
+  folders_one: 1 Ordner
+  folders_other: "{{count}} Ordner"
+  recursive: Alle Dateien aus diesem Ordner und Unterordnern importieren
+  recursiveHint: Sonst werden nur die Dateien direkt in den ausgewählten Ordnern importiert. Bereits importierte Dateien werden übersprungen.
+  keepStructure: Ordnerstruktur übernehmen
+  keepStructureHint: Legt die Dateien in Ordnern wie in der Quelle ab, ausgehend vom aktuellen Ordner – unterhalb der Zielordner, falls angegeben.
+  targetFolders: Zielordner
+  settingsHint: Wie beim Upload gelten die Einstellungen unter „Import“ (Bildeinstellung, Texterkennung, Ordner).
+  started_one: Import von 1 Datei gestartet
+  started_other: "Import von {{count}} Dateien gestartet"
+  startedSkipped_one: "Import von 1 Datei gestartet, {{skipped}} bereits importiert"
+  startedSkipped_other: "Import von {{count}} Dateien gestartet, {{skipped}} bereits importiert"
 
 folderTarget:
   title: In Ordner ablegen
@@ -392,6 +446,7 @@ folderTree:
   running_one: 1 Auftrag läuft
   running_other: "{{count}} Aufträge laufen"
   presets: Bildeinstellungen
+  sources: Externe Datenquellen
   newFolder: Neuer Ordner
   newFolderName: Name des neuen Ordners
   empty: Noch keine Ordner
@@ -687,14 +742,17 @@ details:
   copyOf: Duplikat von
   usesOriginal: " (verwendet dessen Originaldatei)"
   copies: Duplikate
+  source: Quelle
 
 # Messages from the server, which always answers in English; keys from serverMessageParts (src/shared/serverMessages.ts).
 serverMessages:
   a_folder_cannot_be_moved_into_itself: "Ein Ordner kann nicht in sich selbst verschoben werden"
   a_stack_needs_at_least_one_document: "Ein Stapel braucht mindestens ein Dokument"
+  already_imported: "Bereits importiert"
   already_stored_as: "Bereits vorhanden als {{q0}}"
   areas_must_be_a_list: "Die Bereiche müssen eine Liste sein"
   could_not_be_read_as_a_pdf: "{{q0}} konnte nicht als PDF gelesen werden"
+  data_source_not_found: "Datenquelle nicht gefunden"
   dewarping_model_is_not_installed: "Das Modell zum Entzerren ist nicht installiert"
   document_is_not_a_duplicate: "Das Dokument ist kein Duplikat"
   document_not_found: "Dokument nicht gefunden"
@@ -713,21 +771,26 @@ serverMessages:
   internal_server_error: "Interner Serverfehler"
   invalid_api_token: "Ungültiger API-Token"
   invalid_createdat: "Ungültiges Erstellungsdatum"
+  invalid_credentials: "Ungültige Zugangsdaten"
+  invalid_folder: "Ungültiger Ordner"
   invalid_id: "Ungültige ID"
   invalid_item: "Ungültiger Eintrag"
   invalid_json_body: "Ungültige Anfrage"
+  invalid_path: "Ungültiger Pfad"
   invalid_storage_key: "Ungültiger Dateipfad"
   job_item_not_found: "Auftragseintrag nicht gefunden"
   job_not_found: "Auftrag nicht gefunden"
   languages_must_be_a_list: "Die Sprachen müssen eine Liste sein"
   login_required: "Anmeldung erforderlich"
   name_required: "Name fehlt"
+  no_files_to_import: "Keine Dateien zum Importieren"
   no_files_uploaded: "Keine Dateien hochgeladen"
   no_images_or_pdfs_selected: "Keine Bilder oder PDFs ausgewählt"
   no_settings_chosen: "Keine Einstellungen gewählt"
   not_found: "Nicht gefunden"
   nothing_to_do: "Nichts zu tun"
   ocr_is_only_available_for_images_and_pdfs: "Texterkennung gibt es nur für Bilder und PDFs"
+  only_admins_can_set_up_data_sources: "Nur Admins können Datenquellen einrichten"
   only_images_can_be_cropped: "Nur Bilder lassen sich zuschneiden"
   only_images_can_be_dewarped: "Nur Bilder lassen sich entzerren"
   only_images_can_be_edited: "Nur Bilder lassen sich bearbeiten"
@@ -739,16 +802,21 @@ serverMessages:
   passkey_not_found: "Passkey nicht gefunden"
   passkey_request_expired: "Die Passkey-Anfrage ist abgelaufen"
   passkeys_need_a_password: "Passkeys brauchen ein Kennwort"
+  path_required: "Pfad fehlt"
   preset_not_found: "Bildeinstellung nicht gefunden"
   shapes_must_be_a_list: "Die Formen müssen eine Liste sein"
   stack_not_found: "Stapel nicht gefunden"
   text_recognition_failed: "Texterkennung fehlgeschlagen"
   text_recognition_took_too_long_and_was_stopped: "Die Texterkennung hat zu lange gedauert und wurde abgebrochen."
+  the_data_source_is_not_reachable: "Die Datenquelle ist nicht erreichbar"
   the_document_was_deleted: "Das Dokument wurde gelöscht."
   the_job_is_still_running: "Der Auftrag läuft noch"
   the_password_needs_at_least_characters: "Das Kennwort braucht mindestens {{n0}} Zeichen"
+  the_path_must_be_absolute: "Der Pfad muss absolut sein"
   the_upload_was_interrupted: "Der Upload wurde abgebrochen."
   token_not_found: "Token nicht gefunden"
+  too_many_files_at_most_can_be_imported_at_once: "Zu viele Dateien, höchstens {{n0}} lassen sich auf einmal importieren"
+  unknown_data_source_type: "Unbekannte Art von Datenquelle"
   unknown_document: "Unbekanntes Dokument {{n0}}"
   unknown_job_kind: "Unbekannte Auftragsart"
   unknown_ocr_language: "Unbekannte Sprache für die Texterkennung"

@@ -107,8 +107,17 @@ export interface ArchiveDocument {
   copyOf: DocumentRef | null;
   /** Duplicates that use this document's original file. */
   copies: DocumentRef[];
+  /** The external data source the file was imported from. */
+  source: DocumentSource | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DocumentSource {
+  id: number;
+  name: string;
+  /** Relative to the source. */
+  path: string;
 }
 
 export interface DocumentRef {

@@ -1,4 +1,5 @@
 import { PREVIEW_SIZE } from "../shared/preview";
+import type { ExternalImportRequest, ExternalListing, ExternalSource, ExternalSourceInput } from "../shared/externalSources";
 import type { Job, JobCreate } from "../shared/jobs";
 import type { ImagePreset, ImagePresetInput } from "../shared/presets";
 import type { PdfQuality, UserSettings } from "../shared/settings";
@@ -210,6 +211,16 @@ export const api = {
   tokens: () => request<ApiToken[]>("/api/tokens"),
   createToken: (name: string) => request<CreatedApiToken>("/api/tokens", jsonBody("POST", { name })),
   deleteToken: (id: number) => request<void>(`/api/tokens/${id}`, { method: "DELETE" }),
+
+  sources: () => request<ExternalSource[]>("/api/sources"),
+  createSource: (input: ExternalSourceInput) => request<ExternalSource>("/api/sources", jsonBody("POST", input)),
+  updateSource: (id: number, input: ExternalSourceInput) => request<ExternalSource>(`/api/sources/${id}`, jsonBody("PATCH", input)),
+  deleteSource: (id: number) => request<void>(`/api/sources/${id}`, { method: "DELETE" }),
+  /** `all` also lists other file types and files over 10 MB. */
+  browseSource: (id: number, path: string, all = false) =>
+    request<ExternalListing>(`/api/sources/${id}/browse${query({ path, all: all ? "true" : undefined })}`),
+  /** Starts a job that copies the files into the archive. */
+  importFromSource: (id: number, input: ExternalImportRequest) => request<Job>(`/api/sources/${id}/import`, jsonBody("POST", input)),
 
   folders: () => request<Folder[]>("/api/folders"),
   createFolder: (path: string) => request<Folder>("/api/folders", jsonBody("POST", { path })),

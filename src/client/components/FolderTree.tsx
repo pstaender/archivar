@@ -1,4 +1,4 @@
-import { ChevronRight, Folder, FolderOpen, Inbox, Pencil, Plus, Sliders, Trash, Wand } from "../icons";
+import { ChevronRight, Folder, FolderOpen, HardDrive, Inbox, Pencil, Plus, Sliders, Trash, Wand } from "../icons";
 import { type FormEvent, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { buildFolderTree, type FolderNode, isWithinFolder } from "../../shared/folders";
@@ -86,6 +86,12 @@ export function FolderTree({ onNavigate }: FolderTreeProps) {
         <Sliders size={16} aria-hidden />
         <span className="folder-tree__name">{t("folderTree.presets")}</span>
         {presets.length > 0 && <span className="folder-tree__count">{presets.length}</span>}
+      </Link>
+
+      <Link to="/sources" className={`folder-tree__row ${pathname.startsWith("/sources") ? "is-active" : ""}`} onClick={onNavigate}>
+        <span className="folder-tree__toggle" />
+        <HardDrive size={16} aria-hidden />
+        <span className="folder-tree__name">{t("folderTree.sources")}</span>
       </Link>
 
       <div className="folder-tree__heading">

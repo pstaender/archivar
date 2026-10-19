@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { normalizeEditSettings } from "../../shared/editSettings";
 import { normalizeShapes, type ShapeLayer, shapeGeometry } from "../../shared/shapes";
-import type { ArchiveDocument, DocumentKind, DocumentRef, EditSettings, OcrStatus } from "../../shared/types";
+import type { ArchiveDocument, DocumentKind, DocumentRef, DocumentSource, EditSettings, OcrStatus } from "../../shared/types";
 import { escapeLike, type FolderRepository } from "./folders";
 
 interface DocumentRow {
@@ -382,9 +382,21 @@ export class DocumentRepository {
     return { refs, copies };
   }
 
+  private sources(ids: number[]): Map<number, DocumentSource> {
+    if (ids.length === 0) return new Map();
+    const rows = this.db
+      .query(
+        `SELECT ds.document_id AS documentId, s.id, s.name, ds.path FROM document_sources ds JOIN external_sources s ON s.id = ds.source_id
+         WHERE ds.document_id IN (SELECT value FROM json_each(?))`,
+      )
+      .all(JSON.stringify(ids)) as (DocumentSource & { documentId: number })[];
+    return new Map(rows.map(({ documentId, ...source }) => [documentId, source]));
+  }
+
   private hydrate(rows: DocumentRow[]): StoredDocument[] {
     const folders = this.folders.pathsForDocuments(rows.map((r) => r.id));
     const vectors = this.vectorSummaries(rows.map((r) => r.id));
+    const sources = this.sources(rows.map((r) => r.id));
     const relations = this.relations(rows);
     return rows.map((row) => {
       const editSettings = normalizeEditSettings(JSON.parse(row.edit_settings));
@@ -422,6 +434,7 @@ export class DocumentRepository {
       folders: folders.get(row.id) ?? [],
       copyOf: row.copy_of === null ? null : (relations.refs.get(row.copy_of) ?? null),
       copies: relations.copies.get(row.id) ?? [],
+      source: sources.get(row.id) ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       };

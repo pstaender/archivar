@@ -13,7 +13,7 @@ import { translateServerMessage } from "../serverMessages";
 const IMPORT_STATES: JobItemState[] = ["pending", "running"];
 
 export function jobDescription(job: Job): string {
-  if (job.kind === "import") return t("jobs.files", { count: job.items.length });
+  if (job.kind !== "batch") return t("jobs.files", { count: job.items.length });
   const options = job.options;
   if (!options) return "";
   const parts: string[] = [];
@@ -94,7 +94,7 @@ function JobCard({ job, now, removing, onRemove }: { job: Job; now: Date; removi
   const total = job.items.length;
   const done = job.items.filter((item) => FINISHED_STATES.includes(item.state)).length;
   const failed = job.items.filter((item) => item.state === "failed").length;
-  const title = job.kind === "import" ? t("jobs.import") : t("jobs.title");
+  const title = job.kind === "import" ? t("jobs.import") : job.kind === "external" ? t("jobs.external", { name: job.source?.name ?? "" }) : t("jobs.title");
 
   return (
     <section className="job" aria-label={t("jobs.jobLabel", { title, date: formatDateTime(job.createdAt) })}>

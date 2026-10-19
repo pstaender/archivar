@@ -832,6 +832,7 @@ export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach }: De
   };
   const rows: [string, string][] = [
     [t("details.fileName"), doc.originalName],
+    ...(doc.source ? [[t("details.source"), `${doc.source.name}: ${doc.source.path}`] as [string, string]] : []),
     [t("details.type"), doc.mimeType],
     [t("details.size"), formatBytes(doc.size)],
   ];

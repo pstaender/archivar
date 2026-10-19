@@ -15,6 +15,8 @@ import { PresetsPage } from "./pages/PresetsPage";
 import { JobsPage } from "./pages/JobsPage";
 import { LibraryPage } from "./pages/LibraryPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { SourceBrowserPage } from "./pages/SourceBrowserPage";
+import { SourcesPage } from "./pages/SourcesPage";
 import { StackPage } from "./pages/StackPage";
 
 export function AppProviders({ children }: { children: ReactNode }) {
@@ -52,6 +54,8 @@ export const routes: RouteObject[] = [
       { path: "stacks/:id", element: <StackPage /> },
       { path: "jobs", element: <JobsPage /> },
       { path: "presets", element: <PresetsPage /> },
+      { path: "sources", element: <SourcesPage /> },
+      { path: "sources/:id", element: <SourceBrowserPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

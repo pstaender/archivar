@@ -272,6 +272,30 @@ export const migrations: string[] = [
     WHERE note LIKE 'Bereits vorhanden als %';
   UPDATE image_presets SET name = 'OCR optimized' WHERE name = 'OCR Optimiert';
   `,
+  // External data sources are only read; imported files are copied and remember where they came from.
+  `
+  CREATE TABLE external_sources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    url TEXT NOT NULL,
+    credentials TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  );
+  CREATE INDEX external_sources_user ON external_sources(user_id, id);
+
+  CREATE TABLE document_sources (
+    document_id INTEGER PRIMARY KEY REFERENCES documents(id) ON DELETE CASCADE,
+    source_id INTEGER NOT NULL REFERENCES external_sources(id) ON DELETE CASCADE,
+    path TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    modified_at TEXT
+  );
+  CREATE INDEX document_sources_path ON document_sources(source_id, path);
+
+  ALTER TABLE job_items ADD COLUMN source_path TEXT;
+  `,
 ];
 
 /** `until`: the number of migrations to apply (tests stop before a later one). */

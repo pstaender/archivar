@@ -370,6 +370,7 @@ jobs:
   removeFinished: Quitar los terminados
   empty: Aún no hay trabajos. Selecciona documentos en el resumen e inicia el procesamiento por lotes – las subidas también aparecen aquí.
   import: Importación
+  external: "Importación desde «{{name}}»"
   jobLabel: "{{title}} del {{date}}"
   duration: "Duración: {{duration}}"
   doneOf: "{{done}} de {{total}} terminados"
@@ -379,6 +380,65 @@ jobs:
   progress: Progreso
   documents: Documentos
   showDocuments: Mostrar documentos
+
+sources:
+  title: Fuentes de datos externas
+  intro: Carpetas desde las que importar archivos al archivo. Las fuentes solo se leen, nunca se modifican; los archivos importados se copian y quedan vinculados a su fuente.
+  adminOnly: Solo los administradores pueden configurar fuentes de datos.
+  empty: Todavía no hay fuentes de datos.
+  loading: Cargando …
+  browse: Explorar
+  add: Añadir fuente de datos
+  added: "«{{name}}» añadida"
+  name: Nombre
+  namePlaceholder: p. ej. Escáner
+  path: Carpeta en el servidor
+  pathPlaceholder: /mnt/scans
+  documents_one: 1 documento importado
+  documents_other: "{{count}} documentos importados"
+  documents_many: "{{count}} documentos importados"
+  deleteLabel: "Eliminar {{name}}"
+  deleteTitle: Eliminar fuente de datos
+  deleteConfirm: "¿Quitar la fuente de datos «{{name}}»? Los documentos importados se quedan en el archivo y los archivos de la fuente no cambian."
+  deleted: "«{{name}}» eliminada"
+  types:
+    file_path: Carpeta
+
+sourceBrowser:
+  path: Ruta
+  allFiles: Mostrar todos los archivos
+  empty: Esta carpeta está vacía.
+  selectAll: Seleccionar todo
+  select: "Seleccionar {{name}}"
+  name: Nombre
+  size: Tamaño
+  modified: Modificado
+  imported: Ya importado
+  hidden_one: 1 archivo más oculto (otro tipo o más de 10 MB).
+  hidden_other: "{{count}} archivos más ocultos (otros tipos o más de 10 MB)."
+  hidden_many: "{{count}} archivos más ocultos (otros tipos o más de 10 MB)."
+  clear: Quitar selección
+  import: Importar
+  importTitle: Importar al archivo
+  summary: "Seleccionado: {{files}}, {{folders}}."
+  files_one: 1 archivo
+  files_other: "{{count}} archivos"
+  files_many: "{{count}} archivos"
+  folders_one: 1 carpeta
+  folders_other: "{{count}} carpetas"
+  folders_many: "{{count}} carpetas"
+  recursive: Importar todos los archivos de esta carpeta y sus subcarpetas
+  recursiveHint: Si no, solo se importan los archivos que están directamente en las carpetas seleccionadas. Los archivos ya importados se omiten.
+  keepStructure: Mantener la estructura de carpetas
+  keepStructureHint: Coloca los archivos en carpetas como en la fuente, a partir de la carpeta actual – dentro de las carpetas de destino, si se indican.
+  targetFolders: Carpetas de destino
+  settingsHint: Como en las subidas, se aplican los ajustes de «Importación» (ajuste de imagen, reconocimiento de texto, carpetas).
+  started_one: Importación de 1 archivo iniciada
+  started_other: "Importación de {{count}} archivos iniciada"
+  started_many: "Importación de {{count}} archivos iniciada"
+  startedSkipped_one: "Importación de 1 archivo iniciada, {{skipped}} ya importados"
+  startedSkipped_other: "Importación de {{count}} archivos iniciada, {{skipped}} ya importados"
+  startedSkipped_many: "Importación de {{count}} archivos iniciada, {{skipped}} ya importados"
 
 folderTarget:
   title: Archivar en carpetas
@@ -401,6 +461,7 @@ folderTree:
   running_other: "{{count}} trabajos en curso"
   running_many: "{{count}} trabajos en curso"
   presets: Ajustes de imagen
+  sources: Fuentes de datos externas
   newFolder: Nueva carpeta
   newFolderName: Nombre de la nueva carpeta
   empty: Aún no hay carpetas
@@ -706,14 +767,17 @@ details:
   copyOf: Duplicado de
   usesOriginal: " (usa su archivo original)"
   copies: Duplicados
+  source: Origen
 
 # Messages from the server, which always answers in English; keys from serverMessageParts (src/shared/serverMessages.ts).
 serverMessages:
   a_folder_cannot_be_moved_into_itself: "Una carpeta no se puede mover dentro de sí misma"
   a_stack_needs_at_least_one_document: "Una pila necesita al menos un documento"
+  already_imported: "Ya importado"
   already_stored_as: "Ya guardado como {{q0}}"
   areas_must_be_a_list: "Las zonas deben ser una lista"
   could_not_be_read_as_a_pdf: "{{q0}} no se pudo leer como PDF"
+  data_source_not_found: "Fuente de datos no encontrada"
   dewarping_model_is_not_installed: "El modelo de enderezado no está instalado"
   document_is_not_a_duplicate: "El documento no es un duplicado"
   document_not_found: "Documento no encontrado"
@@ -732,21 +796,26 @@ serverMessages:
   internal_server_error: "Error interno del servidor"
   invalid_api_token: "Token de API no válido"
   invalid_createdat: "Fecha de creación no válida"
+  invalid_credentials: "Credenciales no válidas"
+  invalid_folder: "Carpeta no válida"
   invalid_id: "ID no válido"
   invalid_item: "Elemento no válido"
   invalid_json_body: "Solicitud no válida"
+  invalid_path: "Ruta no válida"
   invalid_storage_key: "Ruta de archivo no válida"
   job_item_not_found: "Elemento del trabajo no encontrado"
   job_not_found: "Trabajo no encontrado"
   languages_must_be_a_list: "Los idiomas deben ser una lista"
   login_required: "Inicio de sesión necesario"
   name_required: "Falta el nombre"
+  no_files_to_import: "No hay archivos para importar"
   no_files_uploaded: "No se ha subido ningún archivo"
   no_images_or_pdfs_selected: "No se han seleccionado imágenes ni PDF"
   no_settings_chosen: "No se ha elegido ningún ajuste"
   not_found: "No encontrado"
   nothing_to_do: "Nada que hacer"
   ocr_is_only_available_for_images_and_pdfs: "El reconocimiento de texto solo está disponible para imágenes y PDF"
+  only_admins_can_set_up_data_sources: "Solo los administradores pueden configurar fuentes de datos"
   only_images_can_be_cropped: "Solo se pueden recortar imágenes"
   only_images_can_be_dewarped: "Solo se pueden enderezar imágenes"
   only_images_can_be_edited: "Solo se pueden editar imágenes"
@@ -758,16 +827,21 @@ serverMessages:
   passkey_not_found: "Llave de acceso no encontrada"
   passkey_request_expired: "La solicitud de llave de acceso ha caducado"
   passkeys_need_a_password: "Las llaves de acceso requieren una contraseña"
+  path_required: "Falta la ruta"
   preset_not_found: "Ajuste de imagen no encontrado"
   shapes_must_be_a_list: "Las formas deben ser una lista"
   stack_not_found: "Pila no encontrada"
   text_recognition_failed: "Error en el reconocimiento de texto"
   text_recognition_took_too_long_and_was_stopped: "El reconocimiento de texto tardó demasiado y se detuvo."
+  the_data_source_is_not_reachable: "No se puede acceder a la fuente de datos"
   the_document_was_deleted: "El documento se ha eliminado."
   the_job_is_still_running: "El trabajo sigue en curso"
   the_password_needs_at_least_characters: "La contraseña necesita al menos {{n0}} caracteres"
+  the_path_must_be_absolute: "La ruta debe ser absoluta"
   the_upload_was_interrupted: "La subida se interrumpió."
   token_not_found: "Token no encontrado"
+  too_many_files_at_most_can_be_imported_at_once: "Demasiados archivos, como máximo se pueden importar {{n0}} a la vez"
+  unknown_data_source_type: "Tipo de fuente de datos desconocido"
   unknown_document: "Documento desconocido {{n0}}"
   unknown_job_kind: "Tipo de trabajo desconocido"
   unknown_ocr_language: "Idioma de reconocimiento de texto desconocido"

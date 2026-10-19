@@ -370,6 +370,7 @@ jobs:
   removeFinished: Retirer les terminés
   empty: Aucune tâche pour l'instant. Sélectionnez des documents dans l'aperçu et lancez le traitement par lot – les envois apparaissent aussi ici.
   import: Import
+  external: "Import depuis « {{name}} »"
   jobLabel: "{{title}} du {{date}}"
   duration: "Durée : {{duration}}"
   doneOf: "{{done}} sur {{total}} terminés"
@@ -379,6 +380,65 @@ jobs:
   progress: Progression
   documents: Documents
   showDocuments: Afficher les documents
+
+sources:
+  title: Sources de données externes
+  intro: Dossiers depuis lesquels importer des fichiers dans l'archive. Les sources sont seulement lues, jamais modifiées ; les fichiers importés sont copiés et restent liés à leur source.
+  adminOnly: Seuls les admins peuvent configurer des sources de données.
+  empty: Aucune source de données pour l'instant.
+  loading: Chargement …
+  browse: Parcourir
+  add: Ajouter une source de données
+  added: "« {{name}} » ajoutée"
+  name: Nom
+  namePlaceholder: p. ex. Scanner
+  path: Dossier sur le serveur
+  pathPlaceholder: /mnt/scans
+  documents_one: "{{count}} document importé"
+  documents_other: "{{count}} documents importés"
+  documents_many: "{{count}} documents importés"
+  deleteLabel: "Supprimer {{name}}"
+  deleteTitle: Supprimer la source de données
+  deleteConfirm: "Supprimer la source de données « {{name}} » ? Les documents importés restent dans l'archive, les fichiers de la source restent inchangés."
+  deleted: "« {{name}} » supprimée"
+  types:
+    file_path: Dossier
+
+sourceBrowser:
+  path: Chemin
+  allFiles: Afficher tous les fichiers
+  empty: Ce dossier est vide.
+  selectAll: Tout sélectionner
+  select: "Sélectionner {{name}}"
+  name: Nom
+  size: Taille
+  modified: Modifié
+  imported: Déjà importé
+  hidden_one: "{{count}} autre fichier masqué (autre type ou plus de 10 Mo)."
+  hidden_other: "{{count}} autres fichiers masqués (autres types ou plus de 10 Mo)."
+  hidden_many: "{{count}} autres fichiers masqués (autres types ou plus de 10 Mo)."
+  clear: Effacer la sélection
+  import: Importer
+  importTitle: Importer dans l'archive
+  summary: "Sélection : {{files}}, {{folders}}."
+  files_one: "{{count}} fichier"
+  files_other: "{{count}} fichiers"
+  files_many: "{{count}} fichiers"
+  folders_one: "{{count}} dossier"
+  folders_other: "{{count}} dossiers"
+  folders_many: "{{count}} dossiers"
+  recursive: Importer tous les fichiers de ce dossier et de ses sous-dossiers
+  recursiveHint: Sinon, seuls les fichiers placés directement dans les dossiers sélectionnés sont importés. Les fichiers déjà importés sont ignorés.
+  keepStructure: Conserver la structure des dossiers
+  keepStructureHint: Range les fichiers dans des dossiers comme dans la source, à partir du dossier actuel – sous les dossiers cibles, s'ils sont indiqués.
+  targetFolders: Dossiers cibles
+  settingsHint: Comme pour les envois, les réglages sous « Import » s'appliquent (réglage d'image, reconnaissance de texte, dossiers).
+  started_one: "Import de {{count}} fichier lancé"
+  started_other: "Import de {{count}} fichiers lancé"
+  started_many: "Import de {{count}} fichiers lancé"
+  startedSkipped_one: "Import de {{count}} fichier lancé, {{skipped}} déjà importé(s)"
+  startedSkipped_other: "Import de {{count}} fichiers lancé, {{skipped}} déjà importé(s)"
+  startedSkipped_many: "Import de {{count}} fichiers lancé, {{skipped}} déjà importé(s)"
 
 folderTarget:
   title: Classer dans des dossiers
@@ -401,6 +461,7 @@ folderTree:
   running_other: "{{count}} tâches en cours"
   running_many: "{{count}} tâches en cours"
   presets: Réglages d'image
+  sources: Sources de données externes
   newFolder: Nouveau dossier
   newFolderName: Nom du nouveau dossier
   empty: Aucun dossier pour l'instant
@@ -706,14 +767,17 @@ details:
   copyOf: Duplicata de
   usesOriginal: " (utilise son fichier original)"
   copies: Duplicatas
+  source: Source
 
 # Messages from the server, which always answers in English; keys from serverMessageParts (src/shared/serverMessages.ts).
 serverMessages:
   a_folder_cannot_be_moved_into_itself: "Un dossier ne peut pas être déplacé dans lui-même"
   a_stack_needs_at_least_one_document: "Une pile doit contenir au moins un document"
+  already_imported: "Déjà importé"
   already_stored_as: "Déjà enregistré sous {{q0}}"
   areas_must_be_a_list: "Les zones doivent être une liste"
   could_not_be_read_as_a_pdf: "{{q0}} n'a pas pu être lu comme PDF"
+  data_source_not_found: "Source de données introuvable"
   dewarping_model_is_not_installed: "Le modèle de redressement n'est pas installé"
   document_is_not_a_duplicate: "Le document n'est pas un duplicata"
   document_not_found: "Document introuvable"
@@ -732,21 +796,26 @@ serverMessages:
   internal_server_error: "Erreur interne du serveur"
   invalid_api_token: "Jeton d'API non valide"
   invalid_createdat: "Date de création non valide"
+  invalid_credentials: "Identifiants non valides"
+  invalid_folder: "Dossier non valide"
   invalid_id: "Identifiant non valide"
   invalid_item: "Élément non valide"
   invalid_json_body: "Requête non valide"
+  invalid_path: "Chemin non valide"
   invalid_storage_key: "Chemin de fichier non valide"
   job_item_not_found: "Élément de tâche introuvable"
   job_not_found: "Tâche introuvable"
   languages_must_be_a_list: "Les langues doivent être une liste"
   login_required: "Connexion requise"
   name_required: "Nom requis"
+  no_files_to_import: "Aucun fichier à importer"
   no_files_uploaded: "Aucun fichier envoyé"
   no_images_or_pdfs_selected: "Aucune image ni aucun PDF sélectionné"
   no_settings_chosen: "Aucun réglage choisi"
   not_found: "Introuvable"
   nothing_to_do: "Rien à faire"
   ocr_is_only_available_for_images_and_pdfs: "La reconnaissance du texte n'est disponible que pour les images et les PDF"
+  only_admins_can_set_up_data_sources: "Seuls les admins peuvent configurer des sources de données"
   only_images_can_be_cropped: "Seules les images peuvent être recadrées"
   only_images_can_be_dewarped: "Seules les images peuvent être redressées"
   only_images_can_be_edited: "Seules les images peuvent être modifiées"
@@ -758,16 +827,21 @@ serverMessages:
   passkey_not_found: "Clé d'accès introuvable"
   passkey_request_expired: "La demande de clé d'accès a expiré"
   passkeys_need_a_password: "Les clés d'accès nécessitent un mot de passe"
+  path_required: "Chemin manquant"
   preset_not_found: "Réglage d'image introuvable"
   shapes_must_be_a_list: "Les formes doivent être une liste"
   stack_not_found: "Pile introuvable"
   text_recognition_failed: "Échec de la reconnaissance du texte"
   text_recognition_took_too_long_and_was_stopped: "La reconnaissance du texte a pris trop de temps et a été interrompue."
+  the_data_source_is_not_reachable: "La source de données est inaccessible"
   the_document_was_deleted: "Le document a été supprimé."
   the_job_is_still_running: "La tâche est encore en cours"
   the_password_needs_at_least_characters: "Le mot de passe doit contenir au moins {{n0}} caractères"
+  the_path_must_be_absolute: "Le chemin doit être absolu"
   the_upload_was_interrupted: "L'envoi a été interrompu."
   token_not_found: "Jeton introuvable"
+  too_many_files_at_most_can_be_imported_at_once: "Trop de fichiers, {{n0}} au maximum peuvent être importés à la fois"
+  unknown_data_source_type: "Type de source de données inconnu"
   unknown_document: "Document inconnu {{n0}}"
   unknown_job_kind: "Type de tâche inconnu"
   unknown_ocr_language: "Langue de reconnaissance du texte inconnue"

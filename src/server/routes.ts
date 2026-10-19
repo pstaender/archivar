@@ -1,5 +1,6 @@
 import type { BunRequest } from "bun";
 import { type AppConfig, type DocumentUpdate, type EditSettings, LIBRARY_SORTS, type LibraryItemRef, type LibrarySort, type Rotation, type StackCreate, type StackUpdate } from "../shared/types";
+import type { ExternalImportRequest, ExternalSourceInput } from "../shared/externalSources";
 import { type BatchOptions, duplicateNote, type JobCreate } from "../shared/jobs";
 import { isOcrLanguage } from "../shared/languages";
 import { type ImagePresetInput, normalizePresetName, normalizePresetSteps } from "../shared/presets";
@@ -504,6 +505,36 @@ export function createApiRoutes(ctx: AppContext) {
           ctx.jobs.updateItem(item.id, { status: "failed", error: typeof body.error === "string" ? body.error : "Upload failed" });
         }
         return noContent();
+      }),
+    },
+
+    "/api/sources": {
+      GET: handle((req: Req) => json(ctx.externalSources.list(userId(req)))),
+      POST: handle(async (req: Req) => json(await ctx.externalSources.create(ctx.currentUser(req), await readJson<ExternalSourceInput>(req)), 201)),
+    },
+
+    "/api/sources/:id": {
+      PATCH: handle(async (req: Req) =>
+        json(await ctx.externalSources.update(ctx.currentUser(req), parseId(req.params.id), await readJson<ExternalSourceInput>(req))),
+      ),
+      DELETE: handle((req: Req) => {
+        ctx.externalSources.delete(userId(req), parseId(req.params.id));
+        return noContent();
+      }),
+    },
+
+    "/api/sources/:id/browse": {
+      GET: handle(async (req: Req) => {
+        const url = new URL(req.url);
+        return json(await ctx.externalSources.browse(userId(req), parseId(req.params.id), url.searchParams.get("path") ?? "", url.searchParams.get("all") === "true"));
+      }),
+    },
+
+    "/api/sources/:id/import": {
+      POST: handle(async (req: Req) => {
+        const id = await ctx.externalSources.startImport(userId(req), parseId(req.params.id), await readJson<ExternalImportRequest>(req));
+        ctx.jobQueue.start();
+        return json(ctx.jobs.get(userId(req), id), 201);
       }),
     },
 

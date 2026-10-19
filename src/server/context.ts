@@ -2,6 +2,7 @@ import type { Database } from "bun:sqlite";
 import type { User } from "../shared/types";
 import { AuthRepository } from "./db/auth";
 import { DocumentRepository } from "./db/documents";
+import { ExternalSourceRepository } from "./db/externalSources";
 import { FolderRepository } from "./db/folders";
 import { JobRepository } from "./db/jobs";
 import { PresetRepository } from "./db/presets";
@@ -15,6 +16,7 @@ import { AuthService } from "./services/auth";
 import type { DewarpEngine } from "./services/dewarp";
 import type { DocumentSegmenter } from "./services/documentSegmentation";
 import { ImagingService } from "./services/imaging";
+import { ExternalSourceService } from "./services/externalSources";
 import { JobQueue } from "./services/jobs";
 import type { ImageConverter } from "./services/magick";
 import { type OcrEngine, OcrQueue } from "./services/ocr";
@@ -31,6 +33,7 @@ export interface AppContext {
   jobs: JobRepository;
   tokens: TokenRepository;
   vectors: VectorRepository;
+  externalSources: ExternalSourceService;
   jobQueue: JobQueue;
   ocr: OcrQueue;
   dewarp: DewarpEngine;
@@ -69,7 +72,8 @@ export function createContext(options: ContextOptions): AppContext {
   const ocr = new OcrQueue(documents, imaging, options.ocrEngine, options.ocrPageTimeoutMs);
   const dewarp = options.dewarpEngine;
   const archive = new ArchiveService(documents, stacks, folders, storage, imaging, ocr, dewarp, options.segmenter, options.ocrEngine, vectors);
-  const jobQueue = new JobQueue(jobs, archive);
+  const externalSources = new ExternalSourceService(new ExternalSourceRepository(db), jobs, archive, users, presets, () => imaging.convertibleTypes());
+  const jobQueue = new JobQueue(jobs, archive, externalSources);
   const authStore = new AuthRepository(db);
   const auth = new AuthService(users, authStore, options.origin);
 
@@ -87,5 +91,5 @@ export function createContext(options: ContextOptions): AppContext {
     return user;
   };
 
-  return { db, storage, users, folders, documents, stacks, presets, jobs, tokens, vectors, jobQueue, ocr, ocrEngine: options.ocrEngine, dewarp, imaging, archive, auth, authStore, currentUser };
+  return { db, storage, users, folders, documents, stacks, presets, jobs, tokens, vectors, externalSources, jobQueue, ocr, ocrEngine: options.ocrEngine, dewarp, imaging, archive, auth, authStore, currentUser };
 }

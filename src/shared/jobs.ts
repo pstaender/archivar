@@ -1,7 +1,8 @@
 import type { PresetSteps } from "./presets";
 import type { DocumentKind } from "./types";
 
-export type JobKind = "batch" | "import";
+/** `import`: uploads from the browser, `external`: files imported from an external data source. */
+export type JobKind = "batch" | "import" | "external";
 
 /** What a batch job does with each document. */
 export interface BatchOptions {
@@ -55,6 +56,8 @@ export interface Job {
   kind: JobKind;
   /** Only for batch jobs. */
   options: BatchOptions | null;
+  /** The data source of an `external` job. */
+  source: { id: number; name: string } | null;
   createdAt: string;
   /** Some items are not finished yet (including their text recognition). */
   active: boolean;
@@ -66,5 +69,7 @@ export interface Job {
 export function duplicateNote(duplicates: { title: string }[]): string {
   return `Already stored as ${duplicates.map((doc) => `"${doc.title}"`).join(", ")}`;
 }
+
+export const ALREADY_IMPORTED_NOTE = "Already imported";
 
 export const FINISHED_STATES: JobItemState[] = ["done", "skipped", "failed"];

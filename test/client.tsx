@@ -103,6 +103,7 @@ export function makeDocument(overrides: Partial<ArchiveDocument> = {}): ArchiveD
     folders: [],
     copyOf: null,
     copies: [],
+    source: null,
     createdAt: "2026-03-01T10:00:00.000Z",
     updatedAt: "2026-03-01T10:00:00.000Z",
     ...overrides,

@@ -362,6 +362,7 @@ jobs:
   removeFinished: Remove finished
   empty: No jobs yet. Select documents in the overview and start batch processing – uploads show up here too.
   import: Import
+  external: "Import from “{{name}}”"
   jobLabel: "{{title}} from {{date}}"
   duration: "Duration: {{duration}}"
   doneOf: "{{done}} of {{total}} done"
@@ -371,6 +372,59 @@ jobs:
   progress: Progress
   documents: Documents
   showDocuments: Show documents
+
+sources:
+  title: External data sources
+  intro: Folders to import files into the archive from. Sources are only read, never changed; imported files are copied and stay linked to their source.
+  adminOnly: Only admins can set up data sources.
+  empty: No data sources yet.
+  loading: Loading …
+  browse: Browse
+  add: Add data source
+  added: "Added “{{name}}”"
+  name: Name
+  namePlaceholder: e.g. Scanner
+  path: Folder on the server
+  pathPlaceholder: /mnt/scans
+  documents_one: 1 document imported
+  documents_other: "{{count}} documents imported"
+  deleteLabel: "Delete {{name}}"
+  deleteTitle: Delete data source
+  deleteConfirm: "Remove the data source “{{name}}”? Imported documents stay in the archive, the files in the source are left unchanged."
+  deleted: "Removed “{{name}}”"
+  types:
+    file_path: Folder
+
+sourceBrowser:
+  path: Path
+  allFiles: Show all files
+  empty: This folder is empty.
+  selectAll: Select all
+  select: "Select {{name}}"
+  name: Name
+  size: Size
+  modified: Modified
+  imported: Already imported
+  hidden_one: 1 more file hidden (other type or larger than 10 MB).
+  hidden_other: "{{count}} more files hidden (other types or larger than 10 MB)."
+  clear: Clear selection
+  import: Import
+  importTitle: Import into the archive
+  summary: "Selected: {{files}}, {{folders}}."
+  files_one: 1 file
+  files_other: "{{count}} files"
+  folders_one: 1 folder
+  folders_other: "{{count}} folders"
+  recursive: Import all files from this folder and its sub-folders
+  recursiveHint: Otherwise only the files directly in the selected folders are imported. Files imported before are skipped.
+  keepStructure: Keep the folder structure
+  keepStructureHint: Puts the files into folders as in the source, starting from the current folder – below the target folders, if given.
+  targetFolders: Target folders
+  settingsHint: As with uploads, the settings under “Import” apply (image preset, text recognition, folders).
+  started_one: Started importing 1 file
+  started_other: "Started importing {{count}} files"
+  startedSkipped_one: "Started importing 1 file, {{skipped}} already imported"
+  startedSkipped_other: "Started importing {{count}} files, {{skipped}} already imported"
 
 folderTarget:
   title: File in folders
@@ -392,6 +446,7 @@ folderTree:
   running_one: 1 job running
   running_other: "{{count}} jobs running"
   presets: Image presets
+  sources: External data sources
   newFolder: New folder
   newFolderName: Name of the new folder
   empty: No folders yet
@@ -687,14 +742,17 @@ details:
   copyOf: Duplicate of
   usesOriginal: " (uses its original file)"
   copies: Duplicates
+  source: Source
 
 # Messages from the server, which always answers in English; keys from serverMessageParts (src/shared/serverMessages.ts).
 serverMessages:
   a_folder_cannot_be_moved_into_itself: "A folder cannot be moved into itself"
   a_stack_needs_at_least_one_document: "A stack needs at least one document"
+  already_imported: "Already imported"
   already_stored_as: "Already stored as {{q0}}"
   areas_must_be_a_list: "The areas must be a list"
   could_not_be_read_as_a_pdf: "{{q0}} could not be read as a PDF"
+  data_source_not_found: "Data source not found"
   dewarping_model_is_not_installed: "The dewarping model is not installed"
   document_is_not_a_duplicate: "The document is not a duplicate"
   document_not_found: "Document not found"
@@ -713,21 +771,26 @@ serverMessages:
   internal_server_error: "Internal server error"
   invalid_api_token: "Invalid API token"
   invalid_createdat: "Invalid creation date"
+  invalid_credentials: "Invalid credentials"
+  invalid_folder: "Invalid folder"
   invalid_id: "Invalid id"
   invalid_item: "Invalid item"
   invalid_json_body: "Invalid request"
+  invalid_path: "Invalid path"
   invalid_storage_key: "Invalid file path"
   job_item_not_found: "Job item not found"
   job_not_found: "Job not found"
   languages_must_be_a_list: "The languages must be a list"
   login_required: "Login required"
   name_required: "Name required"
+  no_files_to_import: "No files to import"
   no_files_uploaded: "No files uploaded"
   no_images_or_pdfs_selected: "No images or PDFs selected"
   no_settings_chosen: "No settings chosen"
   not_found: "Not found"
   nothing_to_do: "Nothing to do"
   ocr_is_only_available_for_images_and_pdfs: "Text recognition is only available for images and PDFs"
+  only_admins_can_set_up_data_sources: "Only admins can set up data sources"
   only_images_can_be_cropped: "Only images can be cropped"
   only_images_can_be_dewarped: "Only images can be dewarped"
   only_images_can_be_edited: "Only images can be edited"
@@ -739,16 +802,21 @@ serverMessages:
   passkey_not_found: "Passkey not found"
   passkey_request_expired: "The passkey request expired"
   passkeys_need_a_password: "Passkeys need a password"
+  path_required: "Path required"
   preset_not_found: "Image preset not found"
   shapes_must_be_a_list: "The shapes must be a list"
   stack_not_found: "Stack not found"
   text_recognition_failed: "Text recognition failed"
   text_recognition_took_too_long_and_was_stopped: "Text recognition took too long and was stopped."
+  the_data_source_is_not_reachable: "The data source is not reachable"
   the_document_was_deleted: "The document was deleted."
   the_job_is_still_running: "The job is still running"
   the_password_needs_at_least_characters: "The password needs at least {{n0}} characters"
+  the_path_must_be_absolute: "The path must be absolute"
   the_upload_was_interrupted: "The upload was interrupted."
   token_not_found: "Token not found"
+  too_many_files_at_most_can_be_imported_at_once: "Too many files, at most {{n0}} can be imported at once"
+  unknown_data_source_type: "Unknown data source type"
   unknown_document: "Unknown document {{n0}}"
   unknown_job_kind: "Unknown job kind"
   unknown_ocr_language: "Unknown text recognition language"

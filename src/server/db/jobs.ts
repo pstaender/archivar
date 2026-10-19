@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import type { ExternalImportOptions } from "../../shared/externalSources";
 import { type BatchOptions, FINISHED_STATES, type Job, type JobItem, type JobItemState, type JobKind } from "../../shared/jobs";
 import type { DocumentKind, OcrStatus } from "../../shared/types";
 
@@ -33,6 +34,7 @@ interface ItemRow {
 }
 
 export interface QueuedBatchItem {
+  kind: "batch";
   itemId: number;
   userId: number;
   documentId: number | null;
@@ -42,6 +44,28 @@ export interface QueuedBatchItem {
   count: number;
   options: BatchOptions;
 }
+
+export interface QueuedExternalItem {
+  kind: "external";
+  itemId: number;
+  userId: number;
+  sourcePath: string;
+  options: ExternalImportOptions;
+}
+
+export type QueuedItem = QueuedBatchItem | QueuedExternalItem;
+
+export interface JobItemCreate {
+  name: string;
+  documentId: number | null;
+  sourcePath?: string;
+  /** Items that need nothing done start as `skipped`. */
+  status?: "pending" | "skipped";
+  note?: string;
+}
+
+/** Jobs whose items the server processes itself (imports wait for uploads instead). */
+const QUEUED_KINDS = "('batch', 'external')";
 
 const ITEM_COLUMNS = `
   i.id, i.job_id, i.name, i.status, i.error, i.note, i.ocr, i.document_id, i.finished_at, i.ocr_finished_at, i.ocr_settled,
@@ -82,13 +106,19 @@ function toItem(row: ItemRow): JobItem {
 export class JobRepository {
   constructor(private db: Database) {}
 
-  create(userId: number, kind: JobKind, options: BatchOptions | null, items: { name: string; documentId: number | null }[]): number {
+  create(userId: number, kind: JobKind, options: BatchOptions | ExternalImportOptions | null, items: JobItemCreate[]): number {
     return this.db.transaction(() => {
       const { id } = this.db
         .query("INSERT INTO jobs (user_id, kind, options) VALUES (?, ?, ?) RETURNING id")
         .get(userId, kind, options ? JSON.stringify(options) : null) as { id: number };
-      const insert = this.db.query("INSERT INTO job_items (job_id, position, name, document_id) VALUES (?, ?, ?, ?)");
-      items.forEach((item, position) => insert.run(id, position, item.name, item.documentId));
+      const insert = this.db.query(
+        `INSERT INTO job_items (job_id, position, name, document_id, source_path, status, note, finished_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'skipped' THEN strftime('%Y-%m-%dT%H:%M:%fZ', 'now') END)`,
+      );
+      items.forEach((item, position) => {
+        const status = item.status ?? "pending";
+        insert.run(id, position, item.name, item.documentId, item.sourcePath ?? null, status, item.note ?? null, status);
+      });
       return id;
     })();
   }
@@ -105,10 +135,12 @@ export class JobRepository {
       const jobItems = rows.map(toItem);
       const active = jobItems.some((item) => !FINISHED_STATES.includes(item.state));
       const ends = rows.map(finishedAt);
+      const options = job.options ? JSON.parse(job.options) : null;
       return {
         id: job.id,
         kind: job.kind,
-        options: job.options ? (JSON.parse(job.options) as BatchOptions) : null,
+        options: job.kind === "batch" ? (options as BatchOptions | null) : null,
+        source: job.kind === "external" && options ? (options as ExternalImportOptions).source : null,
         createdAt: job.created_at,
         active,
         finishedAt: active || ends.length === 0 || ends.includes(null) ? null : (ends as string[]).sort().at(-1)!,
@@ -158,35 +190,47 @@ export class JobRepository {
       .run(itemId);
   }
 
-  /** The oldest batch item still waiting. */
-  nextBatchItem(): QueuedBatchItem | null {
+  /** The oldest item of a batch or external import job still waiting. */
+  nextItem(): QueuedItem | null {
     const row = this.db
       .query(
-        `SELECT i.id, j.user_id, i.document_id, j.options,
+        `SELECT i.id, j.kind, j.user_id, i.document_id, i.source_path, j.options,
            (SELECT COUNT(*) FROM job_items o WHERE o.job_id = i.job_id AND o.position < i.position) + 1 AS number,
            (SELECT COUNT(*) FROM job_items o WHERE o.job_id = i.job_id) AS count
          FROM job_items i JOIN jobs j ON j.id = i.job_id
-         WHERE j.kind = 'batch' AND i.status = 'pending' ORDER BY j.id, i.position LIMIT 1`,
+         WHERE j.kind IN ${QUEUED_KINDS} AND i.status = 'pending' ORDER BY j.id, i.position LIMIT 1`,
       )
-      .get() as { id: number; user_id: number; document_id: number | null; options: string; number: number; count: number } | null;
-    return row
-      ? { itemId: row.id, userId: row.user_id, documentId: row.document_id, number: row.number, count: row.count, options: JSON.parse(row.options) as BatchOptions }
-      : null;
+      .get() as
+      | { id: number; kind: "batch" | "external"; user_id: number; document_id: number | null; source_path: string | null; options: string; number: number; count: number }
+      | null;
+    if (!row) return null;
+    if (row.kind === "external") {
+      return { kind: "external", itemId: row.id, userId: row.user_id, sourcePath: row.source_path ?? "", options: JSON.parse(row.options) as ExternalImportOptions };
+    }
+    return {
+      kind: "batch",
+      itemId: row.id,
+      userId: row.user_id,
+      documentId: row.document_id,
+      number: row.number,
+      count: row.count,
+      options: JSON.parse(row.options) as BatchOptions,
+    };
   }
 
   /**
-   * After a restart: batch items that were being processed are queued again; uploads that never arrived will not
-   * arrive any more. Returns the number of batch items waiting.
+   * After a restart: batch and external import items that were being processed are queued again; uploads that never
+   * arrived will not arrive any more. Returns the number of items waiting.
    */
   recover(message: string): number {
-    this.db.query("UPDATE job_items SET status = 'pending' WHERE status = 'running' AND job_id IN (SELECT id FROM jobs WHERE kind = 'batch')").run();
+    this.db.query(`UPDATE job_items SET status = 'pending' WHERE status = 'running' AND job_id IN (SELECT id FROM jobs WHERE kind IN ${QUEUED_KINDS})`).run();
     this.db
       .query(
         `UPDATE job_items SET status = 'failed', error = ?, finished_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
          WHERE status IN ('pending', 'running') AND job_id IN (SELECT id FROM jobs WHERE kind = 'import')`,
       )
       .run(message);
-    return (this.db.query("SELECT COUNT(*) AS n FROM job_items i JOIN jobs j ON j.id = i.job_id WHERE j.kind = 'batch' AND i.status = 'pending'").get() as { n: number }).n;
+    return (this.db.query(`SELECT COUNT(*) AS n FROM job_items i JOIN jobs j ON j.id = i.job_id WHERE j.kind IN ${QUEUED_KINDS} AND i.status = 'pending'`).get() as { n: number }).n;
   }
 
   delete(userId: number, id: number): boolean {
