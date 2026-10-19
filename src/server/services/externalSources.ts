@@ -1,4 +1,5 @@
 import { readdir, realpath, stat } from "node:fs/promises";
+import { homedir } from "node:os";
 import { isAbsolute, join, resolve, sep } from "node:path";
 import {
   EXTERNAL_SOURCE_TYPES,
@@ -14,9 +15,10 @@ import {
 } from "../../shared/externalSources";
 import { normalizeFolderPath } from "../../shared/folders";
 import { ALREADY_IMPORTED_NOTE, duplicateNote } from "../../shared/jobs";
-import type { User } from "../../shared/types";
-import type { ExternalSourceRepository, StoredExternalSource } from "../db/externalSources";
+import type { ArchiveDocument, User } from "../../shared/types";
+import type { ExternalSourceRepository, ImportedFile, StoredExternalSource } from "../db/externalSources";
 import { toPublicSource } from "../db/externalSources";
+import { toPublicDocument } from "../db/documents";
 import type { JobItemCreate, JobRepository } from "../db/jobs";
 import type { PresetRepository } from "../db/presets";
 import type { UserRepository } from "../db/users";
@@ -154,14 +156,23 @@ function normalizeCredentials(value: unknown): Record<string, string> | null | u
   return entries.length > 0 ? Object.fromEntries(entries) : null;
 }
 
+/** `~` stands for the home directory of the user the server runs as. */
+function expandHome(path: string): string {
+  return path === "~" || path.startsWith("~/") ? join(homedir(), path.slice(1)) : path;
+}
+
 async function normalizeUrl(type: ExternalSourceType, value: unknown): Promise<string> {
-  const url = typeof value === "string" ? value.trim() : "";
+  const url = expandHome(typeof value === "string" ? value.trim() : "");
   if (!url) throw new HttpError(400, "Path required");
   if (!isAbsolute(url)) throw new HttpError(400, "The path must be absolute");
   const path = resolve(url);
   const info = await stat(path).catch(() => null);
   if (!info?.isDirectory()) throw new HttpError(404, "Folder not found");
   return path;
+}
+
+function isChanged(imported: ImportedFile, file: Pick<ExternalFile, "size" | "modifiedAt">): boolean {
+  return imported.size !== file.size || imported.modifiedAt !== file.modifiedAt;
 }
 
 export class ExternalSourceService {
@@ -228,7 +239,8 @@ export class ExternalSourceService {
         kind: entry.kind,
         size: entry.kind === "file" ? entry.size : null,
         modifiedAt: entry.modifiedAt,
-        documentId: imported.get(entry.path) ?? null,
+        documentId: imported.get(entry.path)?.documentId ?? null,
+        changed: imported.has(entry.path) && isChanged(imported.get(entry.path)!, entry),
       })),
       hidden: files.length - shown.length,
     };
@@ -264,7 +276,7 @@ export class ExternalSourceService {
     const items: JobItemCreate[] = [
       ...chosen.map((file) => ({ name: file.path, documentId: null, sourcePath: file.path })),
       ...inFolders.map((file): JobItemCreate => {
-        const documentId = imported.get(file.path);
+        const documentId = imported.get(file.path)?.documentId;
         return documentId === undefined
           ? { name: file.path, documentId: null, sourcePath: file.path }
           : { name: file.path, documentId, sourcePath: file.path, status: "skipped", note: ALREADY_IMPORTED_NOTE };
@@ -303,5 +315,18 @@ export class ExternalSourceService {
     });
     this.sources.link(doc!.id, source.id, { path: file.path, size: file.size, modifiedAt: file.modifiedAt });
     return { documentId: doc!.id, ocr: doc!.ocrStatus === "pending", note: doc!.duplicates.length ? duplicateNote(doc!.duplicates) : undefined };
+  }
+
+  /** Reads the file a document was imported from again and replaces the document's original with it. */
+  async reimport(userId: number, documentId: number): Promise<ArchiveDocument> {
+    const doc = this.archive.getDocument(userId, documentId);
+    const link = this.sources.linkOf(doc.id);
+    if (!link) throw new HttpError(400, "The document was not imported from a data source");
+    const driver = openSource(this.get(userId, link.sourceId));
+    const file = await driver.stat(link.path);
+    if (file.kind !== "file") throw new HttpError(404, "File not found");
+    const updated = await this.archive.replaceFile(userId, doc.id, { name: file.name, type: "", data: await driver.read(link.path) });
+    this.sources.link(doc.id, link.sourceId, { path: file.path, size: file.size, modifiedAt: file.modifiedAt });
+    return toPublicDocument(this.archive.getDocument(userId, updated.id));
   }
 }

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, symlink, utimes, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { makeJpeg, startTestServer, type TestServer } from "../../test/server";
 import type { ExternalListing, ExternalSource } from "../shared/externalSources";
@@ -181,5 +181,43 @@ describe("external data sources", () => {
     server.ctx.jobQueue.start();
     await server.ctx.jobQueue.idle();
     expect(server.ctx.jobs.get(userId, jobId)!.items[0]).toMatchObject({ state: "failed", error: "File not found" });
+  });
+
+  test("~ stands for the home directory of the server's user", async () => {
+    const res = await post("/api/sources", { name: "Home", type: "file_path", url: "~" });
+    expect(res.status).toBe(201);
+    expect(((await res.json()) as ExternalSource).url).toBe(homedir());
+  });
+
+  test("re-imports a changed file and keeps the document's edits, folders and title", async () => {
+    const source = await createSource();
+    await importFiles(source.id, { files: ["brief.jpg"], targetFolders: ["post"] });
+    const [doc] = await documents();
+    const patch = await server.api(`/api/documents/${doc!.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Brief an Anna", editSettings: { brightness: 0.2 } }),
+    });
+    expect(patch.status).toBe(200);
+    const copy = (await (await post(`/api/documents/${doc!.id}/duplicate`, {})).json()) as ArchiveDocument;
+    expect((await browse(source.id)).entries.find((e) => e.name === "brief.jpg")?.changed).toBe(false);
+
+    await writeFile(join(dir, "brief.jpg"), await makeJpeg(120, 90, [0, 0, 255]));
+    expect((await browse(source.id)).entries.find((e) => e.name === "brief.jpg")?.changed).toBe(true);
+
+    const res = await post(`/api/documents/${doc!.id}/reimport`, {});
+    expect(res.status).toBe(200);
+    const updated = (await res.json()) as ArchiveDocument;
+    expect(updated).toMatchObject({ title: "Brief an Anna", folders: ["post"], width: 120, height: 90, copies: [] });
+    expect(updated.editSettings.brightness).toBe(0.2);
+    expect((await browse(source.id)).entries.find((e) => e.name === "brief.jpg")?.changed).toBe(false);
+
+    // The duplicate keeps the old file.
+    const kept = (await (await server.api(`/api/documents/${copy.id}`)).json()) as ArchiveDocument;
+    expect(kept).toMatchObject({ copyOf: null, width: 64, height: 48 });
+    expect((await server.api(`/api/documents/${copy.id}/file`)).status).toBe(200);
+
+    const other = (await (await post(`/api/documents/${copy.id}/reimport`, {})).json()) as { error: string };
+    expect(other.error).toBe("The document was not imported from a data source");
   });
 });

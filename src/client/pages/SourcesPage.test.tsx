@@ -12,17 +12,18 @@ afterEach(() => fetchMock.restore());
 
 const source: ExternalSource = { id: 3, name: "Scanner", type: "file_path", url: "/mnt/scans", hasCredentials: false, documentCount: 2, createdAt: "" };
 
-const entry = (path: string, kind: ExternalEntry["kind"], documentId: number | null = null): ExternalEntry => ({
+const entry = (path: string, kind: ExternalEntry["kind"], documentId: number | null = null, changed = false): ExternalEntry => ({
   name: path.split("/").at(-1)!,
   path,
   kind,
   size: kind === "file" ? 2048 : null,
   modifiedAt: "2026-03-01T10:00:00.000Z",
   documentId,
+  changed,
 });
 
 const listings: Record<string, ExternalListing> = {
-  "": { path: "", entries: [entry("2026", "folder"), entry("brief.jpg", "file", 7)], hidden: 2 },
+  "": { path: "", entries: [entry("2026", "folder"), entry("brief.jpg", "file", 7), entry("foto.jpg", "file", 8, true)], hidden: 2 },
   "2026": { path: "2026", entries: [entry("2026/rechnung.pdf", "file")], hidden: 0 },
 };
 
@@ -44,6 +45,7 @@ function setup(ui: React.ReactElement, path: string, { admin = true } = {}) {
       return undefined;
     },
     "GET /api/sources/3/browse": (url) => listings[url.searchParams.get("path") ?? ""],
+    "POST /api/documents/8/reimport": () => ({}),
     "POST /api/sources/3/import": (): Job => ({
       id: 9,
       kind: "external",
@@ -66,8 +68,11 @@ describe("SourcesPage", () => {
     await setup(<SourcesPage />, "/sources");
     expect(screen.getByRole("link", { name: "Scanner" })).toBeTruthy();
     expect(screen.getByText(/2 Dokumente importiert/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Ordner auf dem Server"), { target: { value: "~/Dokumente/Scans/" } });
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("Scans");
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "NAS" } });
     fireEvent.change(screen.getByLabelText("Ordner auf dem Server"), { target: { value: "/srv/nas" } });
+    expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe("NAS");
     fireEvent.click(screen.getByRole("button", { name: "Datenquelle hinzufügen" }));
     await waitFor(() => expect(screen.getByRole("link", { name: "NAS" })).toBeTruthy());
     expect(fetchMock.calls.find((c) => c.method === "POST")?.body).toEqual({ name: "NAS", type: "file_path", url: "/srv/nas" });
@@ -92,6 +97,7 @@ describe("SourceBrowserPage", () => {
     const { router } = await setup(<SourceBrowserPage />, "/sources/3");
     expect(screen.getByRole("heading", { name: "Scanner" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Bereits importiert" }).getAttribute("href")).toBe("/documents/7");
+    expect(screen.getByRole("link", { name: "In der Quelle geändert" }).getAttribute("href")).toBe("/documents/8");
     expect(screen.getByText(/2 weitere Dateien ausgeblendet/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("checkbox", { name: "brief.jpg auswählen" }));
@@ -121,6 +127,13 @@ describe("SourceBrowserPage", () => {
       targetFolders: ["archiv"],
     });
     await waitFor(() => expect(screen.queryByText("2 ausgewählt") === null).toBe(true));
+  });
+
+  test("re-imports a file that changed in the source", async () => {
+    await setup(<SourceBrowserPage />, "/sources/3");
+    fireEvent.click(screen.getByRole("button", { name: "Neu importieren" }));
+    await waitFor(() => expect(screen.getByText("Neu importiert")).toBeTruthy());
+    expect(fetchMock.calls.some((c) => c.method === "POST" && c.path === "/api/documents/8/reimport")).toBe(true);
   });
 
   test("can list all files", async () => {

@@ -1,4 +1,4 @@
-import { ChevronRight, FileText, Folder, FolderArrowDown, HardDrive, Loader, X } from "../icons";
+import { ChevronRight, FileText, Folder, FolderArrowDown, HardDrive, Loader, RefreshCw, X } from "../icons";
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import type { ExternalEntry } from "../../shared/externalSources";
@@ -137,9 +137,10 @@ export function SourceBrowserPage() {
                         )}
                         {entry.documentId !== null && (
                           <Link to={`/documents/${entry.documentId}`} className="preset-card__badge">
-                            {t("sourceBrowser.imported")}
+                            {entry.changed ? t("sourceBrowser.changed") : t("sourceBrowser.imported")}
                           </Link>
                         )}
+                        {entry.documentId !== null && entry.changed && <ReimportButton documentId={entry.documentId} onDone={listing.refresh} />}
                       </span>
                     </td>
                     <td className="source-table__size muted">{entry.size === null ? "" : formatBytes(entry.size)}</td>
@@ -181,6 +182,30 @@ export function SourceBrowserPage() {
         }}
       />
     </div>
+  );
+}
+
+function ReimportButton({ documentId, onDone }: { documentId: number; onDone: () => void }) {
+  const { t } = useTranslation();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const reimport = async () => {
+    setBusy(true);
+    try {
+      await api.reimportDocument(documentId);
+      toast.success(t("details.reimported"));
+      onDone();
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <button type="button" className="btn btn--sm" onClick={reimport} disabled={busy} title={t("details.reimportTitle")}>
+      {busy ? <Loader size={16} className="spin" /> : <RefreshCw size={16} />}
+      {t("details.reimport")}
+    </button>
   );
 }
 

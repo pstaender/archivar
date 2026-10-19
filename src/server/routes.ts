@@ -248,6 +248,10 @@ export function createApiRoutes(ctx: AppContext) {
       POST: handle(async (req: Req) => json(await archive.detachDocument(userId(req), parseId(req.params.id)))),
     },
 
+    "/api/documents/:id/reimport": {
+      POST: handle(async (req: Req) => json(await ctx.externalSources.reimport(userId(req), parseId(req.params.id)))),
+    },
+
     "/api/documents/:id/ocr": {
       POST: handle(async (req: Req) => {
         const body = await readJson<{ allText?: boolean; languages?: unknown }>(req).catch(() => ({ allText: false, languages: undefined }));

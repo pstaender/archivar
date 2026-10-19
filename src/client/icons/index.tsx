@@ -71,6 +71,7 @@ export const Plus = createIcon(keyline("plus"), "Plus");
 export const RatioLandscape = createIcon(keyline("ratio-4-3"), "RatioLandscape");
 export const RatioPortrait = createIcon(keyline("ratio-3-4"), "RatioPortrait");
 export const RatioSquare = createIcon(keyline("ratio-1-1"), "RatioSquare");
+export const RefreshCw = createIcon(keyline("refresh-cw"), "RefreshCw");
 export const RotateCcw = createIcon(keyline("rotate-ccw"), "RotateCcw");
 export const RotateCw = createIcon(keyline("rotate-cw"), "RotateCw");
 export const Scan = createIcon(keyline("scan"), "Scan");

@@ -28,6 +28,20 @@ async function open(overrides: Parameters<typeof makeDocument>[0] = {}, routes: 
 }
 
 describe("Datei tab", () => {
+  test("re-imports a document from its data source", async () => {
+    const source = { id: 3, name: "Scanner", path: "2026/brief.jpg" };
+    await open({ kind: "image", source }, { "POST /api/documents/7/reimport": () => makeDocument({ id: 7, kind: "image", source, width: 999 }) });
+    expect(screen.getByText("Scanner: 2026/brief.jpg")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Neu importieren" }));
+    expect(await screen.findByText("Neu importiert")).toBeTruthy();
+    expect(fetchMock.calls.some((c) => c.method === "POST" && c.path === "/api/documents/7/reimport")).toBe(true);
+  });
+
+  test("documents not imported from a data source have no re-import", async () => {
+    await open({ kind: "image" });
+    expect(screen.queryByRole("button", { name: "Neu importieren" })).toBeNull();
+  });
+
   test("exports the image with its stored text as a PDF download", async () => {
     await open({ kind: "image", ocrStatus: "done", ocrText: "Hallo" });
     expect(screen.getByRole("tab", { name: "Datei" }).getAttribute("aria-selected")).toBe("true");

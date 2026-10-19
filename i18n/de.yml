@@ -385,7 +385,7 @@ sources:
   name: Name
   namePlaceholder: z.B. Scanner
   path: Ordner auf dem Server
-  pathPlaceholder: /mnt/scans
+  pathPlaceholder: ~/Scans oder /mnt/scans
   documents_one: 1 Dokument importiert
   documents_other: "{{count}} Dokumente importiert"
   deleteLabel: "{{name}} löschen"
@@ -405,6 +405,7 @@ sourceBrowser:
   size: Größe
   modified: Geändert
   imported: Bereits importiert
+  changed: In der Quelle geändert
   hidden_one: 1 weitere Datei ausgeblendet (anderer Typ oder größer als 10 MB).
   hidden_other: "{{count}} weitere Dateien ausgeblendet (andere Typen oder größer als 10 MB)."
   clear: Auswahl aufheben
@@ -743,6 +744,9 @@ details:
   usesOriginal: " (verwendet dessen Originaldatei)"
   copies: Duplikate
   source: Quelle
+  reimport: Neu importieren
+  reimportTitle: Die Datei erneut aus der Datenquelle lesen und das gespeicherte Original ersetzen; Titel, Ordner und Bearbeitungen bleiben erhalten
+  reimported: Neu importiert
 
 # Messages from the server, which always answers in English; keys from serverMessageParts (src/shared/serverMessages.ts).
 serverMessages:
@@ -810,6 +814,7 @@ serverMessages:
   text_recognition_took_too_long_and_was_stopped: "Die Texterkennung hat zu lange gedauert und wurde abgebrochen."
   the_data_source_is_not_reachable: "Die Datenquelle ist nicht erreichbar"
   the_document_was_deleted: "Das Dokument wurde gelöscht."
+  the_document_was_not_imported_from_a_data_source: "Das Dokument wurde nicht aus einer Datenquelle importiert"
   the_job_is_still_running: "Der Auftrag läuft noch"
   the_password_needs_at_least_characters: "Das Kennwort braucht mindestens {{n0}} Zeichen"
   the_path_must_be_absolute: "Der Pfad muss absolut sein"

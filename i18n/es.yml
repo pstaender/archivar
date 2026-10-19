@@ -393,7 +393,7 @@ sources:
   name: Nombre
   namePlaceholder: p. ej. Escáner
   path: Carpeta en el servidor
-  pathPlaceholder: /mnt/scans
+  pathPlaceholder: ~/Scans o /mnt/scans
   documents_one: 1 documento importado
   documents_other: "{{count}} documentos importados"
   documents_many: "{{count}} documentos importados"
@@ -414,6 +414,7 @@ sourceBrowser:
   size: Tamaño
   modified: Modificado
   imported: Ya importado
+  changed: Modificado en la fuente
   hidden_one: 1 archivo más oculto (otro tipo o más de 10 MB).
   hidden_other: "{{count}} archivos más ocultos (otros tipos o más de 10 MB)."
   hidden_many: "{{count}} archivos más ocultos (otros tipos o más de 10 MB)."
@@ -768,6 +769,9 @@ details:
   usesOriginal: " (usa su archivo original)"
   copies: Duplicados
   source: Origen
+  reimport: Volver a importar
+  reimportTitle: Leer de nuevo el archivo desde la fuente de datos y sustituir el original guardado; se conservan el título, las carpetas y las ediciones
+  reimported: Importado de nuevo
 
 # Messages from the server, which always answers in English; keys from serverMessageParts (src/shared/serverMessages.ts).
 serverMessages:
@@ -835,6 +839,7 @@ serverMessages:
   text_recognition_took_too_long_and_was_stopped: "El reconocimiento de texto tardó demasiado y se detuvo."
   the_data_source_is_not_reachable: "No se puede acceder a la fuente de datos"
   the_document_was_deleted: "El documento se ha eliminado."
+  the_document_was_not_imported_from_a_data_source: "El documento no se importó desde una fuente de datos"
   the_job_is_still_running: "El trabajo sigue en curso"
   the_password_needs_at_least_characters: "La contraseña necesita al menos {{n0}} caracteres"
   the_path_must_be_absolute: "La ruta debe ser absoluta"

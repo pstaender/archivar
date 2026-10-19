@@ -321,6 +321,21 @@ export class DocumentRepository {
     return this.get(userId, copyId)!;
   }
 
+  /** Points the document to a new original file; its recognized text layout no longer fits. */
+  replaceFile(
+    userId: number,
+    id: number,
+    file: { storageKey: string; mimeType: string; kind: DocumentKind; size: number; sha256: string; width: number | null; height: number | null; pageCount: number | null; metadata: Record<string, unknown> },
+  ): void {
+    this.db
+      .query(
+        `UPDATE documents SET storage_key = $storageKey, mime_type = $mimeType, kind = $kind, size = $size, sha256 = $sha256, width = $width,
+           height = $height, page_count = $pageCount, metadata = $metadata, ocr_layout = NULL, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+         WHERE user_id = $userId AND id = $id`,
+      )
+      .run({ userId, id, ...file, metadata: JSON.stringify(file.metadata) });
+  }
+
   /** Makes a duplicate independent with its own copy of the original file. */
   detach(userId: number, id: number, storageKey: string): void {
     this.db

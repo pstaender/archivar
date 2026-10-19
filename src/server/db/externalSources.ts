@@ -12,6 +12,12 @@ interface SourceRow {
   document_count: number;
 }
 
+export interface ImportedFile {
+  documentId: number;
+  size: number;
+  modifiedAt: string | null;
+}
+
 export interface StoredExternalSource extends ExternalSource {
   userId: number;
   credentials: Record<string, string> | null;
@@ -80,13 +86,24 @@ export class ExternalSourceRepository {
     return this.db.query("DELETE FROM external_sources WHERE user_id = ? AND id = ?").run(userId, id).changes > 0;
   }
 
-  /** The oldest document imported from each of the paths that still exists. */
-  importedDocuments(sourceId: number, paths: string[]): Map<string, number> {
+  /** The oldest document imported from each of the paths that still exists, with the file's size and time when it was imported. */
+  importedDocuments(sourceId: number, paths: string[]): Map<string, ImportedFile> {
     if (paths.length === 0) return new Map();
     const rows = this.db
-      .query("SELECT path, MIN(document_id) AS id FROM document_sources WHERE source_id = ? AND path IN (SELECT value FROM json_each(?)) GROUP BY path")
-      .all(sourceId, JSON.stringify(paths)) as { path: string; id: number }[];
-    return new Map(rows.map((row) => [row.path, row.id]));
+      .query(
+        `SELECT ds.path, ds.document_id AS documentId, ds.size, ds.modified_at AS modifiedAt FROM document_sources ds
+         WHERE ds.source_id = ? AND ds.path IN (SELECT value FROM json_each(?))
+           AND ds.document_id = (SELECT MIN(o.document_id) FROM document_sources o WHERE o.source_id = ds.source_id AND o.path = ds.path)`,
+      )
+      .all(sourceId, JSON.stringify(paths)) as (ImportedFile & { path: string })[];
+    return new Map(rows.map(({ path, ...file }) => [path, file]));
+  }
+
+  /** Where a document was imported from. */
+  linkOf(documentId: number): (ImportedFile & { sourceId: number; path: string }) | null {
+    return (this.db
+      .query("SELECT source_id AS sourceId, path, document_id AS documentId, size, modified_at AS modifiedAt FROM document_sources WHERE document_id = ?")
+      .get(documentId) ?? null) as (ImportedFile & { sourceId: number; path: string }) | null;
   }
 
   link(documentId: number, sourceId: number, file: { path: string; size: number; modifiedAt: string | null }): void {

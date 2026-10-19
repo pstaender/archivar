@@ -36,6 +36,8 @@ export interface ExternalEntry {
   modifiedAt: string | null;
   /** The document imported from this file (the oldest one still in the archive). */
   documentId: number | null;
+  /** The file's size or modification time differ from when that document was imported. */
+  changed: boolean;
 }
 
 export interface ExternalListing {

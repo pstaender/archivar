@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FileText, Loader, SavePlus, ScanText, Trash, Unlink } from "../icons";
+import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FileText, Loader, SavePlus, ScanText, RefreshCw, Trash, Unlink } from "../icons";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
@@ -406,6 +406,17 @@ export function DocumentPage() {
     }
   };
 
+  const reimport = async () => {
+    try {
+      await whenEditsSaved(doc.id);
+      resource.setData(await api.reimportDocument(doc.id));
+      toast.success(t("details.reimported"));
+      if (stackId) void stack.refresh();
+    } catch (error) {
+      toast.error(error);
+    }
+  };
+
   const heir = doc.copies[0];
   const deleteMessage =
     t("document.deleteText", { title: documentLabel(doc) }) + (heir ? t("document.deleteHeir", { count: doc.copies.length, heir: heir.title }) : "");
@@ -597,7 +608,7 @@ export function DocumentPage() {
               />
             )}
             {tab === "details" && (
-              <DetailsPanel doc={doc} onFoldersChange={(folders) => update({ folders })} onDuplicate={duplicate} onDetach={detach} />
+              <DetailsPanel doc={doc} onFoldersChange={(folders) => update({ folders })} onDuplicate={duplicate} onDetach={detach} onReimport={reimport} />
             )}
           </div>
         </aside>
@@ -815,9 +826,10 @@ interface DetailsPanelProps {
   onFoldersChange: (folders: string[]) => void;
   onDuplicate: () => Promise<void>;
   onDetach: () => Promise<void>;
+  onReimport?: () => Promise<void>;
 }
 
-export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach }: DetailsPanelProps) {
+export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach, onReimport }: DetailsPanelProps) {
   const toast = useToast();
   const { t } = useTranslation();
   const [exporting, setExporting] = useState(false);
@@ -889,6 +901,12 @@ export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach }: De
           >
             <Unlink size={16} />
             {t("details.detach")}
+          </button>
+        )}
+        {doc.source && onReimport && (
+          <button type="button" className="btn btn--sm" onClick={() => void run(onReimport)} disabled={busy} title={t("details.reimportTitle")}>
+            <RefreshCw size={16} />
+            {t("details.reimport")}
           </button>
         )}
       </div>

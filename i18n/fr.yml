@@ -393,7 +393,7 @@ sources:
   name: Nom
   namePlaceholder: p. ex. Scanner
   path: Dossier sur le serveur
-  pathPlaceholder: /mnt/scans
+  pathPlaceholder: ~/Scans ou /mnt/scans
   documents_one: "{{count}} document importé"
   documents_other: "{{count}} documents importés"
   documents_many: "{{count}} documents importés"
@@ -414,6 +414,7 @@ sourceBrowser:
   size: Taille
   modified: Modifié
   imported: Déjà importé
+  changed: Modifié dans la source
   hidden_one: "{{count}} autre fichier masqué (autre type ou plus de 10 Mo)."
   hidden_other: "{{count}} autres fichiers masqués (autres types ou plus de 10 Mo)."
   hidden_many: "{{count}} autres fichiers masqués (autres types ou plus de 10 Mo)."
@@ -768,6 +769,9 @@ details:
   usesOriginal: " (utilise son fichier original)"
   copies: Duplicatas
   source: Source
+  reimport: Réimporter
+  reimportTitle: Relire le fichier depuis la source de données et remplacer l'original enregistré ; le titre, les dossiers et les modifications sont conservés
+  reimported: Réimporté
 
 # Messages from the server, which always answers in English; keys from serverMessageParts (src/shared/serverMessages.ts).
 serverMessages:
@@ -835,6 +839,7 @@ serverMessages:
   text_recognition_took_too_long_and_was_stopped: "La reconnaissance du texte a pris trop de temps et a été interrompue."
   the_data_source_is_not_reachable: "La source de données est inaccessible"
   the_document_was_deleted: "Le document a été supprimé."
+  the_document_was_not_imported_from_a_data_source: "Le document n'a pas été importé depuis une source de données"
   the_job_is_still_running: "La tâche est encore en cours"
   the_password_needs_at_least_characters: "Le mot de passe doit contenir au moins {{n0}} caractères"
   the_path_must_be_absolute: "Le chemin doit être absolu"

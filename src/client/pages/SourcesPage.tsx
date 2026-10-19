@@ -88,13 +88,24 @@ export function SourcesPage() {
   );
 }
 
+/** The last folder of a path, e.g. "Scans" for "~/Documents/Scans/". */
+function folderName(path: string): string {
+  return path.split(/[/\\]+/).filter((part) => part && part !== "~").at(-1) ?? "";
+}
+
 function AddSource({ onAdded }: { onAdded: () => void }) {
   const { t } = useTranslation();
   const toast = useToast();
   const nameId = useId();
   const pathId = useId();
   const [name, setName] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
   const [path, setPath] = useState("");
+
+  const changePath = (value: string) => {
+    setPath(value);
+    if (!nameTouched) setName(folderName(value));
+  };
   const [saving, setSaving] = useState(false);
 
   const add = async (event: FormEvent) => {
@@ -104,6 +115,7 @@ function AddSource({ onAdded }: { onAdded: () => void }) {
     try {
       await api.createSource({ name: name.trim(), type: "file_path", url: path.trim() });
       setName("");
+      setNameTouched(false);
       setPath("");
       onAdded();
       toast.success(t("sources.added", { name: name.trim() }));
@@ -120,13 +132,23 @@ function AddSource({ onAdded }: { onAdded: () => void }) {
         <label htmlFor={nameId} className="field__label">
           {t("sources.name")}
         </label>
-        <input id={nameId} className="input" placeholder={t("sources.namePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
+        <input
+          id={nameId}
+          className="input"
+          placeholder={t("sources.namePlaceholder")}
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setNameTouched(true);
+          }}
+          maxLength={100}
+        />
       </div>
       <div>
         <label htmlFor={pathId} className="field__label">
           {t("sources.path")}
         </label>
-        <input id={pathId} className="input" placeholder={t("sources.pathPlaceholder")} value={path} onChange={(e) => setPath(e.target.value)} />
+        <input id={pathId} className="input" placeholder={t("sources.pathPlaceholder")} value={path} onChange={(e) => changePath(e.target.value)} />
       </div>
       <button type="submit" className="btn" disabled={!name.trim() || !path.trim() || saving}>
         {saving ? <Loader size={16} className="spin" /> : <Plus size={16} />}

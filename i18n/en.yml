@@ -385,7 +385,7 @@ sources:
   name: Name
   namePlaceholder: e.g. Scanner
   path: Folder on the server
-  pathPlaceholder: /mnt/scans
+  pathPlaceholder: ~/Scans or /mnt/scans
   documents_one: 1 document imported
   documents_other: "{{count}} documents imported"
   deleteLabel: "Delete {{name}}"
@@ -405,6 +405,7 @@ sourceBrowser:
   size: Size
   modified: Modified
   imported: Already imported
+  changed: Changed in the source
   hidden_one: 1 more file hidden (other type or larger than 10 MB).
   hidden_other: "{{count}} more files hidden (other types or larger than 10 MB)."
   clear: Clear selection
@@ -743,6 +744,9 @@ details:
   usesOriginal: " (uses its original file)"
   copies: Duplicates
   source: Source
+  reimport: Re-import
+  reimportTitle: Read the file from the data source again and replace the stored original; title, folders and edits are kept
+  reimported: Re-imported
 
 # Messages from the server, which always answers in English; keys from serverMessageParts (src/shared/serverMessages.ts).
 serverMessages:
@@ -810,6 +814,7 @@ serverMessages:
   text_recognition_took_too_long_and_was_stopped: "Text recognition took too long and was stopped."
   the_data_source_is_not_reachable: "The data source is not reachable"
   the_document_was_deleted: "The document was deleted."
+  the_document_was_not_imported_from_a_data_source: "The document was not imported from a data source"
   the_job_is_still_running: "The job is still running"
   the_password_needs_at_least_characters: "The password needs at least {{n0}} characters"
   the_path_must_be_absolute: "The path must be absolute"

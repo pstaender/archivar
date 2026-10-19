@@ -260,6 +260,44 @@ export class ArchiveService {
     return toPublicDocument(this.documents.get(userId, copy.id)!);
   }
 
+  /**
+   * Replaces the original file with a new version (e.g. from an external source), keeping title, folders, stack and
+   * edits. Duplicates keep the old file, the oldest becoming their original. Text is recognized again if it was before.
+   */
+  async replaceFile(userId: number, id: number, file: UploadFile): Promise<StoredDocument> {
+    const doc = this.getDocument(userId, id);
+    const name = basename(file.name || doc.originalName);
+    const inspection = await this.imaging.inspect(file.data, name, file.type);
+    const storageKey = `originals/${userId}/${crypto.randomUUID()}${extensionFor(name, inspection.mimeType)}`;
+    await this.storage.write(storageKey, file.data);
+    this.documents.handOverCopies(id);
+    this.documents.replaceFile(userId, id, {
+      storageKey,
+      mimeType: inspection.mimeType,
+      kind: inspection.kind,
+      size: file.data.byteLength,
+      sha256: sha256Hex(file.data),
+      width: inspection.width,
+      height: inspection.height,
+      pageCount: inspection.pageCount,
+      metadata: inspection.kind === "pdf" && inspection.text ? { ...inspection.metadata, textSource: "pdf" } : inspection.metadata,
+    });
+    if (!this.documents.storageKeyInUse(doc.storageKey)) await this.storage.delete(doc.storageKey);
+    await this.storage.delete(derivedKeys.dir(id));
+
+    let updated = this.documents.get(userId, id)!;
+    const size = await this.imaging.renderDerivatives(updated);
+    if (size && !isDefaultEditSettings(updated.editSettings)) this.documents.update(userId, id, size);
+    if (inspection.kind === "pdf" && inspection.text) {
+      this.documents.setOcrResult(id, { status: "done", text: inspection.text, confidence: null, error: null, removed: 0, language: detectLanguage(inspection.text) });
+    } else if (updated.kind !== "file" && updated.ocrStatus !== "none") {
+      this.ocr.enqueue(id, { allText: updated.ocrAllText });
+    }
+    if (updated.stackId !== null) this.stacks.touch(updated.stackId);
+    updated = this.documents.get(userId, id)!;
+    return updated;
+  }
+
   /** Gives a duplicate its own copy of the original file and ends its relation to the original. */
   async detachDocument(userId: number, id: number): Promise<ArchiveDocument> {
     const doc = this.getDocument(userId, id);
