@@ -168,6 +168,10 @@ export function createApiRoutes(ctx: AppContext) {
       }),
     },
 
+    "/api/library/version": {
+      GET: handle((req: Req) => json({ version: archive.libraryVersion(userId(req)) })),
+    },
+
     "/api/documents": {
       GET: handle((req: Req) => {
         const url = new URL(req.url);

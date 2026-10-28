@@ -1232,6 +1232,27 @@ describe("library sorting", () => {
     expect((await put("/api/folders/order", { items: [] })).status).toBe(400);
   });
 
+  test("the library version changes with everything the library shows", async () => {
+    const version = async () => ((await (await server.api("/api/library/version")).json()) as { version: string }).version;
+    const ids = await setup();
+    const steps: (() => Promise<unknown>)[] = [
+      () => uploadImage("Dattel.jpg"),
+      () => patch(`/api/documents/${ids.apfel}`, { folders: ["gemüse"] }),
+      () => put("/api/folders/order", { folder: "obst", items: [{ type: "document", id: ids["Kirsche 9"] }] }),
+      () => put("/api/folders/order", { folder: "obst", items: [{ type: "document", id: ids["Kirsche 10"] }] }),
+      () => post("/api/stacks", { documentIds: [ids.Banane] }),
+      () => server.api(`/api/documents/${ids["Kirsche 9"]}`, { method: "DELETE" }),
+    ];
+    let previous = await version();
+    expect(await version()).toBe(previous);
+    for (const step of steps) {
+      await step();
+      const next = await version();
+      expect(next).not.toBe(previous);
+      previous = next;
+    }
+  });
+
   test("keeps the arranged order of a folder that only exists through its sub-folders", async () => {
     const a = await uploadImage("a.jpg", { folders: "privat/wohnung" });
     const b = await uploadImage("b.jpg", { folders: "privat/auto" });

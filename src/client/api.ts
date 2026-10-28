@@ -142,6 +142,7 @@ export const api = {
   config: () => request<AppConfig>("/api/config"),
   archiveExportSize: () => request<{ bytes: number }>("/api/export/archive/size"),
 
+  libraryVersion: () => request<{ version: string }>("/api/library/version"),
   library: (params: LibraryQuery = {}) =>
     request<LibraryItem[]>(`/api/library${query({ folder: params.folder, q: params.q, sort: params.sort })}`),
   /** Stores the order of the items arranged by the user in a folder. */

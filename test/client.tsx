@@ -17,6 +17,7 @@ export interface FetchMock {
 const defaultRoutes: Record<string, Handler> = {
   "GET /api/presets": () => [],
   "GET /api/jobs": () => [],
+  "GET /api/library/version": () => ({ version: "1" }),
   "GET /api/auth/status": () => ({ user: { id: 1, name: "admin", admin: true }, passwordSet: false, usernameRequired: false, passkeyLogin: false }),
 };
 

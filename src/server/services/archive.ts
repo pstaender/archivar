@@ -84,6 +84,10 @@ export class ArchiveService {
     return sortLibrary(items, query.sort ?? "updated", folderId === null ? new Map() : this.folders.order(folderId));
   }
 
+  libraryVersion(userId: number): string {
+    return this.documents.libraryVersion(userId);
+  }
+
   /** Stores the order of the items the user arranged in a folder; items left out go to the end. */
   setFolderOrder(userId: number, folder: string, items: LibraryItemRef[]): void {
     this.folders.setOrder(this.folders.ensure(userId, folder), items);

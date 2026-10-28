@@ -177,6 +177,25 @@ export class DocumentRepository {
     return this.hydrate(rows);
   }
 
+  /** Changes whenever something shown in the library changes, so clients can poll it instead of the whole list. */
+  libraryVersion(userId: number): string {
+    const row = this.db
+      .query(
+        `SELECT
+           (SELECT COUNT(*) || ':' || IFNULL(MAX(id), 0) || ':' || IFNULL(MAX(updated_at), '') || ':' || TOTAL(IFNULL(stack_id, 0) * id)
+              FROM documents WHERE user_id = $user) AS documents,
+           (SELECT COUNT(*) || ':' || IFNULL(MAX(id), 0) || ':' || IFNULL(MAX(updated_at), '') FROM stacks WHERE user_id = $user) AS stacks,
+           (SELECT COUNT(*) || ':' || TOTAL(df.document_id * f.id) FROM document_folders df JOIN folders f ON f.id = df.folder_id
+              WHERE f.user_id = $user) AS documentFolders,
+           (SELECT COUNT(*) || ':' || TOTAL(sf.stack_id * f.id) FROM stack_folders sf JOIN folders f ON f.id = sf.folder_id
+              WHERE f.user_id = $user) AS stackFolders,
+           (SELECT COUNT(*) || ':' || TOTAL(o.item_id * (o.position + 1) * f.id) FROM folder_order o JOIN folders f ON f.id = o.folder_id
+              WHERE f.user_id = $user) AS folderOrder`,
+      )
+      .get({ user: userId }) as Record<string, string>;
+    return Object.values(row).join("|");
+  }
+
   update(
     userId: number,
     id: number,

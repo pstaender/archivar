@@ -26,6 +26,7 @@ import { FolderTargetDialog } from "../components/FolderTargetDialog";
 import { ItemCard, itemKey, SmartStackCard } from "../components/ItemCard";
 import { SortableGrid } from "../components/SortableGrid";
 import { useFolders } from "../hooks/folders";
+import { useLibraryUpdates } from "../hooks/libraryUpdates";
 import { useToast } from "../hooks/toast";
 import { useRefreshOnEditSave, whenEditsSaved } from "../editSaves";
 import { useRefreshOnJobProgress } from "../hooks/jobs";
@@ -156,6 +157,11 @@ export function LibraryPage() {
   useRefreshOnUpload(library.refresh);
   useRefreshOnEditSave(library.refresh);
   useRefreshOnJobProgress(library.refresh);
+  const { reload: reloadFolders } = useFolders();
+  useLibraryUpdates(() => {
+    void library.refresh();
+    void reloadFolders();
+  });
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // The overview leaves out what is already filed in a folder, unless asked to show everything; searches find all.
