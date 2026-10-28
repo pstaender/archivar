@@ -109,6 +109,8 @@ export class ArchiveService {
       await this.storage.write(storageKey, file.data);
 
       const hasEmbeddedText = inspection.kind === "pdf" && inspection.text.length > 0;
+      // Pending right away, so text recognition resumes after a restart that interrupts the rendering below.
+      const ocrPending = options.runOcr === true && inspection.kind !== "file" && !hasEmbeddedText;
       let doc = this.documents.create({
         userId,
         title: basename(name, extname(name)),
@@ -122,7 +124,7 @@ export class ArchiveService {
         height: inspection.height,
         pageCount: inspection.pageCount,
         ocrText: inspection.text,
-        ocrStatus: hasEmbeddedText ? "done" : "none",
+        ocrStatus: hasEmbeddedText ? "done" : ocrPending ? "pending" : "none",
         ocrLanguage: hasEmbeddedText ? detectLanguage(inspection.text) : null,
         metadata: hasEmbeddedText ? { ...inspection.metadata, textSource: "pdf" } : inspection.metadata,
         createdAt: options.createdAt,
@@ -137,8 +139,7 @@ export class ArchiveService {
         doc = this.documents.get(userId, doc.id)!;
       }
       if (doc.kind === "image" && options.preset) doc = await this.applyPresetOnUpload(doc, options.preset);
-      const size = await this.imaging.renderDerivatives(doc);
-      if (size && !isDefaultEditSettings(doc.editSettings)) this.documents.update(userId, doc.id, size);
+      await this.renderUploaded(doc);
       doc = this.documents.get(userId, doc.id)!;
       created.push(doc);
     }
@@ -286,8 +287,7 @@ export class ArchiveService {
     await this.storage.delete(derivedKeys.dir(id));
 
     let updated = this.documents.get(userId, id)!;
-    const size = await this.imaging.renderDerivatives(updated);
-    if (size && !isDefaultEditSettings(updated.editSettings)) this.documents.update(userId, id, size);
+    await this.renderUploaded(updated);
     if (inspection.kind === "pdf" && inspection.text) {
       this.documents.setOcrResult(id, { status: "done", text: inspection.text, confidence: null, error: null, removed: 0, language: detectLanguage(inspection.text) });
     } else if (updated.kind !== "file" && updated.ocrStatus !== "none") {
@@ -439,6 +439,16 @@ export class ArchiveService {
       if (best) settings = { ...settings, ...best, colorMode: "bw" };
     }
     return normalizeEditSettings(settings);
+  }
+
+  /** The stored file is kept when rendering fails; the derived images are rendered again when they are requested. */
+  private async renderUploaded(doc: StoredDocument): Promise<void> {
+    try {
+      const size = await this.imaging.renderDerivatives(doc);
+      if (size && !isDefaultEditSettings(doc.editSettings)) this.documents.update(doc.userId, doc.id, size);
+    } catch (error) {
+      console.warn(`Could not render the images of document ${doc.id}:`, error);
+    }
   }
 
   private async applyPresetOnUpload(doc: StoredDocument, steps: PresetSteps): Promise<StoredDocument> {

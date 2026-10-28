@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { createImage, Jimp } from "../shared/image/jimp";
 import { PREVIEW_SIZE } from "../shared/preview";
 import type { Job } from "../shared/jobs";
@@ -155,6 +155,34 @@ describe("documents", () => {
     expect(thumbnail.status).toBe(200);
     expect((await Jimp.read(Buffer.from(await image.arrayBuffer()))).bitmap.width).toBe(doc.width!);
     expect(await storage.exists(derivedKeys.thumbnail(doc.id))).toBe(true);
+  });
+
+  test("keeps an upload whose images could not be rendered and recognizes its text", async () => {
+    const render = spyOn(server.ctx.imaging, "renderDerivatives").mockRejectedValueOnce(new Error("Image worker exited"));
+    try {
+      const doc = await uploadImage("scan.jpg", { ocr: "true" });
+      await server.ctx.ocr.idle();
+      const stored = (await (await server.api(`/api/documents/${doc.id}`)).json()) as ArchiveDocument;
+      expect(stored.ocrStatus).toBe("done");
+      expect((await server.api(`/api/documents/${doc.id}/image`)).status).toBe(200);
+    } finally {
+      render.mockRestore();
+    }
+  });
+
+  test("marks the text recognition of an upload pending before rendering, so a restart resumes it", async () => {
+    const statuses: string[] = [];
+    const render = spyOn(server.ctx.imaging, "renderDerivatives");
+    render.mockImplementationOnce(async (doc) => {
+      statuses.push(server.ctx.documents.getById(doc.id)!.ocrStatus);
+      throw new Error("Image worker exited");
+    });
+    try {
+      await uploadImage("scan.jpg", { ocr: "true" });
+      expect(statuses).toEqual(["pending"]);
+    } finally {
+      render.mockRestore();
+    }
   });
 
   test("removes editor previews of other sizes", async () => {
