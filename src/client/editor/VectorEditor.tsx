@@ -87,6 +87,7 @@ export function VectorCanvas({ src, alt, state, showOriginal }: VectorCanvasProp
       return;
     }
     if (e.key === "Escape") {
+      e.preventDefault();
       setSelected(null);
       (e.target as HTMLElement).blur();
       return;

@@ -27,11 +27,16 @@ export function rememberLibraryLocation(href: string): void {
 }
 
 export function libraryLocation(): string {
+  return rememberedLibraryLocation() ?? "/";
+}
+
+/** The library page last shown in this browser tab, null when none was. */
+export function rememberedLibraryLocation(): string | null {
   try {
     const href = sessionStorage.getItem(LOCATION_KEY);
-    return href?.startsWith("/") ? href : "/";
+    return href?.startsWith("/") ? href : null;
   } catch {
-    return "/";
+    return null;
   }
 }
 

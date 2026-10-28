@@ -31,8 +31,8 @@ import { useFolders } from "../hooks/folders";
 import { usePresets } from "../hooks/presets";
 import { useSettings } from "../hooks/settings";
 import { useLeaveGuard } from "../hooks/leaveGuard";
-import { useArrowNavigation } from "../hooks/arrowNavigation";
-import { documentOrder, itemHash, libraryLocation } from "../documentOrder";
+import { useArrowNavigation, useEscapeNavigation } from "../hooks/arrowNavigation";
+import { documentOrder, itemHash, libraryLocation, rememberedLibraryLocation } from "../documentOrder";
 import { usePolling } from "../hooks/usePolling";
 import { useToast } from "../hooks/toast";
 import { useResource } from "../hooks/useResource";
@@ -158,6 +158,9 @@ export function DocumentPage() {
     if (target) navigate(stackId ? `/documents/${target}?stack=${stackId}` : `/documents/${target}`);
   };
   useArrowNavigation(neighbour(-1) ? () => goTo(-1) : null, neighbour(1) ? () => goTo(1) : null);
+  // Escape only returns to a list the document was opened from.
+  const cameFrom = stackId ? `/stacks/${stackId}` : rememberedLibraryLocation();
+  useEscapeNavigation(doc && cameFrom ? () => navigate(cameFrom + itemHash({ type: "document", id: doc.id })) : null);
 
   if (resource.error) {
     return (

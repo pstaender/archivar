@@ -88,6 +88,7 @@ export function ShapeCanvas({ src, alt, shapes, selected, color, onChange, onSel
       return;
     }
     if (e.key === "Escape") {
+      e.preventDefault();
       onSelect(null);
       (e.target as HTMLElement).blur();
       return;

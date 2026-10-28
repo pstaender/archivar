@@ -96,4 +96,26 @@ describe("document navigation", () => {
     await open("/documents/2");
     expect(screen.getByRole("tab", { name: "Datei" }).getAttribute("aria-selected")).toBe("true");
   });
+  test("goes back to the library page with Escape, but only when it was opened from one", async () => {
+    rememberLibraryLocation("/folders/steuer?sort=title");
+    const { router } = await open("/documents/2");
+    fireEvent.keyDown(screen.getAllByRole("textbox")[0]!, { key: "Escape" });
+    expect(location(router)).toBe("/documents/2");
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(router.state.location.pathname + router.state.location.search + router.state.location.hash).toBe("/folders/steuer?sort=title#2"));
+  });
+
+  test("goes back to the stack with Escape", async () => {
+    const { router } = await open("/documents/1?stack=9", {
+      "GET /api/stacks/9": () => ({ id: 9, title: "Stapel", documentIds: [1], documents: [docs.get(1)], folders: [], createdAt: "", updatedAt: "" }),
+    });
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(location(router)).toBe("/stacks/9"));
+  });
+
+  test("stays on a document opened directly when Escape is pressed", async () => {
+    const { router } = await open("/documents/2");
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(location(router)).toBe("/documents/2");
+  });
 });
