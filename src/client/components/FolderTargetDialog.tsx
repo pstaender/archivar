@@ -1,6 +1,6 @@
 import { Folder as FolderIcon, Plus } from "../icons";
 import { type CSSProperties, type FormEvent, useEffect, useId, useMemo, useState } from "react";
-import { buildFolderTree, type FolderNode, normalizeFolderPath } from "../../shared/folders";
+import { buildFolderTree, type FolderNode, normalizeFolderPath, parentPaths } from "../../shared/folders";
 import { useFolders } from "../hooks/folders";
 import { Dialog } from "./Dialog";
 import { useTranslation } from "react-i18next";
@@ -20,6 +20,19 @@ interface Row {
   name: string;
   depth: number;
   isNew: boolean;
+}
+
+/** Rows whose path contains the query, with their parent folders for context; chosen rows stay visible. */
+function filterRows(rows: Row[], query: string, selected: string[]): Row[] {
+  const term = normalizeFolderPath(query).toLocaleLowerCase();
+  if (!term) return rows;
+  const visible = new Set(selected);
+  for (const row of rows) {
+    if (!row.path.toLocaleLowerCase().includes(term)) continue;
+    visible.add(row.path);
+    for (const parent of parentPaths(row.path)) visible.add(parent);
+  }
+  return rows.filter((row) => visible.has(row.path));
 }
 
 function flatten(nodes: FolderNode[], created: Set<string>, depth = 0): Row[] {
@@ -50,6 +63,8 @@ export function FolderTargetDialog({ open, from, working, onMove, onAdd, onClose
     const tree = buildFolderTree([...folders.map((f) => ({ id: f.id, path: f.path, count: 0 })), ...extra]);
     return flatten(tree, new Set(extra.map((f) => f.path)));
   }, [folders, created]);
+
+  const visibleRows = useMemo(() => filterRows(rows, input, selected), [rows, input, selected]);
 
   const toggle = (path: string) =>
     setSelected((current) => (current.includes(path) ? current.filter((p) => p !== path) : [...current, path].sort()));
@@ -83,9 +98,9 @@ export function FolderTargetDialog({ open, from, working, onMove, onAdd, onClose
         </>
       }
     >
-      {rows.length > 0 ? (
+      {visibleRows.length > 0 ? (
         <ul className="folder-choices" aria-label={t("folderTarget.folders")}>
-          {rows.map((row) => (
+          {visibleRows.map((row) => (
             <li key={row.path}>
               <label className="folder-choice" style={{ "--depth": row.depth } as CSSProperties} title={row.path}>
                 <input type="checkbox" checked={selected.includes(row.path)} onChange={() => toggle(row.path)} aria-label={row.path} />
@@ -97,7 +112,7 @@ export function FolderTargetDialog({ open, from, working, onMove, onAdd, onClose
           ))}
         </ul>
       ) : (
-        <p className="muted small">{t("folderTarget.none")}</p>
+        <p className="muted small">{rows.length > 0 ? t("folderTarget.noMatch") : t("folderTarget.none")}</p>
       )}
       <form className="folder-choices__create" onSubmit={create}>
         <label htmlFor={inputId} className="visually-hidden">

@@ -434,8 +434,9 @@ folderTarget:
   folders: Folders
   new: new
   none: No folders yet.
-  newFolder: New folder
-  newPlaceholder: New folder, e.g. important/2026
+  noMatch: "No matching folder – “Create” adds it as a new one."
+  newFolder: Find or create a folder
+  newPlaceholder: Find a folder or create one, e.g. important/2026
   create: Create
   moveFromHint: "“Move” takes the selection out of “{{folder}}”, “Add” keeps its current folders."
   moveHint: "“Move” replaces the selection's current folders, “Add” keeps them."
@@ -726,6 +727,7 @@ textPanel:
   save: Save text
 
 details:
+  fileInFolder: File in folder …
   fileName: File name
   type: Type
   size: Size

@@ -434,8 +434,9 @@ folderTarget:
   folders: Ordner
   new: neu
   none: Noch keine Ordner vorhanden.
-  newFolder: Neuer Ordner
-  newPlaceholder: Neuer Ordner, z.B. wichtig/2026
+  noMatch: "Kein passender Ordner – „Anlegen“ legt ihn neu an."
+  newFolder: Ordner suchen oder anlegen
+  newPlaceholder: Ordner suchen oder neu anlegen, z.B. wichtig/2026
   create: Anlegen
   moveFromHint: "„Verschieben“ nimmt die Auswahl aus „{{folder}}“ heraus, „Hinzufügen“ behält ihre bisherigen Ordner."
   moveHint: "„Verschieben“ ersetzt die bisherigen Ordner der Auswahl, „Hinzufügen“ behält sie."
@@ -726,6 +727,7 @@ textPanel:
   save: Text speichern
 
 details:
+  fileInFolder: In Ordner ablegen …
   fileName: Dateiname
   type: Typ
   size: Größe

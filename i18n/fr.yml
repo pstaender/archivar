@@ -448,8 +448,9 @@ folderTarget:
   folders: Dossiers
   new: nouveau
   none: Aucun dossier pour l'instant.
-  newFolder: Nouveau dossier
-  newPlaceholder: Nouveau dossier, p. ex. important/2026
+  noMatch: "Aucun dossier correspondant – « Créer » l'ajoute comme nouveau dossier."
+  newFolder: Rechercher ou créer un dossier
+  newPlaceholder: Rechercher un dossier ou en créer un, p. ex. important/2026
   create: Créer
   moveFromHint: "« Déplacer » retire la sélection de « {{folder}} », « Ajouter » conserve ses dossiers actuels."
   moveHint: "« Déplacer » remplace les dossiers actuels de la sélection, « Ajouter » les conserve."
@@ -751,6 +752,7 @@ textPanel:
   save: Enregistrer le texte
 
 details:
+  fileInFolder: Classer dans un dossier …
   fileName: Nom du fichier
   type: Type
   size: Taille

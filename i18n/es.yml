@@ -448,8 +448,9 @@ folderTarget:
   folders: Carpetas
   new: nueva
   none: Aún no hay carpetas.
-  newFolder: Nueva carpeta
-  newPlaceholder: Nueva carpeta, p. ej. importante/2026
+  noMatch: "Ninguna carpeta coincide: «Crear» la añade como nueva."
+  newFolder: Buscar o crear una carpeta
+  newPlaceholder: Busca una carpeta o crea una nueva, p. ej. importante/2026
   create: Crear
   moveFromHint: "«Mover» saca la selección de «{{folder}}», «Añadir» conserva sus carpetas actuales."
   moveHint: "«Mover» sustituye las carpetas actuales de la selección, «Añadir» las conserva."
@@ -751,6 +752,7 @@ textPanel:
   save: Guardar texto
 
 details:
+  fileInFolder: Archivar en carpeta …
   fileName: Nombre del archivo
   type: Tipo
   size: Tamaño

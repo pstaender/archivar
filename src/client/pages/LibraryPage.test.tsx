@@ -325,7 +325,7 @@ describe("LibraryPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ordner" }));
     const verschieben = screen.getByRole("button", { name: "Verschieben" }) as HTMLButtonElement;
     expect(verschieben.disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("Neuer Ordner"), { target: { value: " steuer / 2026 " } });
+    fireEvent.change(screen.getByLabelText("Ordner suchen oder anlegen"), { target: { value: " steuer / 2026 " } });
     fireEvent.click(screen.getByRole("button", { name: /Anlegen/ }));
     expect((screen.getByLabelText("steuer/2026") as HTMLInputElement).checked).toBe(true);
     expect(screen.getByText("neu")).toBeTruthy();
