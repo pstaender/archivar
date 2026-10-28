@@ -701,6 +701,12 @@ document:
   applying: Applying
   savePreset: Save as image preset
   savePresetTitle: Save as an image preset to apply these edits to other images
+  copySettings: Copy image settings
+  copySettingsTitle: Copy the image settings to paste them into other images
+  pasteSettings: Paste image settings
+  pasteSettingsTitle: Paste the copied image settings (not saved yet)
+  settingsCopied: Image settings copied
+  settingsPasted: Image settings pasted – not saved yet
   savePresetDialog: Save image preset
   openPdf: Open PDF
   noPreview: There is no preview for this file type.

@@ -725,6 +725,12 @@ document:
   applying: Aplicando
   savePreset: Guardar como ajuste de imagen
   savePresetTitle: Guardar como ajuste de imagen para aplicar esta edición a otras imágenes
+  copySettings: Copiar ajustes de imagen
+  copySettingsTitle: Copiar los ajustes de imagen para pegarlos en otras imágenes
+  pasteSettings: Pegar ajustes de imagen
+  pasteSettingsTitle: Pegar los ajustes de imagen copiados (aún sin guardar)
+  settingsCopied: Ajustes de imagen copiados
+  settingsPasted: "Ajustes de imagen pegados: aún sin guardar"
   savePresetDialog: Guardar ajuste de imagen
   openPdf: Abrir PDF
   noPreview: No hay vista previa para este tipo de archivo.

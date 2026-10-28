@@ -288,11 +288,12 @@ export function createApiRoutes(ctx: AppContext) {
 
     "/api/documents/:id/apply-preset": {
       POST: handle(async (req: Req) => {
-        const body = await readJson<{ presetId?: unknown; editSettings?: Partial<EditSettings> }>(req);
-        const preset = ctx.presets.get(userId(req), parseId(String(body.presetId)));
-        if (!preset) throw new HttpError(404, "Preset not found");
-        const editSettings = await archive.applyPreset(userId(req), parseId(req.params.id), preset.steps, body.editSettings);
-        return json({ editSettings, shapes: preset.steps.shapes ?? null });
+        const body = await readJson<{ presetId?: unknown; steps?: unknown; editSettings?: Partial<EditSettings> }>(req);
+        // `steps` instead of a preset: settings copied from another image.
+        const steps = body.presetId === undefined && body.steps !== undefined ? normalizePresetSteps(body.steps) : ctx.presets.get(userId(req), parseId(String(body.presetId)))?.steps;
+        if (!steps) throw new HttpError(404, "Preset not found");
+        const editSettings = await archive.applyPreset(userId(req), parseId(req.params.id), steps, body.editSettings);
+        return json({ editSettings, shapes: steps.shapes ?? null });
       }),
     },
 

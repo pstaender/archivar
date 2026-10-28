@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FileText, FolderPlus, Loader, SavePlus, ScanText, RefreshCw, Trash, Unlink } from "../icons";
+import { ArrowLeft, ChevronLeft, ChevronRight, ClipboardCopy, ClipboardPaste, Copy, Download, ExternalLink, FileText, FolderPlus, Loader, SavePlus, ScanText, RefreshCw, Trash, Unlink } from "../icons";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
@@ -8,6 +8,7 @@ import type { PdfQuality } from "../../shared/settings";
 import { SHAPE_COLORS, type Shape } from "../../shared/shapes";
 import type { ArchiveDocument, BwVariant, EditSettings, Quad, Rotation } from "../../shared/types";
 import { api, assetUrl, type OcrRequest } from "../api";
+import { copiedEdits, copyEdits } from "../copiedEdits";
 import { saveBlob } from "../download";
 import { saveEditSettings, useEditSaving, whenEditsSaved } from "../editSaves";
 import { ConfirmDialog } from "../components/Dialog";
@@ -110,6 +111,7 @@ export function DocumentPage() {
   const [cropping, setCropping] = useState(false);
   const [autoValues, setAutoValues] = useState<AutoValues>({});
   const [applyingPreset, setApplyingPreset] = useState(false);
+  const [copiedSteps, setCopiedSteps] = useState(copiedEdits);
   /** Steps offered by the open „Bildeinstellung speichern“ dialog. */
   const [presetDialogSteps, setPresetDialogSteps] = useState<PresetSteps | null>(null);
   const { presets, reload: reloadPresets } = usePresets();
@@ -309,6 +311,28 @@ export function DocumentPage() {
       bw: bwState !== null || (autoValues.bw !== undefined && isBwVariant(draft, autoValues.bw)),
     }),
     ...(shapes.length > 0 ? { shapes } : {}),
+  };
+
+  const copySettings = () => {
+    setCopiedSteps(copyEdits(draft));
+    toast.show(t("document.settingsCopied"));
+  };
+
+  // Pasted settings replace the draft's like a copy would, so they start from the defaults.
+  const pasteSettings = async () => {
+    if (!copiedSteps) return;
+    setApplyingPreset(true);
+    try {
+      const { editSettings } = await api.applySteps(doc.id, copiedSteps, DEFAULT_EDIT_SETTINGS);
+      setAutoValues({});
+      setDraft(editSettings);
+      setMode("none");
+      toast.show(t("document.settingsPasted"));
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setApplyingPreset(false);
+    }
   };
 
   const applyPreset = async (presetId: number) => {
@@ -547,6 +571,25 @@ export function DocumentPage() {
                     title={t("document.savePresetTitle")}
                   >
                     <SavePlus size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--sm btn--icon"
+                    onClick={copySettings}
+                    aria-label={t("document.copySettings")}
+                    title={t("document.copySettingsTitle")}
+                  >
+                    <ClipboardCopy size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--sm btn--icon"
+                    onClick={() => void pasteSettings()}
+                    disabled={applyingPreset || !copiedSteps}
+                    aria-label={t("document.pasteSettings")}
+                    title={t("document.pasteSettingsTitle")}
+                  >
+                    <ClipboardPaste size={16} />
                   </button>
                 </div>
                 <EditControls

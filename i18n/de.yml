@@ -701,6 +701,12 @@ document:
   applying: Wird angewendet
   savePreset: Als Bildeinstellung speichern
   savePresetTitle: Als Bildeinstellung speichern, um die Bearbeitung auf andere Bilder anzuwenden
+  copySettings: Bildeinstellungen kopieren
+  copySettingsTitle: Bildeinstellungen kopieren, um sie in andere Bilder einzufügen
+  pasteSettings: Bildeinstellungen einfügen
+  pasteSettingsTitle: Kopierte Bildeinstellungen einfügen (noch nicht gespeichert)
+  settingsCopied: Bildeinstellungen kopiert
+  settingsPasted: Bildeinstellungen eingefügt – noch nicht gespeichert
   savePresetDialog: Bildeinstellung speichern
   openPdf: PDF öffnen
   noPreview: Für diesen Dateityp gibt es keine Vorschau.

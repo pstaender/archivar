@@ -725,6 +725,12 @@ document:
   applying: Application en cours
   savePreset: Enregistrer comme réglage d'image
   savePresetTitle: Enregistrer comme réglage d'image pour appliquer ces modifications à d'autres images
+  copySettings: Copier les réglages d'image
+  copySettingsTitle: Copier les réglages d'image pour les coller dans d'autres images
+  pasteSettings: Coller les réglages d'image
+  pasteSettingsTitle: Coller les réglages d'image copiés (pas encore enregistrés)
+  settingsCopied: Réglages d'image copiés
+  settingsPasted: Réglages d'image collés – pas encore enregistrés
   savePresetDialog: Enregistrer le réglage d'image
   openPdf: Ouvrir le PDF
   noPreview: Aucun aperçu pour ce type de fichier.

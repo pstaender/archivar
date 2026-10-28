@@ -1,7 +1,7 @@
 import { PREVIEW_SIZE } from "../shared/preview";
 import type { ExternalImportRequest, ExternalListing, ExternalSource, ExternalSourceInput } from "../shared/externalSources";
 import type { Job, JobCreate } from "../shared/jobs";
-import type { ImagePreset, ImagePresetInput } from "../shared/presets";
+import type { ImagePreset, ImagePresetInput, PresetSteps } from "../shared/presets";
 import type { PdfQuality, UserSettings } from "../shared/settings";
 import type { Shape } from "../shared/shapes";
 import type { VectorArea } from "../vectorizer";
@@ -169,6 +169,9 @@ export const api = {
   /** The settings after applying a preset on top of `editSettings` (default: the stored ones); nothing is saved. */
   applyPreset: (id: number, presetId: number, editSettings?: EditSettings) =>
     request<{ editSettings: EditSettings; shapes: Shape[] | null }>(`/api/documents/${id}/apply-preset`, jsonBody("POST", { presetId, editSettings })),
+  /** Edit settings copied from another image applied on top of `editSettings`; nothing is saved. */
+  applySteps: (id: number, steps: PresetSteps, editSettings: EditSettings) =>
+    request<{ editSettings: EditSettings; shapes: Shape[] | null }>(`/api/documents/${id}/apply-preset`, jsonBody("POST", { steps, editSettings })),
   /** Searchable PDF of the edited image with its stored text; without `quality`, the user's setting applies. */
   exportPdf: async (id: number, quality?: PdfQuality) => download(await send(`/api/documents/${id}/pdf`, jsonBody("POST", { quality })), t("api.documentFileName", { id })),
   /** One PDF of the documents in order: images as searchable pages, PDFs with all pages; other files are left out. */

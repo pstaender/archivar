@@ -850,6 +850,14 @@ describe("image presets", () => {
     expect((await post(`/api/documents/${doc.id}/apply-preset`, { presetId: 999 })).status).toBe(404);
   });
 
+  test("applies copied steps instead of a preset without saving them", async () => {
+    const doc = await uploadImage();
+    const res = await post(`/api/documents/${doc.id}/apply-preset`, { steps: { colorMode: "bw", bwThreshold: 140, foo: 1 }, editSettings: { contrast: 0.5 } });
+    const { editSettings } = (await res.json()) as { editSettings: EditSettings };
+    expect(editSettings).toMatchObject({ colorMode: "bw", bwThreshold: 140, contrast: 0.5 });
+    expect(server.ctx.documents.getById(doc.id)?.editSettings.colorMode).toBe("color");
+  });
+
   test("applies a fixed crop and grayscale channels from a preset", async () => {
     const doc = await uploadImage();
     const crop: Quad = [
