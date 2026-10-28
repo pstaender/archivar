@@ -1,11 +1,13 @@
 import { ArrowLeft, ChevronLeft, ChevronRight, ImagePlus, CircleMinus, Trash, Unlink } from "../icons";
+import { arrayMove } from "@dnd-kit/sortable";
 import { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import type { StackWithDocuments } from "../../shared/types";
+import type { ArchiveDocument } from "../../shared/types";
 import { api } from "../api";
 import { ConfirmDialog } from "../components/Dialog";
 import { EditableTitle } from "../components/EditableTitle";
 import { FolderPicker } from "../components/FolderPicker";
+import { SortableGrid } from "../components/SortableGrid";
 import { documentThumbnail, Thumbnail } from "../components/ItemCard";
 import { uploadAccept } from "../../shared/uploads";
 import { useConfig } from "../hooks/config";
@@ -73,13 +75,16 @@ export function StackPage() {
     }
   };
 
-  const move = (index: number, delta: number) => {
-    const ids = [...data.documentIds];
-    const target = index + delta;
-    if (target < 0 || target >= ids.length) return;
-    [ids[index], ids[target]] = [ids[target]!, ids[index]!];
-    stack.setData({ ...data, documentIds: ids, documents: ids.map((docId) => data.documents.find((d) => d.id === docId)!) });
+  const reorder = (documents: ArchiveDocument[]) => {
+    const ids = documents.map((doc) => doc.id);
+    stack.setData({ ...data, documentIds: ids, documents });
     void update({ documentIds: ids });
+  };
+
+  const move = (index: number, delta: number) => {
+    const target = index + delta;
+    if (target < 0 || target >= data.documents.length) return;
+    reorder(arrayMove(data.documents, index, target));
   };
 
   const dissolve = async () => {
@@ -145,44 +150,52 @@ export function StackPage() {
         <FolderPicker value={data.folders} onChange={(folders) => update({ folders })} />
       </section>
 
-      <ol className="pages">
-        {data.documents.map((doc, index) => (
-          <li key={doc.id} className="page-card" data-document-id={doc.id}>
-            <Link to={`/documents/${doc.id}?stack=${id}`} className="page-card__media">
-              <Thumbnail {...documentThumbnail(doc)} alt={documentLabel(doc)} />
-              <span className="page-card__number">{index + 1}</span>
-            </Link>
-            <div className="page-card__footer">
-              <span className="page-card__title" title={documentLabel(doc)}>
-                {documentLabel(doc)}
-              </span>
-              <div className="page-card__actions">
-                <button type="button" className="btn btn--ghost btn--icon btn--xs" onClick={() => move(index, -1)} disabled={index === 0} aria-label={t("stack.forward")}>
-                  <ChevronLeft size={14} />
-                </button>
-                <button
-                  type="button"
-                  className="btn btn--ghost btn--icon btn--xs"
-                  onClick={() => move(index, 1)}
-                  disabled={index === data.documents.length - 1}
-                  aria-label={t("stack.backward")}
-                >
-                  <ChevronRight size={14} />
-                </button>
-                <button
-                  type="button"
-                  className="btn btn--ghost btn--icon btn--xs"
-                  onClick={() => update({ documentIds: data.documentIds.filter((docId) => docId !== doc.id) })}
-                  aria-label={t("stack.removeFromStack")}
-                  title={t("stack.removeFromStack")}
-                >
-                  <CircleMinus size={14} />
-                </button>
+      <SortableGrid
+        className="pages"
+        items={data.documents}
+        itemKey={(doc) => String(doc.id)}
+        itemLabel={documentLabel}
+        onReorder={reorder}
+        renderItem={(doc) => {
+          const index = data.documents.indexOf(doc);
+          return (
+            <div className="page-card" data-document-id={doc.id}>
+              <Link to={`/documents/${doc.id}?stack=${id}`} className="page-card__media">
+                <Thumbnail {...documentThumbnail(doc)} alt={documentLabel(doc)} />
+                <span className="page-card__number">{index + 1}</span>
+              </Link>
+              <div className="page-card__footer">
+                <span className="page-card__title" title={documentLabel(doc)}>
+                  {documentLabel(doc)}
+                </span>
+                <div className="page-card__actions">
+                  <button type="button" className="btn btn--ghost btn--icon btn--xs" onClick={() => move(index, -1)} disabled={index === 0} aria-label={t("stack.forward")}>
+                    <ChevronLeft size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--icon btn--xs"
+                    onClick={() => move(index, 1)}
+                    disabled={index === data.documents.length - 1}
+                    aria-label={t("stack.backward")}
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--icon btn--xs"
+                    onClick={() => update({ documentIds: data.documentIds.filter((docId) => docId !== doc.id) })}
+                    aria-label={t("stack.removeFromStack")}
+                    title={t("stack.removeFromStack")}
+                  >
+                    <CircleMinus size={14} />
+                  </button>
+                </div>
               </div>
             </div>
-          </li>
-        ))}
-      </ol>
+          );
+        }}
+      />
 
       <ConfirmDialog
         open={confirm === "dissolve"}
