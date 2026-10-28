@@ -455,6 +455,16 @@ folderTarget:
   moveFromHint: "« Déplacer » retire la sélection de « {{folder}} », « Ajouter » conserve ses dossiers actuels."
   moveHint: "« Déplacer » remplace les dossiers actuels de la sélection, « Ajouter » les conserve."
 
+dragDrop:
+  more: "+{{count}}"
+  title: Classer dans un dossier
+  questionItem: "Classer « {{title}} » dans le dossier « {{folder}} » ?"
+  questionItems_one: "Classer {{count}} élément dans le dossier « {{folder}} » ?"
+  questionItems_many: "Classer {{count}} éléments dans le dossier « {{folder}} » ?"
+  questionItems_other: "Classer {{count}} éléments dans le dossier « {{folder}} » ?"
+  moveFromHint: "« Déplacer » les retire de « {{folder}} », « Ajouter » conserve leurs dossiers actuels."
+  moveHint: "« Déplacer » remplace leurs dossiers actuels, « Ajouter » les conserve."
+
 folderTree:
   folders: Dossiers
   allDocuments: Tous les documents

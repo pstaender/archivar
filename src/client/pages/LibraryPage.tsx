@@ -20,7 +20,7 @@ import { moveToFolders } from "../../shared/folders";
 import { LIBRARY_SORTS, type LibraryItem, type LibrarySort } from "../../shared/types";
 import { api } from "../api";
 import { BatchDialog } from "../components/BatchDialog";
-import { ConfirmDialog } from "../components/Dialog";
+import { ConfirmDialog, Dialog } from "../components/Dialog";
 import { PdfButton } from "../components/PdfButton";
 import { FolderTargetDialog } from "../components/FolderTargetDialog";
 import { ItemCard, itemKey, SmartStackCard } from "../components/ItemCard";
@@ -124,6 +124,18 @@ const sameIds = (stack: SmartStack, ids: number[]) => stack.documents.length ===
 const itemRef = (item: LibraryItem) => ({ type: item.type, id: item.type === "stack" ? item.stack.id : item.document.id });
 const itemFolders = (item: LibraryItem) => (item.type === "stack" ? item.stack.folders : item.document.folders);
 const itemTitle = (item: LibraryItem) => (item.type === "stack" ? item.stack.title : documentLabel(item.document));
+// A smart stack stands for its documents, e.g. to turn them into a real stack.
+const libraryItems = (item: DisplayItem): LibraryItem[] =>
+  item.type === "smart" ? item.documents.map((document) => ({ type: "document" as const, document })) : [item];
+
+/** Adds the items to the folders, or moves them there out of `from` and its sub-folders (all folders when null). */
+async function fileInFolders(items: LibraryItem[], targets: string[], move: boolean, from: string | null): Promise<void> {
+  const next = (current: string[]) => (move ? moveToFolders(current, from, targets) : [...new Set([...current, ...targets])].sort());
+  for (const item of items) {
+    if (item.type === "document") await api.updateDocument(item.document.id, { folders: next(item.document.folders) });
+    else await api.updateStack(item.stack.id, { folders: next(item.stack.folders) });
+  }
+}
 
 export function LibraryPage() {
   const [params] = useSearchParams();
@@ -186,10 +198,10 @@ export function LibraryPage() {
       return next;
     });
 
-  // A selected smart stack stands for its documents, e.g. to turn them into a real stack.
-  const selectedItems: LibraryItem[] = displayItems.flatMap((item) =>
-    !selected.has(displayKey(item)) ? [] : item.type === "smart" ? item.documents.map((document) => ({ type: "document" as const, document })) : [item],
-  );
+  const selectedItems: LibraryItem[] = displayItems.flatMap((item) => (selected.has(displayKey(item)) ? libraryItems(item) : []));
+  // Dragging a selected card takes the whole selection along.
+  const draggedItems = (item: DisplayItem) => (selected.has(displayKey(item)) ? selectedItems : libraryItems(item));
+  const [folderDrop, setFolderDrop] = useState<{ items: LibraryItem[]; folder: string } | null>(null);
   const smartHref = (stack: SmartStack) => {
     const next = new URLSearchParams(params);
     next.set("smart", stack.documents.map((doc) => doc.id).join("-"));
@@ -315,6 +327,8 @@ export function LibraryPage() {
           itemLabel={displayTitle}
           busy={library.loading}
           onReorder={sort === "custom" && !smartIds ? (next) => reorder(next as LibraryItem[]) : undefined}
+          onFolderDrop={(item, target) => setFolderDrop({ items: draggedItems(item), folder: target })}
+          dragCount={(item) => draggedItems(item).length}
           renderItem={(item) =>
             item.type === "smart" ? (
               <SmartStackCard
@@ -348,7 +362,75 @@ export function LibraryPage() {
           }}
         />
       )}
+
+      <FolderDropDialog
+        drop={folderDrop}
+        onClose={() => setFolderDrop(null)}
+        onDone={() => {
+          setFolderDrop(null);
+          setSelected(new Set());
+          void library.reload();
+        }}
+      />
     </div>
+  );
+}
+
+/** Asks before filing cards dropped onto a folder in the sidebar. */
+function FolderDropDialog({ drop, onClose, onDone }: { drop: { items: LibraryItem[]; folder: string } | null; onClose: () => void; onDone: () => void }) {
+  const toast = useToast();
+  const { t } = useTranslation();
+  const { reload: reloadFolders } = useFolders();
+  const from = useCurrentFolder();
+  const [working, setWorking] = useState(false);
+  const [shown, setShown] = useState(drop);
+  // Keeps the text while the dialog closes.
+  if (drop && drop !== shown) setShown(drop);
+
+  const file = async (move: boolean) => {
+    if (!drop) return;
+    setWorking(true);
+    try {
+      await fileInFolders(drop.items, [drop.folder], move, from);
+      await reloadFolders();
+      const where = t("quoted", { text: drop.folder });
+      toast.success(move ? t("selection.movedTo", { where }) : t("selection.addedTo", { where }));
+      onDone();
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const items = shown?.items ?? [];
+  return (
+    <Dialog
+      open={drop !== null}
+      title={t("dragDrop.title")}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            {t("common.cancel")}
+          </button>
+          <span className="spacer" />
+          <button type="button" className="btn" onClick={() => void file(false)} disabled={working}>
+            {t("folderTarget.add")}
+          </button>
+          <button type="button" className="btn btn--primary" onClick={() => void file(true)} disabled={working}>
+            {t("folderTarget.move")}
+          </button>
+        </>
+      }
+    >
+      <p>
+        {items.length === 1
+          ? t("dragDrop.questionItem", { title: itemTitle(items[0]!), folder: shown?.folder })
+          : t("dragDrop.questionItems", { count: items.length, folder: shown?.folder })}
+      </p>
+      <p className="muted small">{from ? t("dragDrop.moveFromHint", { folder: from }) : t("dragDrop.moveHint")}</p>
+    </Dialog>
   );
 }
 
@@ -437,11 +519,7 @@ export function SelectionBar({ items, allSelected, onSelectAll, onClear, onDone 
 
   const fileFolders = (targets: string[], move: boolean) =>
     run(async () => {
-      const next = (current: string[]) => (move ? moveToFolders(current, from, targets) : [...new Set([...current, ...targets])].sort());
-      for (const item of items) {
-        if (item.type === "document") await api.updateDocument(item.document.id, { folders: next(item.document.folders) });
-        else await api.updateStack(item.stack.id, { folders: next(item.stack.folders) });
-      }
+      await fileInFolders(items, targets, move, from);
       await reloadFolders();
       const where = targets.length === 1 ? t("quoted", { text: targets[0] }) : t("selection.folderCount", { count: targets.length });
       toast.success(move ? t("selection.movedTo", { where }) : t("selection.addedTo", { where }));

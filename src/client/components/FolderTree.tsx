@@ -9,6 +9,7 @@ import { usePresets } from "../hooks/presets";
 import { useToast } from "../hooks/toast";
 import { folderHref, useCurrentFolder } from "../routes";
 import { ConfirmDialog } from "./Dialog";
+import { useFolderDropTarget } from "./DragAndDrop";
 import { Trans, useTranslation } from "react-i18next";
 
 const EXPANDED_KEY = "archivar.expandedFolders";
@@ -152,6 +153,7 @@ function FolderTreeNode({ node, active, depth, onNavigate }: NodeProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const isActive = active === node.path;
   const hasChildren = node.children.length > 0;
+  const drop = useFolderDropTarget(node.path);
 
   const rename = async (e?: FormEvent) => {
     e?.preventDefault();
@@ -199,7 +201,7 @@ function FolderTreeNode({ node, active, depth, onNavigate }: NodeProps) {
           />
         </form>
       ) : (
-        <div className={`folder-tree__row ${isActive ? "is-active" : ""}`} style={{ paddingLeft: `calc(${depth} * var(--space-4) + var(--space-2))` }}>
+        <div ref={drop.setNodeRef} className={`folder-tree__row ${isActive ? "is-active" : ""} ${drop.isOver ? "is-drop-target" : ""}`} style={{ paddingLeft: `calc(${depth} * var(--space-4) + var(--space-2))` }}>
           <button
             type="button"
             className="folder-tree__toggle"

@@ -3,6 +3,8 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { docItem, folder, makeDocument, makeStack, mockFetch, mockXhr, renderApp, stackItem, type FetchMock } from "../../../test/client";
 import type { LibraryItem } from "../../shared/types";
 import { UploadButtons } from "../components/UploadButtons";
+import { DragArea } from "../components/DragAndDrop";
+import { FolderTree } from "../components/FolderTree";
 import { LibraryPage } from "./LibraryPage";
 
 let fetchMock: FetchMock;
@@ -509,6 +511,62 @@ describe("LibraryPage", () => {
     const put = fetchMock.calls.find((c) => c.method === "PUT")!;
     expect(put.body).toMatchObject({ folder: "obst" });
     expect((put.body as { items: unknown[] }).items).toHaveLength(3);
+  });
+
+  test("asks before filing cards dropped onto a folder in the sidebar, taking the selection along", async () => {
+    const a = makeDocument({ title: "Brief", folders: [] });
+    const b = makeDocument({ title: "Rechnung", folders: [] });
+    const c = makeDocument({ title: "Notiz", folders: [] });
+    fetchMock = mockFetch({
+      "GET /api/folders": () => [folder(1, "steuer")],
+      "GET /api/library": () => [docItem(a), docItem(b), docItem(c)],
+      [`PATCH /api/documents/${a.id}`]: () => a,
+      [`PATCH /api/documents/${b.id}`]: () => b,
+    });
+    // happy-dom lays nothing out: the folder sits at the top left, the cards to its right.
+    const rect = (left: number, top: number, size: number) => DOMRect.fromRect({ x: left, y: top, width: size, height: size });
+    const rects = spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      if (this.classList.contains("folder-tree__row")) return rect(0, 0, 40);
+      const key = this.getAttribute("data-item-key");
+      return key ? rect(300 + 200 * [a, b, c].findIndex((doc) => key.endsWith(String(doc.id))), 0, 150) : rect(0, 0, 0);
+    });
+    try {
+      await renderApp(
+        <DragArea>
+          <FolderTree />
+          <LibraryPage />
+        </DragArea>,
+      );
+      await screen.findByText("steuer");
+      fireEvent.click(screen.getByLabelText("Brief auswählen"));
+      fireEvent.click(screen.getByLabelText("Rechnung auswählen"));
+
+      const card = document.querySelector(`[data-item-key$="${b.id}"]`)!;
+      await act(async () => {
+        fireEvent.mouseDown(card, { button: 0, clientX: 550, clientY: 50 });
+      });
+      for (const [x, y] of [[530, 50], [300, 30], [20, 20]] as const) {
+        await act(async () => {
+          fireEvent.mouseMove(document, { clientX: x, clientY: y });
+        });
+      }
+      await act(async () => {
+        fireEvent.mouseUp(document, { clientX: 20, clientY: 20 });
+        // dnd-kit swallows clicks for 50 ms after a drop.
+        await new Promise((resolve) => setTimeout(resolve, 60));
+      });
+
+      expect(await screen.findByText("2 Elemente in den Ordner „steuer“ legen?")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Hinzufügen" }));
+      await waitFor(() =>
+        expect(patches()).toEqual([
+          [`/api/documents/${a.id}`, { folders: ["steuer"] }],
+          [`/api/documents/${b.id}`, { folders: ["steuer"] }],
+        ]),
+      );
+    } finally {
+      rects.mockRestore();
+    }
   });
 
   test("shows API errors", async () => {

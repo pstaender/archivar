@@ -2,6 +2,7 @@ import { Menu, Search, Settings, X } from "../icons";
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from "react-router";
 import { isLibraryPath } from "../routes";
+import { DragArea } from "./DragAndDrop";
 import { DropZone } from "./DropZone";
 import { FolderTree } from "./FolderTree";
 import { SettingsDialog } from "./SettingsDialog";
@@ -29,14 +30,16 @@ export function AppShell() {
         <SearchField />
         <UploadButtons />
       </header>
-      <aside className="sidebar">
-        <FolderTree onNavigate={() => setSidebarOpen(false)} />
-        <SidebarFooter />
-      </aside>
-      <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
-      <main className="content">
-        <Outlet />
-      </main>
+      <DragArea>
+        <aside className="sidebar">
+          <FolderTree onNavigate={() => setSidebarOpen(false)} />
+          <SidebarFooter />
+        </aside>
+        <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
+        <main className="content">
+          <Outlet />
+        </main>
+      </DragArea>
       <DropZone />
       <UploadProgress />
     </div>

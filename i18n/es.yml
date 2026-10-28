@@ -455,6 +455,16 @@ folderTarget:
   moveFromHint: "«Mover» saca la selección de «{{folder}}», «Añadir» conserva sus carpetas actuales."
   moveHint: "«Mover» sustituye las carpetas actuales de la selección, «Añadir» las conserva."
 
+dragDrop:
+  more: "+{{count}}"
+  title: Archivar en carpeta
+  questionItem: "¿Archivar «{{title}}» en la carpeta «{{folder}}»?"
+  questionItems_one: "¿Archivar {{count}} elemento en la carpeta «{{folder}}»?"
+  questionItems_many: "¿Archivar {{count}} elementos en la carpeta «{{folder}}»?"
+  questionItems_other: "¿Archivar {{count}} elementos en la carpeta «{{folder}}»?"
+  moveFromHint: "«Mover» los saca de «{{folder}}», «Añadir» conserva sus carpetas actuales."
+  moveHint: "«Mover» sustituye sus carpetas actuales, «Añadir» las conserva."
+
 folderTree:
   folders: Carpetas
   allDocuments: Todos los documentos

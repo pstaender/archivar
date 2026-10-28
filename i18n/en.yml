@@ -441,6 +441,15 @@ folderTarget:
   moveFromHint: "“Move” takes the selection out of “{{folder}}”, “Add” keeps its current folders."
   moveHint: "“Move” replaces the selection's current folders, “Add” keeps them."
 
+dragDrop:
+  more: "+{{count}}"
+  title: Put in folder
+  questionItem: "Put “{{title}}” in the folder “{{folder}}”?"
+  questionItems_one: "Put {{count}} item in the folder “{{folder}}”?"
+  questionItems_other: "Put {{count}} items in the folder “{{folder}}”?"
+  moveFromHint: "“Move” takes them out of “{{folder}}”, “Add” keeps their current folders."
+  moveHint: "“Move” replaces their current folders, “Add” keeps them."
+
 folderTree:
   folders: Folders
   allDocuments: All documents

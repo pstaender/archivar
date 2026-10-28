@@ -441,6 +441,15 @@ folderTarget:
   moveFromHint: "„Verschieben“ nimmt die Auswahl aus „{{folder}}“ heraus, „Hinzufügen“ behält ihre bisherigen Ordner."
   moveHint: "„Verschieben“ ersetzt die bisherigen Ordner der Auswahl, „Hinzufügen“ behält sie."
 
+dragDrop:
+  more: "+{{count}}"
+  title: In Ordner legen
+  questionItem: "„{{title}}“ in den Ordner „{{folder}}“ legen?"
+  questionItems_one: "{{count}} Element in den Ordner „{{folder}}“ legen?"
+  questionItems_other: "{{count}} Elemente in den Ordner „{{folder}}“ legen?"
+  moveFromHint: "„Verschieben“ nimmt sie aus „{{folder}}“ heraus, „Hinzufügen“ behält ihre bisherigen Ordner."
+  moveHint: "„Verschieben“ ersetzt ihre bisherigen Ordner, „Hinzufügen“ behält sie."
+
 folderTree:
   folders: Ordner
   allDocuments: Alle Dokumente
