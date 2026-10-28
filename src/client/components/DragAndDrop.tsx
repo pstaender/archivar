@@ -6,6 +6,7 @@ import {
   DragOverlay,
   type DragStartEvent,
   KeyboardSensor,
+  type Modifier,
   MouseSensor,
   pointerWithin,
   TouchSensor,
@@ -14,6 +15,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { getEventCoordinates } from "@dnd-kit/utilities";
 import { createContext, type ReactNode, useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -42,6 +44,15 @@ const collisionDetection: CollisionDetection = (args) => {
   const onFolder = args.pointerCoordinates ? pointerWithin({ ...args, droppableContainers: folders }) : [];
   if (onFolder.length > 0) return onFolder;
   return closestCenter({ ...args, droppableContainers: args.droppableContainers.filter((container) => !isFolder(container.data.current)) });
+};
+
+const CHIP_OFFSET = 12;
+
+// The chip starts at the dragged card's corner; it belongs next to the pointer (keyboard drags keep the corner).
+const followPointer: Modifier = ({ activatorEvent, activeNodeRect, transform }) => {
+  const start = activatorEvent && getEventCoordinates(activatorEvent);
+  if (!start || !activeNodeRect) return transform;
+  return { ...transform, x: transform.x + start.x - activeNodeRect.left + CHIP_OFFSET, y: transform.y + start.y - activeNodeRect.top + CHIP_OFFSET };
 };
 
 const InsideDragArea = createContext(false);
@@ -83,7 +94,7 @@ export function DragArea({ children }: { children: ReactNode }) {
         accessibility={{ screenReaderInstructions: { draggable: t("grid.instructions") } }}
       >
         {children}
-        <DragOverlay dropAnimation={null}>
+        <DragOverlay dropAnimation={null} modifiers={[followPointer]}>
           {dragged && (
             <div className="drag-chip">
               <span className="drag-chip__label">{dragged.label}</span>
