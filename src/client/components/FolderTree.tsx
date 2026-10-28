@@ -1,7 +1,7 @@
 import { ChevronRight, Folder, FolderOpen, HardDrive, Inbox, Pencil, Plus, Sliders, Trash, Wand } from "../icons";
 import { type FormEvent, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router";
-import { buildFolderTree, type FolderNode, isWithinFolder } from "../../shared/folders";
+import { buildFolderTree, type FolderNode, isEmptyFolder, isWithinFolder } from "../../shared/folders";
 import { api } from "../api";
 import { useFolders } from "../hooks/folders";
 import { useJobs } from "../hooks/jobs";
@@ -221,7 +221,7 @@ function FolderTreeNode({ node, active, depth, onNavigate }: NodeProps) {
             <button type="button" className="btn btn--ghost btn--icon btn--xs" onClick={() => setRenaming(true)} aria-label={t("folderTree.rename", { path: node.path })}>
               <Pencil size={13} />
             </button>
-            <button type="button" className="btn btn--ghost btn--icon btn--xs" onClick={() => setConfirmDelete(true)} aria-label={t("folderTree.delete", { path: node.path })}>
+            <button type="button" className="btn btn--ghost btn--icon btn--xs" onClick={() => (isEmptyFolder(node) ? remove() : setConfirmDelete(true))} aria-label={t("folderTree.delete", { path: node.path })}>
               <Trash size={13} />
             </button>
           </span>

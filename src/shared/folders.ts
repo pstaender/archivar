@@ -44,6 +44,11 @@ export function buildFolderTree(folders: { id: number; path: string; count: numb
   return root.children;
 }
 
+/** Whether no document or stack is in the folder or any of its sub-folders. */
+export function isEmptyFolder(node: FolderNode): boolean {
+  return node.count === 0 && node.children.every(isEmptyFolder);
+}
+
 /**
  * Folders of a document or stack after moving it into `targets`: it leaves the folder it was moved out of (with its
  * sub-folders), or all folders when it was moved from the overview (`from` null).

@@ -64,3 +64,24 @@ test("shows a hint without folders", async () => {
   await renderApp(<FolderTree />);
   await waitFor(() => expect(screen.getByText("Noch keine Ordner")).toBeTruthy());
 });
+
+test("deletes an empty folder without asking and asks when something is filed below it", async () => {
+  let folders = [folder(1, "leer", 0), folder(2, "leer/sub", 0), folder(3, "voll", 0), folder(4, "voll/sub", 2)];
+  fetchMock = mockFetch({
+    "GET /api/folders": () => folders,
+    "DELETE /api/folders/1": () => {
+      folders = folders.filter((f) => !f.path.startsWith("leer"));
+      return null;
+    },
+  });
+  await renderApp(<FolderTree />);
+  await screen.findByText("leer");
+
+  fireEvent.click(screen.getByLabelText("leer löschen"));
+  await waitFor(() => expect(screen.queryByText("leer") === null).toBe(true));
+  expect(screen.queryByRole("dialog") === null).toBe(true);
+
+  fireEvent.click(screen.getByLabelText("voll löschen"));
+  expect(await screen.findByRole("dialog")).toBeTruthy();
+  expect(fetchMock.calls.filter((c) => c.method === "DELETE").length).toBe(1);
+});
