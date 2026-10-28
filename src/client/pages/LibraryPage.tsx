@@ -14,7 +14,7 @@ import {
   X,
 } from "../icons";
 import type { PdfQuality } from "../../shared/settings";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router";
 import { moveToFolders } from "../../shared/folders";
 import { LIBRARY_SORTS, type LibraryItem, type LibrarySort } from "../../shared/types";
@@ -190,13 +190,21 @@ export function LibraryPage() {
 
   usePolling(busy, library.refresh, POLL_INTERVAL);
 
-  const toggle = (key: string) =>
+  const anchor = useRef<string | null>(null);
+  const toggle = (key: string, range: boolean) => {
+    const keys = displayItems.map(displayKey);
+    const from = range && anchor.current && selected.has(anchor.current) ? keys.indexOf(anchor.current) : -1;
+    const to = keys.indexOf(key);
+    anchor.current = key;
     setSelected((current) => {
       const next = new Set(current);
-      if (next.has(key)) next.delete(key);
+      if (from >= 0 && to >= 0) {
+        for (const between of keys.slice(Math.min(from, to), Math.max(from, to) + 1)) next.add(between);
+      } else if (next.has(key)) next.delete(key);
       else next.add(key);
       return next;
     });
+  };
 
   const selectedItems: LibraryItem[] = displayItems.flatMap((item) => (selected.has(displayKey(item)) ? libraryItems(item) : []));
   // Dragging a selected card takes the whole selection along.
@@ -336,14 +344,14 @@ export function LibraryPage() {
                 href={smartHref(item)}
                 selected={selected.has(displayKey(item))}
                 selectionMode={selected.size > 0}
-                onToggle={() => toggle(displayKey(item))}
+                onToggle={(range) => toggle(displayKey(item), range)}
               />
             ) : (
               <ItemCard
                 item={item}
                 selected={selected.has(itemKey(item))}
                 selectionMode={selected.size > 0}
-                onToggle={() => toggle(itemKey(item))}
+                onToggle={(range) => toggle(itemKey(item), range)}
               />
             )
           }

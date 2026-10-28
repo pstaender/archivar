@@ -193,6 +193,21 @@ describe("LibraryPage", () => {
     expect(screen.queryByRole("toolbar")).toBeNull();
   });
 
+  test("shift-clicking selects everything between the card clicked before and this one", async () => {
+    const items = ["Eins", "Zwei", "Drei", "Vier", "Fünf"].map((title) => docItem(makeDocument({ title })));
+    fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => items });
+    await renderApp(<LibraryPage />);
+
+    fireEvent.click(screen.getByLabelText("Vier auswählen"));
+    fireEvent.click(screen.getByRole("link", { name: /Zwei/ }), { shiftKey: true });
+    expect(screen.getByText("3 ausgewählt")).toBeTruthy();
+    expect(screen.getByLabelText("Eins auswählen").getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByLabelText("Fünf auswählen").getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(screen.getByLabelText("Fünf auswählen"), { shiftKey: true });
+    expect(screen.getByText("4 ausgewählt")).toBeTruthy();
+  });
+
   test("marks all items once one is selected", async () => {
     const items = [docItem(makeDocument({ title: "Eins" })), docItem(makeDocument({ title: "Zwei" })), stackItem(makeStack({ title: "Drei" }))];
     fetchMock = mockFetch({ "GET /api/folders": () => [], "GET /api/library": () => items });

@@ -12,7 +12,8 @@ interface ItemCardProps {
   item: LibraryItem;
   selected: boolean;
   selectionMode: boolean;
-  onToggle: () => void;
+  /** `range` when Shift was held: select everything up to the card clicked before. */
+  onToggle: (range: boolean) => void;
 }
 
 export function itemKey(item: LibraryItem): string {
@@ -62,13 +63,13 @@ export function ItemCard({ item, selected, selectionMode, onToggle }: ItemCardPr
   const onClick = (e: MouseEvent) => {
     if (selectionMode || e.metaKey || e.ctrlKey || e.shiftKey) {
       e.preventDefault();
-      onToggle();
+      onToggle(e.shiftKey);
     }
   };
 
   return (
     <article className={`card ${isStack ? "card--stack" : ""} ${selected ? "is-selected" : ""}`}>
-      <Link to={href} className="card__link" onClick={onClick} draggable={false}>
+      <Link to={href} className="card__link" onClick={onClick} onMouseDown={preventShiftTextSelection} draggable={false}>
         <div className="card__media">
           {isStack && <div className="card__layers" aria-hidden />}
           <Thumbnail {...thumbnail} alt={title} />
@@ -94,7 +95,8 @@ export function ItemCard({ item, selected, selectionMode, onToggle }: ItemCardPr
       <button
         type="button"
         className="card__check"
-        onClick={onToggle}
+        onClick={(e) => onToggle(e.shiftKey)}
+        onMouseDown={preventShiftTextSelection}
         aria-pressed={selected}
         aria-label={selected ? t("card.deselect", { title }) : t("card.select", { title })}
       >
@@ -110,7 +112,7 @@ interface SmartStackCardProps {
   href: string;
   selected: boolean;
   selectionMode: boolean;
-  onToggle: () => void;
+  onToggle: (range: boolean) => void;
 }
 
 /** A group of documents that seem to belong together; it only exists in this view. */
@@ -120,12 +122,12 @@ export function SmartStackCard({ stack, href, selected, selectionMode, onToggle 
   const onClick = (e: MouseEvent) => {
     if (selectionMode || e.metaKey || e.ctrlKey || e.shiftKey) {
       e.preventDefault();
-      onToggle();
+      onToggle(e.shiftKey);
     }
   };
   return (
     <article className={`card card--stack card--smart ${selected ? "is-selected" : ""}`}>
-      <Link to={href} className="card__link" onClick={onClick} draggable={false}>
+      <Link to={href} className="card__link" onClick={onClick} onMouseDown={preventShiftTextSelection} draggable={false}>
         <div className="card__media">
           <div className="card__layers" aria-hidden />
           {cover && <Thumbnail {...documentThumbnail(cover)} alt={stack.title} />}
@@ -144,7 +146,8 @@ export function SmartStackCard({ stack, href, selected, selectionMode, onToggle 
       <button
         type="button"
         className="card__check"
-        onClick={onToggle}
+        onClick={(e) => onToggle(e.shiftKey)}
+        onMouseDown={preventShiftTextSelection}
         aria-pressed={selected}
         aria-label={selected ? t("card.deselect", { title: stack.title }) : t("card.select", { title: stack.title })}
       >
@@ -152,6 +155,10 @@ export function SmartStackCard({ stack, href, selected, selectionMode, onToggle 
       </button>
     </article>
   );
+}
+
+function preventShiftTextSelection(e: MouseEvent) {
+  if (e.shiftKey) e.preventDefault();
 }
 
 function OcrIndicator({ doc }: { doc: ArchiveDocument }) {
