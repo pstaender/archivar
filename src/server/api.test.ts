@@ -144,6 +144,19 @@ describe("documents", () => {
     expect(await previewSize()).toEqual([PREVIEW_SIZE, 35]);
   });
 
+  test("renders the edited image and thumbnail again when they are missing", async () => {
+    const doc = await uploadImage();
+    const { storage } = server.ctx;
+    await storage.delete(derivedKeys.processed(doc.id));
+    await storage.delete(derivedKeys.thumbnail(doc.id));
+
+    const [image, thumbnail] = await Promise.all([server.api(`/api/documents/${doc.id}/image`), server.api(`/api/documents/${doc.id}/thumbnail`)]);
+    expect(image.status).toBe(200);
+    expect(thumbnail.status).toBe(200);
+    expect((await Jimp.read(Buffer.from(await image.arrayBuffer()))).bitmap.width).toBe(doc.width!);
+    expect(await storage.exists(derivedKeys.thumbnail(doc.id))).toBe(true);
+  });
+
   test("removes editor previews of other sizes", async () => {
     const doc = await uploadImage();
     const { storage, imaging } = server.ctx;

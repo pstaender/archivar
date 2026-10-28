@@ -74,6 +74,8 @@ export class ImagingService {
     private vectorAreas: (doc: StoredDocument) => VectorArea[] = () => [],
   ) {}
 
+  private rendering = new Map<number, Promise<unknown>>();
+
   convertibleTypes(): string[] {
     return this.converter?.types() ?? [];
   }
@@ -188,17 +190,34 @@ export class ImagingService {
 
   /** Storage key of the edited image without shapes and vector areas, which they are drawn on in the editor. */
   async editedKey(doc: StoredDocument): Promise<string> {
-    if (doc.shapes.length === 0 && doc.vectorCount === 0) return derivedKeys.processed(doc.id);
-    const key = derivedKeys.edited(doc.id);
-    if (!(await this.storage.exists(key))) await this.renderDerivatives(doc);
-    return key;
+    if (doc.shapes.length === 0 && doc.vectorCount === 0) return this.processedKey(doc);
+    return this.ensureRendered(doc, derivedKeys.edited(doc.id));
+  }
+
+  /** Storage key of the edited image; rendered again if missing, e.g. when the server stopped during an upload. */
+  processedKey(doc: StoredDocument): Promise<string> {
+    return this.ensureRendered(doc, derivedKeys.processed(doc.id));
+  }
+
+  /** Storage key of the thumbnail, rendered again for images if missing. */
+  thumbnailKey(doc: StoredDocument): Promise<string> {
+    return this.ensureRendered(doc, derivedKeys.thumbnail(doc.id));
   }
 
   /** The edited image in full resolution. */
   async processedJpeg(doc: StoredDocument): Promise<Uint8Array> {
-    const key = derivedKeys.processed(doc.id);
-    if (!(await this.storage.exists(key))) await this.renderDerivatives(doc);
-    return this.storage.read(key);
+    return this.storage.read(await this.processedKey(doc));
+  }
+
+  private async ensureRendered(doc: StoredDocument, key: string): Promise<string> {
+    if (doc.kind !== "image" || (await this.storage.exists(key))) return key;
+    let rendering = this.rendering.get(doc.id);
+    if (!rendering) {
+      rendering = this.renderDerivatives(doc).finally(() => this.rendering.delete(doc.id));
+      this.rendering.set(doc.id, rendering);
+    }
+    await rendering;
+    return key;
   }
 
   /**

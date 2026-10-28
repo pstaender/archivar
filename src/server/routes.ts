@@ -9,7 +9,6 @@ import type { AppContext } from "./context";
 import { toPublicDocument } from "./db/documents";
 import { archiveExportSize, exportArchive, exportFilename } from "./services/archiveExport";
 import { handle, HttpError, json, noContent, parseId, readJson } from "./http";
-import { derivedKeys } from "./storage";
 
 type Req = BunRequest<string>;
 
@@ -358,9 +357,9 @@ export function createApiRoutes(ctx: AppContext) {
     },
 
     "/api/documents/:id/image": {
-      GET: handle((req: Req) => {
+      GET: handle(async (req: Req) => {
         const doc = archive.getDocument(userId(req), parseId(req.params.id));
-        return serveFile(ctx.storage.file(derivedKeys.processed(doc.id)), "image/jpeg");
+        return serveFile(ctx.storage.file(await ctx.imaging.processedKey(doc)), "image/jpeg");
       }),
     },
 
@@ -380,9 +379,9 @@ export function createApiRoutes(ctx: AppContext) {
     },
 
     "/api/documents/:id/thumbnail": {
-      GET: handle((req: Req) => {
+      GET: handle(async (req: Req) => {
         const doc = archive.getDocument(userId(req), parseId(req.params.id));
-        return serveFile(ctx.storage.file(derivedKeys.thumbnail(doc.id)), "image/jpeg");
+        return serveFile(ctx.storage.file(await ctx.imaging.thumbnailKey(doc)), "image/jpeg");
       }),
     },
 
