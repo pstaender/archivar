@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { fireEvent, screen } from "@testing-library/react";
 import { DEFAULT_USER_SETTINGS } from "../../shared/settings";
-import { type FetchMock, makeDocument, mockFetch, renderApp, selectTab, settle } from "../../../test/client";
+import { type FetchMock, folder, makeDocument, mockFetch, renderApp, selectTab, settle } from "../../../test/client";
 import { DocumentPage } from "./DocumentPage";
 
 let fetchMock: FetchMock;
@@ -13,13 +13,13 @@ afterEach(() => {
 async function open(overrides: Parameters<typeof makeDocument>[0] = {}, routes: Parameters<typeof mockFetch>[0] = {}) {
   const doc = makeDocument({ id: 7, ...overrides });
   fetchMock = mockFetch({
-    ...routes,
     "GET /api/config": () => ({ dewarpAvailable: false, convertibleImageTypes: [], ocrLanguages: ["deu", "eng"] }),
     "GET /api/settings": () => DEFAULT_USER_SETTINGS,
     "GET /api/folders": () => [],
     "GET /api/documents/7": () => doc,
     "POST /api/documents/7/pdf": () =>
       new Response(new Blob(["%PDF"]), { headers: { "Content-Type": "application/pdf", "Content-Disposition": "attachment; filename*=UTF-8''Brief%20M%C3%A4rz.pdf" } }),
+    ...routes,
   });
   localStorage.setItem("archivar.documentTab", "details");
   const view = await renderApp(<DocumentPage />, { path: "/documents/7", route: "/documents/:id" });
@@ -28,6 +28,22 @@ async function open(overrides: Parameters<typeof makeDocument>[0] = {}, routes: 
 }
 
 describe("Datei tab", () => {
+  test("files the document in folders chosen in the folder dialog", async () => {
+    await open(
+      { folders: ["privat"] },
+      {
+        "GET /api/folders": () => [folder(1, "privat"), folder(2, "steuer/2026")],
+        "PATCH /api/documents/7": (_url, init) => makeDocument({ id: 7, folders: JSON.parse(String(init.body)).folders }),
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "In Ordner ablegen …" }));
+    fireEvent.change(screen.getByLabelText("Ordner suchen oder anlegen"), { target: { value: "2026" } });
+    fireEvent.click(await screen.findByLabelText("steuer/2026"));
+    fireEvent.click(screen.getByRole("button", { name: "Hinzufügen" }));
+    expect(await screen.findByText("steuer/2026")).toBeTruthy();
+    expect(fetchMock.calls.find((c) => c.method === "PATCH")?.body).toEqual({ folders: ["privat", "steuer/2026"] });
+  });
+
   test("re-imports a document from its data source", async () => {
     const source = { id: 3, name: "Scanner", path: "2026/brief.jpg" };
     await open({ kind: "image", source }, { "POST /api/documents/7/reimport": () => makeDocument({ id: 7, kind: "image", source, width: 999 }) });

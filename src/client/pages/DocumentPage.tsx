@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FileText, Loader, SavePlus, ScanText, RefreshCw, Trash, Unlink } from "../icons";
+import { ArrowLeft, ChevronLeft, ChevronRight, Copy, Download, ExternalLink, FileText, FolderPlus, Loader, SavePlus, ScanText, RefreshCw, Trash, Unlink } from "../icons";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { DEFAULT_EDIT_SETTINGS } from "../../shared/editSettings";
@@ -13,6 +13,8 @@ import { saveEditSettings, useEditSaving, whenEditsSaved } from "../editSaves";
 import { ConfirmDialog } from "../components/Dialog";
 import { EditableTitle } from "../components/EditableTitle";
 import { FolderPicker } from "../components/FolderPicker";
+import { FolderTargetDialog } from "../components/FolderTargetDialog";
+import { moveToFolders } from "../../shared/folders";
 import { PdfButton } from "../components/PdfButton";
 import { PresetDialog } from "../components/PresetDialog";
 import { type TabItem, TabBar } from "../components/TabBar";
@@ -837,6 +839,7 @@ export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach, onRe
   const { t } = useTranslation();
   const [exporting, setExporting] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [filing, setFiling] = useState(false);
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
     try {
@@ -912,8 +915,26 @@ export function DetailsPanel({ doc, onFoldersChange, onDuplicate, onDetach, onRe
             {t("details.reimport")}
           </button>
         )}
+        <button type="button" className="btn btn--sm" onClick={() => setFiling(true)}>
+          <FolderPlus size={16} />
+          {t("details.fileInFolder")}
+        </button>
       </div>
       <FolderPicker value={doc.folders} onChange={onFoldersChange} />
+      <FolderTargetDialog
+        open={filing}
+        from={null}
+        working={false}
+        onAdd={(targets) => {
+          setFiling(false);
+          onFoldersChange([...new Set([...doc.folders, ...targets])].sort());
+        }}
+        onMove={(targets) => {
+          setFiling(false);
+          onFoldersChange(moveToFolders(doc.folders, null, targets));
+        }}
+        onClose={() => setFiling(false)}
+      />
       <dl className="details">
         {doc.copyOf && (
           <div className="details__row">
